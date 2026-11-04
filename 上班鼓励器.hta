@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<title>上班鼓励器</title>
+<hta:application
+  id="app"
+  applicationname="WorkEncourager"
+  border="thin"
+  caption="yes"
+  showintaskbar="yes"
+  singleinstance="yes"
+  sysmenu="yes"
+  windowstate="normal"
+  maximizebutton="no"
+  navigable="no"
+  contextmenu="no"
+  selection="no" />
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background-color: #0b0e14;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 4px),
+      radial-gradient(1100px 520px at 50% -8%, rgba(245,197,66,0.07), rgba(0,0,0,0) 62%),
+      radial-gradient(900px 480px at 88% 108%, rgba(255,68,56,0.08), rgba(0,0,0,0) 62%),
+      linear-gradient(160deg, #0b0e14 0%, #111726 52%, #0b0e14 100%);
+    background-attachment: fixed;
+    color: #e8ecf5;
+    user-select: none;
+    cursor: default;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .hidden { display: none; }
+
+  /* ---------- 环境光斑（径向渐变柔光 + 缓慢漂移） ---------- */
+  .glow { position: fixed; border-radius: 50%; z-index: 0; }
+  .glow1 { width: 560px; height: 560px; left: -180px; top: -180px; background: radial-gradient(circle, rgba(245,197,66,0.10) 0%, rgba(245,197,66,0) 68%); animation: drift1 16s ease-in-out infinite; }
+  .glow2 { width: 520px; height: 520px; right: -160px; bottom: -160px; background: radial-gradient(circle, rgba(255,68,56,0.10) 0%, rgba(255,68,56,0) 68%); animation: drift2 20s ease-in-out infinite; }
+  @keyframes drift1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(50px,36px); } }
+  @keyframes drift2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-44px,-30px); } }
+
+  /* ---------- 标题 ---------- */
+  .head { position: relative; z-index: 2; text-align: center; padding-top: 18px; }
+  .head h1 { font-size: 25px; letter-spacing: 7px; color: #f5c542; text-shadow: 0 0 20px rgba(245,197,66,0.4), 0 1px 0 rgba(0,0,0,0.6); }
+  .head p { margin-top: 4px; font-size: 11px; color: #7d8698; letter-spacing: 3px; }
+  .head-line { width: 280px; height: 1px; margin: 10px auto 0; background: linear-gradient(90deg, rgba(0,0,0,0), rgba(245,197,66,0.55), rgba(0,0,0,0)); }
+
+  /* ---------- 设置面板 ---------- */
+  #panelSetup { position: relative; z-index: 2; width: 680px; margin: 16px auto 30px; }
+  .fcell { display: inline-block; vertical-align: top; width: 328px; margin: 0 12px 14px 0; }
+  .fcell label { display: block; font-size: 12px; color: #7d8698; margin-bottom: 6px; letter-spacing: 1px; }
+  .fcell input {
+    width: 306px; padding: 10px 12px; font-size: 17px; color: #fff;
+    background: #0a0d14; border: 1px solid #26304a; border-radius: 9px; outline: none;
+    font-family: "Microsoft YaHei", sans-serif;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .fcell input:focus { border-color: #f5c542; box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 0 0 3px rgba(245,197,66,0.12); }
+  .seg { float: right; margin-top: -2px; }
+  .seg-btn {
+    display: inline-block; padding: 2px 12px; font-size: 11px; color: #7d8698;
+    background: #0a0d14; border: 1px solid #26304a; cursor: pointer; letter-spacing: 1px;
+  }
+  .seg-btn.first { border-radius: 6px 0 0 6px; }
+  .seg-btn.last { border-radius: 0 6px 6px 0; border-left: 0; }
+  .seg-btn.on { color: #171204; background-image: linear-gradient(180deg, #ffe08a, #f5c542); border-color: #f5c542; font-weight: bold; box-shadow: 0 0 10px rgba(245,197,66,0.35); }
+  .f-hint { margin-top: 6px; font-size: 11px; color: #66708a; min-height: 15px; }
+  .setup-tip { text-align: center; font-size: 12px; color: #66708a; margin: 2px 0 12px; line-height: 1.7; }
+
+  /* ---------- 未结算班次提示条 ---------- */
+  #resumeBar {
+    width: 680px; margin: 0 auto 12px; padding: 10px 14px;
+    background-image: linear-gradient(180deg, #2a2210, #241d10);
+    border: 1px solid #7a6524; border-radius: 10px;
+    font-size: 13px; color: #f5c542;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 14px rgba(0,0,0,0.4);
+  }
+  #resumeBar .btn { padding: 5px 16px; font-size: 12px; margin-left: 8px; letter-spacing: 1px; }
+
+  /* ---------- 按钮 ---------- */
+  .btn {
+    font-family: "Microsoft YaHei", sans-serif;
+    font-size: 17px; letter-spacing: 3px; color: #fff;
+    padding: 11px 42px; border: 0; border-radius: 999px; cursor: pointer;
+    transition: transform .15s, box-shadow .2s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-start {
+    background-image: linear-gradient(180deg, #ff7a45, #d63a1e 60%, #c03318);
+    border-bottom: 3px solid #8f250e;
+    box-shadow: 0 6px 18px rgba(214,58,30,0.35), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  .btn-start:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(214,58,30,0.5), inset 0 1px 0 rgba(255,255,255,0.28); }
+  .btn-stop {
+    background-image: linear-gradient(180deg, #3ecf7a, #1f9d57 60%, #1a8a4c);
+    border-bottom: 3px solid #12603a;
+    box-shadow: 0 6px 18px rgba(31,157,87,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .btn-stop:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(31,157,87,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
+  .btn-ghost {
+    background-image: linear-gradient(180deg, #313b52, #2a3245);
+    border-bottom: 3px solid #1a2030;
+    font-size: 14px; padding: 10px 30px; letter-spacing: 2px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .btn-ghost:hover { transform: translateY(-1px); }
+  .btn[disabled], .btn[disabled]:hover {
+    background: #1c2230; background-image: none;
+    border-bottom: 3px solid #161b28; color: #5b6478;
+    cursor: not-allowed; transform: none; box-shadow: none;
+  }
+  .btnrow { text-align: center; margin-top: 4px; }
+  .btnrow .btn { margin: 0 7px; }
+
+  /* ---------- 工作面板 ---------- */
+  #panelWork { position: relative; z-index: 2; width: 740px; margin: 8px auto 30px; text-align: center; }
+  #bigClock { font-family: Consolas, monospace; font-size: 44px; color: #ffffff; letter-spacing: 4px; text-shadow: 0 0 16px rgba(255,255,255,0.28), 0 2px 4px rgba(0,0,0,0.6); }
+  .clock-label { font-size: 10px; color: #7d8698; letter-spacing: 4px; margin-top: 2px; }
+  .date-line { margin-top: 4px; font-size: 12px; color: #f5c542; letter-spacing: 2px; opacity: 0.85; }
+
+  /* ---------- LED 金额面板（扫描线 + HUD 切角 + 呼吸辉光） ---------- */
+  .money-box {
+    position: relative; margin-top: 14px; padding: 18px 10px 22px;
+    background-color: #0a0d14;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 4px);
+    border: 1px solid #26304a; border-radius: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 60px rgba(255,68,56,0.06), 0 12px 34px rgba(0,0,0,0.5);
+  }
+  .money-box:before, .money-box:after { content: ""; position: absolute; width: 16px; height: 16px; }
+  .money-box:before { left: -1px; top: -1px; border-left: 2px solid #f5c542; border-top: 2px solid #f5c542; border-radius: 14px 0 0 0; }
+  .money-box:after { right: -1px; bottom: -1px; border-right: 2px solid #f5c542; border-bottom: 2px solid #f5c542; border-radius: 0 0 14px 0; }
+  .money-label { font-size: 12px; color: #7d8698; letter-spacing: 4px; }
+  #money { margin-top: 6px; font-family: Consolas, "Courier New", monospace; font-weight: bold; color: #ff4438; white-space: nowrap; animation: moneyPulse 2.6s ease-in-out infinite; }
+  @keyframes moneyPulse {
+    0%, 100% { text-shadow: 0 0 12px rgba(255,68,56,0.55), 0 0 36px rgba(255,68,56,0.25); }
+    50% { text-shadow: 0 0 20px rgba(255,68,56,0.85), 0 0 64px rgba(255,68,56,0.4); }
+  }
+  #mInt { font-size: 64px; letter-spacing: 2px; }
+  #mDec { font-size: 32px; color: #ff8a7e; }
+  #mUnit { font-size: 20px; color: #ffb3aa; margin-left: 8px; }
+
+  /* ---------- 进度条（流动竖纹 + 发光） ---------- */
+  .bar-wrap { width: 680px; height: 12px; margin: 16px auto 0; background: #0a0d14; border: 1px solid #26304a; border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.55); }
+  #barFill {
+    height: 100%; width: 0%;
+    background-color: #d63a1e;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0px, rgba(255,255,255,0.22) 5px, rgba(255,255,255,0) 5px, rgba(255,255,255,0) 12px);
+    animation: barMove .7s linear infinite;
+    box-shadow: 0 0 12px rgba(214,58,30,0.6);
+  }
+  #barFill.ot { background-color: #f5c542; box-shadow: 0 0 12px rgba(245,197,66,0.6); }
+  @keyframes barMove { from { background-position: 0 0; } to { background-position: 12px 0; } }
+  #barInfo { width: 680px; margin: 5px auto 0; font-size: 12px; color: #7d8698; }
+  #barInfo .l { float: left; }
+  #barInfo .r { float: right; }
+
+  #statusLine { margin-top: 14px; font-size: 14px; color: #f5c542; letter-spacing: 1px; min-height: 20px; text-shadow: 0 0 12px rgba(245,197,66,0.25); }
+  #statusLine.ot { color: #ff5252; font-weight: bold; text-shadow: 0 0 12px rgba(255,82,82,0.35); }
+
+  .srow { margin-top: 10px; font-size: 12px; color: #66708a; }
+  .srow .chip {
+    display: inline-block; margin: 3px 4px; padding: 3px 12px;
+    background-image: linear-gradient(180deg, #141a28, #0d1119);
+    border: 1px solid #26304a; border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  /* ---------- 表格（每日明细 / 历史） ---------- */
+  .sec-title { margin: 14px 0 4px; font-size: 12px; color: #7d8698; letter-spacing: 2px; text-align: left; }
+  .tbl-wrap { max-height: 180px; overflow-y: auto; border: 1px solid #26304a; border-radius: 10px; background: #0a0d14; box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl th, .tbl td { padding: 5px 10px; font-size: 12px; border-bottom: 1px solid #1c2230; }
+  .tbl th { color: #7d8698; font-weight: normal; text-align: right; background-image: linear-gradient(180deg, #182031, #10141d); }
+  .tbl td { color: #e8ecf5; font-family: Consolas, monospace; text-align: right; }
+  .tbl tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl td.gold { color: #f5c542; }
+  .tbl td.red { color: #ff4438; font-weight: bold; }
+  .tbl tr:last-child th, .tbl tr:last-child td { border-bottom: 0; }
+
+  .work-btns { margin-top: 14px; }
+  .work-btns .btn { margin: 0 8px; }
+  #stopTip { margin-top: 8px; font-size: 12px; color: #5b6478; }
+  #stopTip.ok { color: #3ecf7a; font-weight: bold; text-shadow: 0 0 10px rgba(62,207,122,0.35); }
+
+  /* ---------- 弹窗（汇总 / 历史） ---------- */
+  .modal { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 50; background: rgba(5,7,11,0.86); text-align: center; overflow-y: auto; }
+  .modal-box {
+    width: 600px; margin: 40px auto; padding: 24px 32px 22px; text-align: left;
+    background: #131826; border: 1px solid #2a3245; border-top: 2px solid #f5c542; border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.65), 0 0 40px rgba(245,197,66,0.06);
+  }
+  .modal-head { text-align: center; }
+  .modal-emoji { font-size: 40px; }
+  .modal-box h2 { margin-top: 4px; font-size: 22px; color: #f5c542; letter-spacing: 4px; text-shadow: 0 0 16px rgba(245,197,66,0.35); }
+  #sumTotal { margin-top: 10px; text-align: center; font-family: Consolas, monospace; font-weight: bold; font-size: 52px; color: #ff4438; animation: moneyPulse 2.6s ease-in-out infinite; }
+  #sumTotal .u { font-size: 18px; color: #ffb3aa; margin-left: 6px; }
+  .sum-table { width: 100%; margin-top: 12px; border-collapse: collapse; }
+  .sum-table td { padding: 6px 10px; font-size: 13px; border-bottom: 1px dashed #26304a; }
+  .sum-table .k { text-align: left; color: #7d8698; }
+  .sum-table .v { text-align: right; color: #fff; font-family: Consolas, monospace; }
+  .sum-table .v.gold { color: #f5c542; }
+  #sumQuote { margin-top: 12px; text-align: center; font-size: 13px; color: #7d8698; font-style: italic; }
+  .modal-btns { margin-top: 16px; text-align: center; }
+  .modal-btns .btn { margin: 0 6px; }
+
+  /* ---------- 庆祝彩带画布 ---------- */
+  #confetti { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; }
+</style>
+</head>
+<body>
+  <div class="glow glow1"></div>
+  <div class="glow glow2"></div>
+
+  <div class="head">
+    <h1>&#128176; 上班鼓励器</h1>
+    <p>上 班 的 每 一 秒 ， 都 是 真 金 白 银</p>
+    <div class="head-line"></div>
+  </div>
+
+  <!-- ================= 设置面板 ================= -->
+  <div id="panelSetup">
+    <div id="resumeBar" class="hidden"></div>
+    <div>
+      <div class="fcell">
+        <label>&#9200; 上班时间</label>
+        <input type="time" id="inStart" value="09:00">
+      </div>
+      <div class="fcell">
+        <label>&#127769; 下班时间（正常）</label>
+        <input type="time" id="inEnd" value="18:00">
+      </div>
+      <div class="fcell">
+        <label>&#128176; 薪资
+          <span class="seg">
+            <span class="seg-btn first on" id="segDay">日薪</span><span class="seg-btn last" id="segMonth">月薪</span>
+          </span>
+        </label>
+        <input type="text" id="inDaily" value="500">
+        <p class="f-hint" id="salaryHint">单位：元 / 天，按日薪直接结算</p>
+      </div>
+      <div class="fcell">
+        <label>&#9889; 加班时薪（元 / 小时）</label>
+        <input type="text" id="inOt" value="50">
+        <p class="f-hint">班次时段之外的时间均按此费率累计</p>
+      </div>
+    </div>
+    <p class="setup-tip">跨零点班次自动识别为次日下班；连续跨天上班将按"每日班次段计日薪、其余时段计加班"循环累计；<br>中途关闭程序不会丢班次，下次启动可接续上一班。</p>
+    <div class="btnrow">
+      <button class="btn btn-start" id="btnStart">&#128640; 开始上班</button>
+      <button class="btn btn-ghost" id="btnHistory">&#128202; 历史记录</button>
+    </div>
+  </div>
+
+  <!-- ================= 工作面板 ================= -->
+  <div id="panelWork" class="hidden">
+    <div id="bigClock">--:--:--</div>
+    <div class="clock-label">当 前 时 间</div>
+    <div class="date-line" id="dateLine"></div>
+
+    <div class="money-box">
+      <div class="money-label">&#128184; 本 班 累 计 已 赚</div>
+      <div id="money">
+        <span id="mInt">0</span><span id="mDec">.0000</span><span id="mUnit">元</span>
+      </div>
+    </div>
+
+    <div class="bar-wrap"><div id="barFill"></div></div>
+    <div id="barInfo">
+      <span class="l" id="barL">00:00:00</span>
+      <span class="r" id="barR">--:-- 下班</span>
+    </div>
+
+    <div id="statusLine">准备开工！</div>
+
+    <div class="srow">
+      <span class="chip" id="chipDay">第 1 天上班</span>
+      <span class="chip" id="chipBasis">计薪口径：--</span>
+      <span class="chip" id="chipShift">班次：--:-- ~ --:--</span>
+      <span class="chip" id="chipNormal">正常时薪：--</span>
+      <span class="chip" id="chipOt">加班时薪：--</span>
+      <span class="chip" id="chipOtTime">累计加班：00:00:00</span>
+    </div>
+
+    <div class="sec-title">&#128197; 每日明细（实时）</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <tr><th>日期</th><th>上班时长</th><th>班次内</th><th>加班</th><th>当日收入</th></tr>
+        <tbody id="dayBody">
+          <tr><td colspan="5" style="text-align:center;color:#5b6478;">开工后按自然日实时拆分</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="work-btns">
+      <button class="btn btn-stop" id="btnStop" disabled>&#127937; 下班结算</button>
+      <button class="btn btn-ghost" id="btnCancel">&#10006; 放弃本次</button>
+    </div>
+    <div id="stopTip">未到下班时间，暂不能下班哦，继续加油！</div>
+  </div>
+
+  <!-- ================= 汇总弹窗 ================= -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-emoji">&#127881;&#128176;&#127881;</div>
+        <h2>下 班 啦 ！ 辛 苦 了 ！</h2>
+        <div id="sumTotal">0.0000<span class="u">元</span></div>
+      </div>
+      <table class="sum-table">
+        <tr><td class="k">上班时间</td><td class="v" id="sumStart">--</td></tr>
+        <tr><td class="k">下班时间</td><td class="v" id="sumEnd">--</td></tr>
+        <tr><td class="k">正常班次</td><td class="v" id="sumShift">--</td></tr>
+        <tr><td class="k">计薪口径</td><td class="v" id="sumBasis">--</td></tr>
+        <tr><td class="k">班次内薪资</td><td class="v" id="sumNormal">--</td></tr>
+        <tr><td class="k">加班时长</td><td class="v gold" id="sumOtDur">--</td></tr>
+        <tr><td class="k">加班费</td><td class="v gold" id="sumOtPay">--</td></tr>
+      </table>
+      <div class="sec-title">&#128197; 每日明细</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <tr><th>日期</th><th>上班时长</th><th>班次内</th><th>加班</th><th>当日收入</th></tr>
+          <tbody id="sumDayBody"></tbody>
+        </table>
+      </div>
+      <p id="sumQuote">今天的你，也在认真搞钱，棒！</p>
+      <div class="modal-btns">
+        <button class="btn btn-start" id="btnAgain">&#128260; 再来一天</button>
+        <button class="btn btn-ghost" id="btnCloseApp">&#128682; 关闭程序</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 历史记录弹窗 ================= -->
+  <div id="modalHist" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-emoji">&#128202;</div>
+        <h2>历 史 结 算 记 录</h2>
+      </div>
+      <div class="tbl-wrap" style="max-height:340px;margin-top:14px;">
+        <table class="tbl">
+          <tr><th>结算时间</th><th>班次</th><th>天数</th><th>加班</th><th>总额</th></tr>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-ghost" id="btnClearHist">&#128465; 清空历史</button>
+        <button class="btn btn-start" id="btnCloseHist">&#10004; 关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="confetti" class="hidden"></canvas>
+
+<script type="text/javascript">
+/* ================= 全局状态 ================= */
+var timerId = null;
+var S = null;              // 班次配置
+var salaryMode = "day";    // day=日薪（默认） | month=月薪
+var MONTH_DAYS = 21.75;    // 国家法定月计薪天数
+var started = false;       // 是否已开始上班
+var stopArmed = false;     // 到点提醒是否已触发
+var anchorMs = 0;          // 班次锚点（毫秒时间戳），跨天累计的基准
+var lastWholeSec = -1;     // 每日明细表刷新节流
+var audioCtx = null;
+
+var QUOTES = [
+  "今天的你，也在认真搞钱，棒！",
+  "钱不会辜负每一个努力上班的人！",
+  "下班快乐！今天的汗水已变成余额！",
+  "打工虽苦，但到账的瞬间很甜！",
+  "又是被自己赚钱能力折服的一天！"
+];
+var WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+
+function $id(id) { return document.getElementById(id); }
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+/* ================= 本地文件读写（HTA 全信任，纯离线） ================= */
+function filePath(name) {
+  var p = unescape(location.pathname);
+  if (p.charAt(0) === "/") p = p.substring(1);
+  p = p.replace(/\//g, "\\");
+  var i = p.lastIndexOf("\\");
+  return p.substring(0, i + 1) + name;
+}
+function readFile(name) {
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    if (!fso.FileExists(filePath(name))) return "";
+    var f = fso.OpenTextFile(filePath(name), 1, false, -1);
+    var s = "";
+    if (!f.AtEndOfStream) s = f.ReadAll();
+    f.Close();
+    return s.replace(/^\uFEFF/, "");
+  } catch (e) { return ""; }
+}
+function writeFile(name, text) {
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var f = fso.OpenTextFile(filePath(name), 2, true, -1);
+    f.Write(text);
+    f.Close();
+    return true;
+  } catch (e) { return false; }
+}
+function delFile(name) {
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    if (fso.FileExists(filePath(name))) fso.DeleteFile(filePath(name));
+  } catch (e) {}
+}
+var STATE_FILE = "workstate.json";
+var HIST_FILE = "workhistory.json";
+
+/* ================= 音效（Web Audio，失败则静默） ================= */
+function getCtx() {
+  try {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+  } catch (e) { audioCtx = null; }
+  return audioCtx;
+}
+function playNote(freq, beginOffset, dur, vol) {
+  var ctx = getCtx();
+  if (!ctx) return;
+  try {
+    var t0 = ctx.currentTime + beginOffset;
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  } catch (e) {}
+}
+function playStartSound() { playNote(659, 0, 0.12); playNote(880, 0.12, 0.18); }
+function playBell() { playNote(1046, 0, 0.5, 0.18); playNote(1318, 0.15, 0.5, 0.15); playNote(1568, 0.3, 0.7, 0.15); }
+function playCelebration() {
+  var melody = [523, 523, 659, 784, 784, 659, 523, 587, 659, 587, 523];
+  for (var i = 0; i < melody.length; i++) playNote(melody[i], i * 0.18, 0.17, 0.12);
+}
+
+/* ================= 时间工具 ================= */
+function hmToSec(hhmm) {
+  var p = hhmm.split(":");
+  return (parseInt(p[0], 10) * 3600) + (parseInt(p[1], 10) * 60);
+}
+function fmtDur(sec) {
+  if (sec < 0) sec = 0;
+  sec = Math.floor(sec);
+  return pad(Math.floor(sec / 3600)) + ":" + pad(Math.floor((sec % 3600) / 60)) + ":" + pad(sec % 60);
+}
+function fmtHM(sec) { return pad(Math.floor(sec / 3600)) + ":" + pad(Math.floor((sec % 3600) / 60)); }
+function dateCN(ms) { var d = new Date(ms); return (d.getMonth() + 1) + "月" + d.getDate() + "日"; }
+
+/* 当前时刻距"今日/昨日上班时间"已过去的秒数（用于确定锚点） */
+function clockElapsedNow() {
+  var d = new Date();
+  var cur = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+  var diff = cur - S.startSec;
+  if (diff < -43200) diff += 86400;   // 凌晨时段视为昨日班次延续
+  return diff;
+}
+/* 距锚点已过去的秒数（跨天连续累计的核心） */
+function elapsedSinceAnchor() { return (new Date().getTime() - anchorMs) / 1000; }
+
+/* ================= 计薪模型 v2：按自然日循环 =================
+   每个自然日内：班次时段 [0, shiftLen) 按日薪秒费率；
+   班次时段之外（深夜/跨天空档）一律按加班时薪。 */
+function normalTotal(e) {
+  if (e <= 0) return 0;
+  var full = Math.floor(e / 86400);
+  var r = e - full * 86400;
+  return full * S.shiftLen + Math.min(r, S.shiftLen);
+}
+function earnedAt(e) {
+  if (e <= 0) return 0;
+  var nm = normalTotal(e);
+  return nm * S.normalPerSec + (e - nm) * (S.otRate / 3600);
+}
+/* 区间 [ta,tb)（距锚点秒）内落在班次时段里的秒数 */
+function normalInRange(ta, tb) {
+  var total = 0;
+  var k = Math.floor(ta / 86400);
+  while (k * 86400 <= tb) {
+    var ws = k * 86400, we = ws + S.shiftLen;
+    var s = Math.max(ta, ws), e2 = Math.min(tb, we);
+    if (e2 > s) total += e2 - s;
+    k++;
+  }
+  return total;
+}
+/* 按自然日拆分明细行 */
+function dayRows(e) {
+  var rows = [];
+  if (e <= 0) return rows;
+  var a = new Date(anchorMs);
+  var d0 = new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime();
+  var nowMs = anchorMs + e * 1000;
+  var dn = new Date(nowMs);
+  var dN = new Date(dn.getFullYear(), dn.getMonth(), dn.getDate()).getTime();
+  for (var t = d0; t <= dN; t += 86400000) {
+    var ta = Math.max(0, (t - anchorMs) / 1000);
+    var tb = Math.min(e, (t + 86400000 - anchorMs) / 1000);
+    if (tb <= ta) continue;
+    var nm = normalInRange(ta, tb);
+    rows.push({
+      date: dateCN(t),
+      dur: tb - ta,
+      normal: nm,
+      ot: tb - ta - nm,
+      pay: nm * S.normalPerSec + (tb - ta - nm) * (S.otRate / 3600)
+    });
+  }
+  return rows;
+}
+function renderDayRows(tbodyId, rows) {
+  var html = "";
+  if (!rows.length) {
+    html = "<tr><td colspan='5' style='text-align:center;color:#5b6478;'>开工后按自然日实时拆分</td></tr>";
+  } else {
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      html += "<tr><td>" + r.date + "</td><td>" + fmtDur(r.dur) + "</td><td>" + fmtDur(r.normal) +
+              "</td><td>" + (r.ot > 0 ? "<span style='color:#ffd700;'>" + fmtDur(r.ot) + "</span>" : fmtDur(0)) +
+              "</td><td class='red'>" + r.pay.toFixed(4) + "</td></tr>";
+    }
+  }
+  $id(tbodyId).innerHTML = html;
+}
+
+/* ================= 金额显示（4 位小数） ================= */
+function setMoney(v) {
+  if (v < 0) v = 0;
+  var s = v.toFixed(4).split(".");
+  $id("mInt").innerHTML = s[0];
+  $id("mDec").innerHTML = "." + s[1];
+}
+
+/* ================= 薪资口径切换 ================= */
+function setSalaryMode(m) {
+  salaryMode = m;
+  $id("segDay").className = "seg-btn first" + (m === "day" ? " on" : "");
+  $id("segMonth").className = "seg-btn last" + (m === "month" ? " on" : "");
+  updateSalaryHint();
+}
+function updateSalaryHint() {
+  var v = parseFloat($id("inDaily").value);
+  var hint = $id("salaryHint");
+  if (salaryMode === "day") {
+    hint.innerHTML = "单位：元 / 天，按日薪直接结算";
+  } else if (v > 0) {
+    hint.innerHTML = "按法定月计薪天数 21.75 折算：日薪 = " + (v / MONTH_DAYS).toFixed(2) + " 元";
+  } else {
+    hint.innerHTML = "单位：元 / 月，按法定月计薪天数 21.75 折算日薪";
+  }
+}
+
+/* ================= 会话状态持久化（跨天不丢班次） ================= */
+function saveState() {
+  var obj = {
+    anchorMs: anchorMs,
+    startStr: S.startStr, endStr: S.endStr,
+    startSec: S.startSec, endSec: S.endSec,
+    shiftLen: S.shiftLen, daily: S.daily,
+    rawSalary: S.rawSalary, salaryMode: S.salaryMode,
+    otRate: S.otRate, normalPerSec: S.normalPerSec
+  };
+  writeFile(STATE_FILE, JSON.stringify(obj));
+}
+function loadState() {
+  var s = readFile(STATE_FILE);
+  if (!s) return null;
+  try { return JSON.parse(s); } catch (e) { return null; }
+}
+
+/* ================= 开始上班 ================= */
+function buildS(sv, ev, rawSalary, ov, mode) {
+  var startSec = hmToSec(sv);
+  var endSec = hmToSec(ev);
+  var shiftLen = endSec - startSec;
+  if (shiftLen <= 0) shiftLen += 86400;   // 跨零点
+  var daily = mode === "month" ? rawSalary / MONTH_DAYS : rawSalary;
+  return {
+    startStr: sv, endStr: ev,
+    startSec: startSec, endSec: endSec,
+    shiftLen: shiftLen,
+    daily: daily, rawSalary: rawSalary, salaryMode: mode,
+    normalPerSec: daily / shiftLen,
+    otRate: ov
+  };
+}
+function fillChips() {
+  $id("chipBasis").innerHTML = S.salaryMode === "day"
+    ? "计薪口径：日薪 " + S.rawSalary.toFixed(2) + " 元"
+    : "计薪口径：月薪 " + S.rawSalary.toFixed(2) + " → 日薪 " + S.daily.toFixed(2) + " 元";
+  $id("chipShift").innerHTML = "班次：" + S.startStr + " ~ " + S.endStr + (S.shiftLen !== S.endSec - S.startSec ? "（次日）" : "");
+  $id("chipNormal").innerHTML = "正常时薪：" + (S.daily / (S.shiftLen / 3600)).toFixed(2) + " 元";
+  $id("chipOt").innerHTML = "加班时薪：" + S.otRate.toFixed(2) + " 元";
+}
+function enterWork() {
+  started = true;
+  stopArmed = false;
+  lastWholeSec = -1;
+  $id("panelSetup").className = "hidden";
+  $id("panelWork").className = "";
+  fillChips();
+  $id("btnStop").disabled = true;
+  $id("stopTip").className = "";
+  $id("stopTip").innerHTML = "未到下班时间，暂不能下班哦，继续加油！";
+  $id("barR").innerHTML = S.endStr + " 下班";
+  timerId = setInterval(tick, 60);
+  tick();
+}
+function onStart() {
+  var sv = $id("inStart").value;
+  var ev = $id("inEnd").value;
+  var rawSalary = parseFloat($id("inDaily").value);
+  var ov = parseFloat($id("inOt").value);
+
+  if (!sv || !ev) { alert("请选择上班时间和下班时间！"); return; }
+  if (!(rawSalary > 0)) { alert(salaryMode === "day" ? "请输入正确的日薪（大于 0 的数字）！" : "请输入正确的月薪（大于 0 的数字）！"); return; }
+  if (isNaN(ov) || ov < 0) ov = 0;
+
+  S = buildS(sv, ev, rawSalary, ov, salaryMode);
+  anchorMs = new Date().getTime() - clockElapsedNow() * 1000;
+  saveState();
+  playStartSound();
+  enterWork();
+}
+/* 接续未结算班次 */
+function onResume(cfg) {
+  S = {
+    startStr: cfg.startStr, endStr: cfg.endStr,
+    startSec: cfg.startSec, endSec: cfg.endSec,
+    shiftLen: cfg.shiftLen, daily: cfg.daily,
+    rawSalary: cfg.rawSalary, salaryMode: cfg.salaryMode,
+    normalPerSec: cfg.normalPerSec, otRate: cfg.otRate
+  };
+  anchorMs = cfg.anchorMs;
+  playStartSound();
+  enterWork();
+}
+
+/* ================= 每秒刷新 ================= */
+function tick() {
+  var d = new Date();
+  $id("bigClock").innerHTML = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  $id("dateLine").innerHTML = d.getFullYear() + " 年 " + (d.getMonth() + 1) + " 月 " + d.getDate() + " 日 · " + WEEK[d.getDay()];
+
+  var e = elapsedSinceAnchor();
+  var earned = earnedAt(e);
+  setMoney(earned);
+
+  // 当日周期内的进度
+  var r = e % 86400;
+  if (e < 0) r = 0;
+  var pct = r / S.shiftLen * 100;
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  var fill = $id("barFill");
+  fill.style.width = pct + "%";
+  $id("barL").innerHTML = "已连续上班 " + (e > 0 ? fmtDur(e) : "00:00:00");
+
+  var st = $id("statusLine");
+  var dayNo = Math.floor(Math.max(0, e) / 86400) + 1;
+  $id("chipDay").innerHTML = "第 " + dayNo + " 天上班";
+
+  var otTotal = e - normalTotal(e);
+  $id("chipOtTime").innerHTML = "累计加班：" + fmtDur(otTotal);
+
+  if (e < 0) {
+    fill.className = "";
+    st.className = "";
+    st.innerHTML = "&#127749; 还没到上班时间，提前到岗也是热爱！薪资将从 " + S.startStr + " 起累计。";
+  } else if (r <= S.shiftLen) {
+    fill.className = "";
+    st.className = "";
+    st.innerHTML = "&#128188; 第 " + dayNo + " 天正常班次中… 距下班 " + fmtDur(S.shiftLen - r) + " ，每秒进账 " + S.normalPerSec.toFixed(4) + " 元！";
+  } else {
+    fill.className = "ot";
+    st.className = "ot";
+    st.innerHTML = "&#128293; 班次外时段（加班费率）进行中！累计加班 " + fmtDur(otTotal) + " ，本班已赚 " + earned.toFixed(4) + " 元！";
+  }
+
+  // 每日明细表：整秒节流刷新
+  var ws = Math.floor(e);
+  if (ws !== lastWholeSec) {
+    lastWholeSec = ws;
+    renderDayRows("dayBody", dayRows(e));
+  }
+
+  // 到点解锁下班按钮
+  if (e >= S.shiftLen && !stopArmed) {
+    stopArmed = true;
+    $id("btnStop").disabled = false;
+    $id("stopTip").className = "ok";
+    $id("stopTip").innerHTML = "&#10004; 已到下班时间，随时可以下班结算！";
+    playBell();
+  }
+}
+
+/* ================= 下班结算 ================= */
+function onStop() {
+  if (!started) return;
+  $id("btnStop").disabled = true;
+  clearInterval(timerId); timerId = null;
+
+  var d = new Date();
+  var e = elapsedSinceAnchor();
+  var nm = normalTotal(e);
+  var otSec = e - nm;
+  var normalPay = nm * S.normalPerSec;
+  var otPay = otSec * (S.otRate / 3600);
+  var total = normalPay + otPay;
+  var rows = dayRows(e);
+
+  $id("sumStart").innerHTML = dateCN(anchorMs) + " " + S.startStr;
+  $id("sumEnd").innerHTML = dateCN(d.getTime()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  $id("sumShift").innerHTML = S.startStr + " ~ " + S.endStr + (S.shiftLen !== S.endSec - S.startSec ? "（次日）" : "");
+  $id("sumBasis").innerHTML = S.salaryMode === "day"
+    ? "日薪 " + S.rawSalary.toFixed(4) + " 元"
+    : "月薪 " + S.rawSalary.toFixed(4) + " 元 ÷ 21.75 = 日薪 " + S.daily.toFixed(4) + " 元";
+  $id("sumNormal").innerHTML = normalPay.toFixed(4) + " 元";
+  $id("sumOtDur").innerHTML = fmtDur(otSec);
+  $id("sumOtPay").innerHTML = otPay.toFixed(4) + " 元";
+  $id("sumTotal").innerHTML = total.toFixed(4) + "<span class='u'>元</span>";
+  renderDayRows("sumDayBody", rows);
+  $id("sumQuote").innerHTML = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+
+  appendHistory({
+    t: dateCN(d.getTime()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()),
+    shift: S.startStr + "~" + S.endStr,
+    days: rows.length,
+    ot: fmtDur(otSec),
+    total: total.toFixed(4)
+  });
+  delFile(STATE_FILE);
+
+  $id("modal").className = "modal";
+  startConfetti();
+  playCelebration();
+  started = false;
+}
+
+/* ================= 历史记录 ================= */
+function loadHistory() {
+  var s = readFile(HIST_FILE);
+  if (!s) return [];
+  try {
+    var arr = JSON.parse(s);
+    return (arr && arr.length !== undefined) ? arr : [];
+  } catch (e) { return []; }
+}
+function appendHistory(rec) {
+  var arr = loadHistory();
+  arr.push(rec);
+  if (arr.length > 200) arr = arr.slice(arr.length - 200);
+  writeFile(HIST_FILE, JSON.stringify(arr));
+}
+function showHistory() {
+  var arr = loadHistory();
+  var html = "";
+  if (!arr.length) {
+    html = "<tr><td colspan='5' style='text-align:center;color:#5b6478;'>暂无结算记录，快去开工吧！</td></tr>";
+  } else {
+    for (var i = arr.length - 1; i >= 0; i--) {
+      var r = arr[i];
+      html += "<tr><td>" + r.t + "</td><td>" + r.shift + "</td><td>" + r.days + "</td><td>" + r.ot + "</td><td class='red'>" + r.total + "</td></tr>";
+    }
+  }
+  $id("histBody").innerHTML = html;
+  $id("modalHist").className = "modal";
+}
+
+/* ================= 放弃 / 再来 / 接续提示 ================= */
+function onCancel() {
+  if (confirm("确定放弃本次上班记录吗？累计薪资将清零。")) {
+    clearInterval(timerId); timerId = null;
+    started = false; stopArmed = false;
+    delFile(STATE_FILE);
+    backToSetup();
+  }
+}
+function onAgain() {
+  $id("modal").className = "modal hidden";
+  stopConfetti();
+  backToSetup();
+}
+function backToSetup() {
+  $id("panelWork").className = "hidden";
+  $id("panelSetup").className = "";
+  setMoney(0);
+  checkResume();
+}
+function checkResume() {
+  var cfg = loadState();
+  var bar = $id("resumeBar");
+  if (!cfg || !cfg.anchorMs) { bar.className = "hidden"; return; }
+  bar.className = "";
+  bar.innerHTML = "&#9888; 检测到未结算班次：" + dateCN(cfg.anchorMs) + " " + cfg.startStr +
+    " 开工，累计收入仍在继续。" +
+    "<button class='btn btn-stop' id='btnResume'>继续上一班</button>" +
+    "<button class='btn btn-ghost' id='btnDiscard'>作废</button>";
+  $id("btnResume").onclick = function () { bar.className = "hidden"; onResume(cfg); };
+  $id("btnDiscard").onclick = function () {
+    if (confirm("作废后该班次的累计记录将被删除，确定吗？")) {
+      delFile(STATE_FILE);
+      bar.className = "hidden";
+    }
+  };
+}
+
+/* ================= 彩带庆祝动画 ================= */
+var cfCanvas = null, cfCtx = null, cfParts = [], cfRaf = null;
+var CF_COLORS = ["#ff3b30", "#ffd700", "#2ecc71", "#3498db", "#e056fd", "#ff8c00", "#00e5ff"];
+function raf(fn) { return window.requestAnimationFrame ? requestAnimationFrame(fn) : setTimeout(fn, 30); }
+function craf(h) { if (window.cancelAnimationFrame) cancelAnimationFrame(h); else clearTimeout(h); }
+function startConfetti() {
+  cfCanvas = $id("confetti");
+  cfCanvas.className = "";
+  cfCanvas.width = document.body.clientWidth;
+  cfCanvas.height = document.body.clientHeight;
+  cfCtx = cfCanvas.getContext("2d");
+  cfParts = [];
+  for (var i = 0; i < 220; i++) {
+    cfParts.push({
+      x: Math.random() * cfCanvas.width,
+      y: Math.random() * -cfCanvas.height,
+      w: 5 + Math.random() * 7,
+      h: 8 + Math.random() * 10,
+      vy: 2 + Math.random() * 4,
+      vx: -1.5 + Math.random() * 3,
+      rot: Math.random() * 360,
+      vr: -6 + Math.random() * 12,
+      color: CF_COLORS[Math.floor(Math.random() * CF_COLORS.length)],
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+  if (cfRaf) craf(cfRaf);
+  cfLoop();
+}
+function cfLoop() {
+  if (!cfCtx) return;
+  cfCtx.clearRect(0, 0, cfCanvas.width, cfCanvas.height);
+  for (var i = 0; i < cfParts.length; i++) {
+    var p = cfParts[i];
+    p.y += p.vy;
+    p.phase += 0.05;
+    p.x += p.vx + Math.sin(p.phase) * 1.2;
+    p.rot += p.vr;
+    if (p.y > cfCanvas.height + 20) { p.y = -20; p.x = Math.random() * cfCanvas.width; }
+    cfCtx.save();
+    cfCtx.translate(p.x, p.y);
+    cfCtx.rotate(p.rot * Math.PI / 180);
+    cfCtx.fillStyle = p.color;
+    cfCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    cfCtx.restore();
+  }
+  cfRaf = raf(cfLoop);
+}
+function stopConfetti() {
+  if (cfRaf) { craf(cfRaf); cfRaf = null; }
+  cfCtx = null;
+  $id("confetti").className = "hidden";
+}
+
+/* ================= 事件绑定与初始化 ================= */
+$id("btnStart").onclick = onStart;
+$id("segDay").onclick = function () { setSalaryMode("day"); };
+$id("segMonth").onclick = function () { setSalaryMode("month"); };
+$id("inDaily").oninput = updateSalaryHint;
+$id("inDaily").onpropertychange = updateSalaryHint;
+$id("btnStop").onclick = onStop;
+$id("btnCancel").onclick = onCancel;
+$id("btnAgain").onclick = onAgain;
+$id("btnCloseApp").onclick = function () { window.close(); };
+$id("btnHistory").onclick = showHistory;
+$id("btnCloseHist").onclick = function () { $id("modalHist").className = "modal hidden"; };
+$id("btnClearHist").onclick = function () {
+  if (confirm("确定清空全部历史结算记录吗？")) {
+    delFile(HIST_FILE);
+    showHistory();
+  }
+};
+
+window.onresize = function () {
+  if (cfCanvas && cfCanvas.className !== "hidden") {
+    cfCanvas.width = document.body.clientWidth;
+    cfCanvas.height = document.body.clientHeight;
+  }
+};
+
+window.onload = function () {
+  try {
+    window.resizeTo(860, 820);
+    var sw = screen.availWidth, sh = screen.availHeight;
+    window.moveTo(Math.max(0, (sw - 860) / 2), Math.max(0, (sh - 820) / 2));
+  } catch (e) {}
+  setSalaryMode("day");
+  setMoney(0);
+  checkResume();
+};
+</script>
+</body>
+</html>
