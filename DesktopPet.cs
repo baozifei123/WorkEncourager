@@ -18,6 +18,9 @@ public sealed class WorkBankPet : Form
     private const int SW_MINIMIZE = 6;
     private const int SW_RESTORE = 9;
     private const int WM_CLOSE = 0x0010;
+    private const int GWL_STYLE = -16;
+    private const int WS_SYSMENU = 0x00080000;
+    private const int WS_MINIMIZEBOX = 0x00020000;
     private const int ULW_ALPHA = 2;
     private const byte AC_SRC_ALPHA = 1;
 
@@ -42,6 +45,22 @@ public sealed class WorkBankPet : Form
     private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint attach, uint attachTo, bool enabled);
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr window);
+    [DllImport("user32.dll")]
+    private static extern bool FlashWindow(IntPtr window, bool invert);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(IntPtr window, int index);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
+    private static extern int SetWindowLong(IntPtr window, int index, int value);
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")]
@@ -76,6 +95,8 @@ public sealed class WorkBankPet : Form
     private readonly Bitmap tiredFrame;
     private readonly Bitmap waveFrame;
     private readonly Bitmap celebrateFrame;
+    private readonly Bitmap workingFrame;
+    private readonly Bitmap sprintFrame;
     private readonly Timer timer;
     private readonly ToolTip tooltip;
     private readonly ContextMenuStrip menu;
@@ -86,7 +107,10 @@ public sealed class WorkBankPet : Form
     private string currentTip = "";
     private string lastTooltip = "";
     private bool panelVisible = true;
-    private bool miniEnabled;
+    private int miniMode;
+    private DateTime lastMiniHover = DateTime.MinValue;
+    private int parentOriginalStyle;
+    private bool parentControlsChanged;
     private string miniTheme = "deep";
     private string miniAmount = "¥ ****";
     private string miniDetail = "";
@@ -119,6 +143,8 @@ public sealed class WorkBankPet : Form
         tiredFrame = LoadPreferredFrame(imageDirectory, "whale-tired.png");
         waveFrame = LoadPreferredFrame(imageDirectory, "whale-wave.png");
         celebrateFrame = LoadPreferredFrame(imageDirectory, "whale-celebrate.png");
+        workingFrame = LoadPreferredFrame(imageDirectory, "whale-working.png");
+        sprintFrame = LoadPreferredFrame(imageDirectory, "whale-sprint.png");
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -223,8 +249,52 @@ public sealed class WorkBankPet : Form
         WriteFile(readyPath, "ready|" + parentWindow.ToInt64().ToString(CultureInfo.InvariantCulture));
         WriteHeartbeat();
         WritePosition(true);
+        SetParentControls(false);
         ShowWindow(parentWindow, SW_MINIMIZE);
         timer.Start();
+    }
+
+    private void SetParentControls(bool restore)
+    {
+        if (!IsWindow(parentWindow)) return;
+        int style = GetWindowLong(parentWindow, GWL_STYLE);
+        if (restore)
+        {
+            if (!parentControlsChanged) return;
+            style |= parentOriginalStyle & (WS_SYSMENU | WS_MINIMIZEBOX);
+            parentControlsChanged = false;
+        }
+        else
+        {
+            parentOriginalStyle = style;
+            style &= ~(WS_SYSMENU | WS_MINIMIZEBOX);
+            parentControlsChanged = true;
+        }
+        SetWindowLong(parentWindow, GWL_STYLE, style);
+        SetWindowPos(parentWindow, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+    }
+
+    private static void FocusParent(IntPtr window)
+    {
+        bool originallyTopmost = (GetWindowLong(window, GWL_EXSTYLE) & 8) != 0;
+        if (!originallyTopmost) SetWindowPos(window, new IntPtr(-1), 0, 0, 0, 0, 0x0013);
+        try
+        {
+            if (!SetForegroundWindow(window))
+            {
+                uint process;
+                uint foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out process);
+                uint currentThread = GetCurrentThreadId();
+                bool attached = foregroundThread != 0 && foregroundThread != currentThread && AttachThreadInput(currentThread, foregroundThread, true);
+                try { BringWindowToTop(window); SetForegroundWindow(window); }
+                finally { if (attached) AttachThreadInput(currentThread, foregroundThread, false); }
+            }
+        }
+        finally
+        {
+            if (!originallyTopmost) SetWindowPos(window, new IntPtr(-2), 0, 0, 0, 0, 0x0013);
+        }
+        if (GetForegroundWindow() != window) FlashWindow(window, true);
     }
 
     private void DrawFrame(Bitmap frame)
@@ -275,7 +345,7 @@ public sealed class WorkBankPet : Form
                     bool hasPoint = parts.Length >= 3 && Int32.TryParse(parts[1], out x) && Int32.TryParse(parts[2], out y);
                     ShowWindow(parentWindow, SW_RESTORE);
                     if (hasPoint) SetWindowPos(parentWindow, IntPtr.Zero, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
-                    SetForegroundWindow(parentWindow);
+                    FocusParent(parentWindow);
                     pendingShow = DateTime.MinValue;
                 }
             }
@@ -283,6 +353,7 @@ public sealed class WorkBankPet : Form
             {
                 pendingShow = DateTime.MinValue;
                 ShowWindow(parentWindow, SW_RESTORE);
+                FocusParent(parentWindow);
             }
             if (File.Exists(noticePath))
             {
@@ -293,16 +364,13 @@ public sealed class WorkBankPet : Form
             }
             WritePosition(false);
             tickCount++;
-            string wanted;
-            if (currentState == "celebrate") wanted = "celebrate";
-            else if (currentState == "overtime") wanted = "tired";
-            else if (panelVisible) wanted = "wave";
-            else wanted = "normal";
-            if (motion && wanted == "normal" && tickCount % (currentState == "urgent" ? 16 : 25) == 0) wanted = "blink";
+            string wanted = SelectFrame(currentState, panelVisible, miniPercent);
+            if (motion && wanted == "normal" && tickCount % 25 == 0) wanted = "blink";
             if (wanted != shownFrame)
             {
                 Bitmap frame = wanted == "celebrate" ? celebrateFrame :
-                    (wanted == "tired" ? tiredFrame : (wanted == "wave" ? waveFrame : (wanted == "blink" ? blinkFrame : normalFrame)));
+                    (wanted == "tired" ? tiredFrame : (wanted == "wave" ? waveFrame :
+                    (wanted == "working" ? workingFrame : (wanted == "sprint" ? sprintFrame : (wanted == "blink" ? blinkFrame : normalFrame)))));
                 DrawFrame(frame);
                 shownFrame = wanted;
             }
@@ -312,11 +380,28 @@ public sealed class WorkBankPet : Form
         catch (UnauthorizedAccessException) { }
     }
 
+    public static string SelectFrame(string state, bool panelOpen, int percent)
+    {
+        if (panelOpen) return "wave";
+        if (state == "celebrate") return "celebrate";
+        if (state == "overtime") return "tired";
+        if ((state == "active" || state == "urgent") && percent >= 90) return "sprint";
+        if ((state == "active" || state == "urgent") && percent >= 50) return "working";
+        return "normal";
+    }
+
     private void UpdateMini()
     {
-        if (!miniEnabled) { mini.HideCard(); return; }
+        if (miniMode == 0) { mini.HideCard(); lastMiniHover = DateTime.MinValue; return; }
+        bool show = miniMode == 1;
+        if (miniMode == 2)
+        {
+            Point cursor = Cursor.Position;
+            if (Bounds.Contains(cursor) || (mini.Visible && mini.Bounds.Contains(cursor))) lastMiniHover = DateTime.UtcNow;
+            show = lastMiniHover != DateTime.MinValue && (DateTime.UtcNow - lastMiniHover).TotalMilliseconds < 700;
+        }
         Rectangle work = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
-        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, true,
+        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, show,
             new Rectangle(Left, Top, Width, Height), work);
     }
 
@@ -353,7 +438,7 @@ public sealed class WorkBankPet : Form
         panelVisible = values.Length >= 4 ? values[3] == "1" : true;
         if (values.Length >= 10)
         {
-            miniEnabled = values[4] == "1";
+            miniMode = values[4] == "2" ? 2 : (values[4] == "1" ? 1 : 0);
             miniTheme = values[5] == "cream" ? "cream" : "deep";
             int parsed;
             miniPercent = Int32.TryParse(values[6], out parsed) ? Math.Max(0, Math.Min(100, parsed)) : 0;
@@ -363,7 +448,7 @@ public sealed class WorkBankPet : Form
         }
         else
         {
-            miniEnabled = false;
+            miniMode = 0;
             currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
         }
         bool active = values.Length >= 3 ? values[2] == "1" :
@@ -478,6 +563,7 @@ public sealed class WorkBankPet : Form
     {
         if (disposing)
         {
+            SetParentControls(true);
             timer.Stop();
             timer.Dispose();
             tooltip.Dispose();
@@ -487,6 +573,8 @@ public sealed class WorkBankPet : Form
             tiredFrame.Dispose();
             waveFrame.Dispose();
             celebrateFrame.Dispose();
+            workingFrame.Dispose();
+            sprintFrame.Dispose();
             mini.Dispose();
         }
         base.Dispose(disposing);

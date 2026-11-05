@@ -229,7 +229,7 @@ test('custom goals are saved, restored and invalid entries warn', () => {
   env.elements.inEndTime.value = '18:00';
   env.elements.inMask.checked = true;
   env.elements.inMotion.checked = true;
-  env.elements.inMini.checked = true;
+  env.elements.inMiniMode.value = 'always';
   env.elements.inGoals.value = '冰美式=19\n午饭=45\n电影=72';
   app.saveSettings();
   assert.equal(app.bank.settings.customGoals, '冰美式=19\n午饭=45\n电影=72');
@@ -242,10 +242,126 @@ test('custom goals are saved, restored and invalid entries warn', () => {
   env.elements.inEndTime.value = '18:00';
   env.elements.inMask.checked = true;
   env.elements.inMotion.checked = true;
-  env.elements.inMini.checked = true;
+  env.elements.inMiniMode.value = 'always';
   env.elements.inGoals.value = '只有一行=10';
   app.saveSettings();
   assert.match(env.elements.toast.innerText, /3 个有效项/);
+});
+
+test('manual records remain separate from active, amount, overtime and survive reload', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = sampleDay(3600);
+  const amount = app.bankDayAmount(app.bank.days[today]);
+  app.openManual();
+  env.elements.manualMinutes.value = '90';
+  env.elements.manualKind.value = '会议';
+  assert.equal(app.saveManual(), true);
+  assert.equal(app.bank.days[today].activeSeconds, 3600);
+  assert.equal(app.bankDayAmount(app.bank.days[today]), amount);
+  assert.equal(app.bankOvertime(app.bank.days[today]), 0);
+  assert.equal(app.bankManualMinutes(app.bank.days[today]), 90);
+  const restored = runtime(env.files).context;
+  restored.loadBank();
+  assert.equal(restored.bank.days[today].manualEntries[0].kind, '会议');
+  assert.equal(restored.bankManualMinutes(restored.bank.days[today]), 90);
+  assert.equal(restored.bankDayAmount(restored.bank.days[today]), amount);
+  assert.equal(app.deleteManual(today, 0), true);
+  assert.equal(app.bankManualMinutes(app.bank.days[today]), 0);
+  assert.equal(app.bank.days[today].activeSeconds, 3600);
+});
+
+test('manual records validate dates, totals and roll back when saving fails', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.openManual();
+  env.elements.manualDate.value = '2024-02-30';
+  env.elements.manualMinutes.value = '30';
+  assert.equal(app.saveManual(), false);
+  env.elements.manualDate.value = app.bankDate(Date.now());
+  env.elements.manualMinutes.value = '1.5';
+  assert.equal(app.saveManual(), false);
+  env.elements.manualMinutes.value = '1441';
+  assert.equal(app.saveManual(), false);
+  env.elements.manualMinutes.value = '30';
+  env.fso.failWrites = true;
+  assert.equal(app.saveManual(), false);
+  assert.equal(app.bank.days[env.elements.manualDate.value], undefined);
+  env.fso.failWrites = false;
+  assert.equal(app.saveManual(), true);
+  env.fso.failWrites = true;
+  assert.equal(app.deleteManual(env.elements.manualDate.value, 0), false);
+  assert.equal(app.bankManualMinutes(app.bank.days[env.elements.manualDate.value]), 30);
+});
+
+test('manual-only days do not increase active-day counts, and malformed entries cannot be loaded', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.openManual();
+  env.elements.manualMinutes.value = '40';
+  assert.equal(app.saveManual(), true);
+  const today = app.bankDate(Date.now());
+  assert.equal(app.bankMonth(app.bank.days, today.slice(0, 7)).days, 0);
+  const invalid = JSON.parse(env.files[app.appPath('workbank.json')]);
+  invalid.days[today].manualEntries[0].minutes = -1;
+  assert.equal(app.parseBank(JSON.stringify(invalid)), null);
+});
+
+test('deleting a manual entry preserves pre-existing empty day data', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = { ...sampleDay(0), note: 'preserve existing fields' };
+  app.openManual();
+  env.elements.manualMinutes.value = '20';
+  assert.equal(app.saveManual(), true);
+  assert.equal(app.deleteManual(today, 0), true);
+  assert.equal(app.bank.days[today].note, 'preserve existing fields');
+});
+
+test('history month view includes daily bars and separate manual totals', () => {
+  const { context: app, elements } = runtime();
+  app.bank.settings = { ...settings };
+  app.bank.days['2024-02-10'] = { ...sampleDay(7200), manualEntries: [{ minutes: 30, kind: '会议' }] };
+  app.historySelectedMonth = '2024-02';
+  app.renderHistory();
+  assert.equal((elements.monthChart.innerHTML.match(/class='month-bar'/g) || []).length, 29);
+  assert.match(elements.monthChart.innerHTML, /2024-02-10 活跃 02:00:00/);
+  assert.match(elements.historyBody.innerHTML, /00:30:00/);
+  assert.match(elements.historyBody.innerHTML, /\*\*\*\*/);
+  app.moveHistoryMonth(-1);
+  assert.equal(app.historySelectedMonth, '2024-01');
+  assert.doesNotMatch(elements.historyBody.innerHTML, /2024-02-10/);
+});
+
+test('custom goal input reports invalid, duplicate and merged items live', () => {
+  const env = runtime(), app = env.context;
+  env.elements.inGoals.value = '咖啡=19\n无效\n早餐=19\n午饭=20\n电影=72';
+  env.elements.inGoals.oninput();
+  assert.match(env.elements.goalValidation.innerText, /已识别 3 项，忽略 2 行/);
+  assert.match(env.elements.goalValidation.innerText, /1 项会合并/);
+  env.elements.inGoals.value = '一项=9';
+  env.elements.inGoals.onkeyup();
+  assert.match(env.elements.goalValidation.innerText, /不足 3 项/);
+});
+
+test('automatic start is opt-in and does not count time before launch', () => {
+  const first = runtime();
+  first.context.bank.settings = { ...settings, autoStart: true };
+  assert.equal(first.context.saveBank(), true);
+  const restored = runtime(first.files), app = restored.context;
+  let monitorStarts = 0;
+  app.startMonitor = () => { monitorStarts++; };
+  app.startPet = () => true;
+  const before = Date.now();
+  app.window.onload();
+  assert.equal(app.tracking, true);
+  assert.equal(monitorStarts, 1);
+  assert.ok(app.lastTick >= before);
+  assert.equal(app.bank.days[app.bankDate(Date.now())], undefined);
+  app.openSettings();
+  assert.equal(restored.elements.inAutoStart.checked, true);
 });
 
 test('desktop pet receives only status and pauses recording from its menu', () => {
@@ -584,23 +700,29 @@ test('theme switches between deep sea and apron paper and persists', () => {
   assert.match(app.document.body.className, /theme-deep/);
 });
 
-test('mini info defaults on for old settings and can be switched off', () => {
+test('mini info modes migrate old settings and persist', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings };
   app.openSettings();
-  assert.equal(env.elements.inMini.checked, true, 'existing settings keep the new card by default');
+  assert.equal(env.elements.inMiniMode.value, 'always', 'existing settings keep the new card by default');
   env.elements.inSalary.value = '8000';
   env.elements.inMonthHours.value = '174';
   env.elements.inDayHours.value = '8';
   env.elements.inEndTime.value = '18:00';
   env.elements.inMask.checked = true;
   env.elements.inMotion.checked = true;
-  env.elements.inMini.checked = false;
+  env.elements.inMiniMode.value = 'off';
   app.saveSettings();
-  assert.equal(app.bank.settings.miniInfo, false);
-  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.miniInfo, false);
+  assert.equal(app.bank.settings.miniMode, 'off');
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.miniMode, 'off');
   app.openSettings();
-  assert.equal(env.elements.inMini.checked, false);
+  assert.equal(env.elements.inMiniMode.value, 'off');
+  app.bank.settings = { ...settings, miniInfo: false };
+  app.openSettings();
+  assert.equal(env.elements.inMiniMode.value, 'off', 'legacy disabled setting migrates to off');
+  env.elements.inMiniMode.value = 'hover';
+  app.saveSettings();
+  assert.equal(app.bank.settings.miniMode, 'hover');
 });
 
 test('pet state carries panel visibility, mini progress and a masked tooltip', () => {
@@ -635,6 +757,11 @@ test('pet state carries panel visibility, mini progress and a masked tooltip', (
   app.writePetState();
   assert.equal(env.files[app.petStatePath].split('|')[4], '0', 'the mini card can be switched off');
   app.bank.settings.miniInfo = true;
+  app.bank.settings.miniMode = 'hover';
+  app.petLastState = '';
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[4], '2', 'hover mode is sent to the pet');
+  app.bank.settings.miniMode = 'always';
   app.theme = 'cream';
   app.petLastState = '';
   app.writePetState();

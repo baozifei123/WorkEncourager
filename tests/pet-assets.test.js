@@ -4,7 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const root = path.join(__dirname, '..');
-const files = ['whale-character.png', 'whale-blink.png', 'whale-tired.png'];
+const files = ['whale-character.png', 'whale-blink.png', 'whale-tired.png', 'whale-wave.png', 'whale-celebrate.png', 'whale-working.png', 'whale-sprint.png'];
 
 test('all pet frames are matching transparent PNG images', () => {
   for (const file of files) {

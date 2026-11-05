@@ -102,7 +102,7 @@
   .btn-stamp { color: #eaf4ff; background: #355d86; border-color: #4f7ba6; }
   .btn-stamp:hover { background: #3f6c99; }
   .btn-quiet { color: #c4d9ee; background: transparent; border-color: #35547a; }
-  .actions .btn { margin: 0 5px 7px 0; }
+  .actions .btn { margin: 0 4px 5px 0; padding: 9px 9px; letter-spacing: 0; }
   .footnote { margin: 6px 0 0; color: #8ba3bb; font-size: 11px; line-height: 1.6; }
   .modal { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; background: rgba(3,9,18,.88); }
   .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 24px auto; padding: 22px 26px; color: #e7f1ff; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 20px 65px rgba(0,0,0,.6); }
@@ -114,7 +114,7 @@
   .field { float: left; width: 47%; vertical-align: top; margin: 0 2% 12px 0; }
   .field.theme-field, .field.goal-field { float: none; width: 100%; margin-right: 0; }
   .field label { display: block; margin-bottom: 7px; color: #b9d2e8; font-size: 12px; }
-  .field input { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
+  .field input, .field select { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
   .field textarea { width: 100%; height: 62px; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 13px; font-family: "Microsoft YaHei", sans-serif; }
   .field .hint { display: block; margin-top: 5px; color: #88a2bb; font-size: 11px; }
   .seg { float: right; margin-top: -2px; }
@@ -126,6 +126,8 @@
   .check input { margin: 0 7px 0 0; vertical-align: middle; }
   .modal-actions { margin-top: 14px; }
   .modal-actions .btn { margin-right: 8px; }
+  .settings-box { padding-bottom: 90px; }
+  .settings-actions { position: fixed; z-index: 11; bottom: 0; left: 18px; right: 18px; max-width: 600px; margin: 0 auto; padding: 10px 26px; background: #12233c; border-top: 1px solid #2b4a6e; }
   .receipt { position: relative; margin-top: 18px; padding: 22px 24px; color: #333b4a; background: #eef4fb; border-radius: 12px; }
   .receipt-title { color: #6f8298; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
   .receipt h3 { margin: 8px 0 13px; font: bold 23px SimSun, serif; }
@@ -140,6 +142,18 @@
   .history th { color: #91aecb; font-weight: normal; background: #16283f; }
   .history td { color: #dceaf7; font-family: Consolas, monospace; }
   .history th:first-child, .history td:first-child { text-align: left; }
+  .history-controls { margin: 15px 0 8px; }
+  .history-controls .btn { padding: 5px 10px; }
+  .history-month { display: inline-block; min-width: 110px; text-align: center; font-size: 14px; }
+  .month-chart { position: relative; height: 112px; padding: 7px 2px 18px; border-bottom: 1px solid #35547a; white-space: nowrap; }
+  .month-bar { display: inline-block; position: relative; width: 3.2%; height: 100%; padding: 0; border: 0; vertical-align: bottom; overflow: visible; background: transparent; }
+  .month-bar:focus { outline: 1px solid #e7f1ff; }
+  .month-bar-fill { position: absolute; bottom: 0; left: 15%; width: 70%; max-width: 24px; background: #4a94d0; border-radius: 4px 4px 0 0; }
+  .month-bar-day { position: absolute; top: 100%; left: 0; width: 100%; color: #9fbcd8; font: 10px Consolas, monospace; }
+  .manual-list { max-height: 170px; overflow-y: auto; margin: 12px 0; font-size: 12px; line-height: 1.8; }
+  .manual-item { min-height: 34px; padding: 5px 0; overflow: hidden; border-bottom: 1px solid #24405f; }
+  .manual-item button { float: right; padding: 4px 9px; }
+  .manual-help { color: #9fbcd8; font-size: 12px; line-height: 1.6; }
   .toast { position: fixed; z-index: 20; right: 22px; bottom: 22px; max-width: 300px; padding: 14px 17px; color: #e8f3ff; background: #1b3352; border-left: 3px solid #7fc4ff; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font-size: 12px; }
 
   /* ---------- 围裙纸主题 ---------- */
@@ -205,10 +219,11 @@
   body.theme-cream .footnote { color: #8d8577; }
   body.theme-cream .modal { background: rgba(58,48,32,.72); }
   body.theme-cream .modal-box { color: #3b3a33; background: #fffdf6; border-color: #d8c9a8; }
+  body.theme-cream .settings-actions { background: #fffdf6; border-top-color: #d8c9a8; }
   body.theme-cream .modal-kicker { color: #9a7c45; }
   body.theme-cream .modal-intro { color: #7d786b; }
   body.theme-cream .field label { color: #6f685a; }
-  body.theme-cream .field input { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
+  body.theme-cream .field input, body.theme-cream .field select { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .field textarea { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .field .hint { color: #8f887a; }
   body.theme-cream .seg-btn { color: #6f685a; background: #fffdf8; border-color: #d3c5a8; }
@@ -222,6 +237,10 @@
   body.theme-cream .history-wrap { border-color: #d8ccb2; }
   body.theme-cream .history th { color: #7d7666; background: #f1e9d8; }
   body.theme-cream .history td { color: #3b3a33; border-bottom-color: #e6dcc5; }
+  body.theme-cream .month-chart { border-bottom-color: #d8ccb2; }
+  body.theme-cream .month-bar-fill { background: #2c6fa8; }
+  body.theme-cream .month-bar-day, body.theme-cream .manual-help { color: #665f53; }
+  body.theme-cream .manual-item { border-bottom-color: #e6dcc5; }
   body.theme-cream .toast { color: #3b3a33; background: #fff8e8; border-left-color: #2c6fa8; box-shadow: 0 8px 24px rgba(90,70,40,.2); }
 </style>
 </head>
@@ -273,12 +292,13 @@
     <button class="btn btn-stamp" id="btnSign" type="button">今日收工 · 签章</button>
     <button class="btn btn-quiet" id="btnSettings" type="button">设置班表</button>
     <button class="btn btn-quiet" id="btnHistory" type="button">查看记录</button>
+    <button class="btn btn-quiet" id="btnManual" type="button">手动补记</button>
   </div>
   <p class="footnote">活跃时长不等于在岗时长；开会、看纸质资料等无键鼠操作的时间可能不计入。<br>加班只记录时长，不增加金额；调休天数仅为折算，实际安排以单位制度为准。</p>
 </div>
 
 <div class="modal hidden" id="settingsModal">
-  <div class="modal-box">
+  <div class="modal-box settings-box">
     <div class="modal-kicker">SETTINGS / 工时账本</div>
     <h2>设置月薪与班表</h2>
     <div class="modal-intro">修改设置只重算今天，此前日期保留各自口径。</div>
@@ -292,14 +312,15 @@
       <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
       <div class="field"><label for="inEndTime">计划下班时间</label><input id="inEndTime" type="text" value="18:00"><span class="hint">例如 18:00；只影响状态和倒计时</span></div>
-      <div class="field goal-field"><label for="inGoals">自定义目标（可选）</label><textarea id="inGoals" rows="4" placeholder="一杯冰美式=19&#10;一份正经午饭=45&#10;一天房租=266.67"></textarea><span class="hint">每行「名称=金额」（名称≤12字），至少 3 项生效；留空用内置。</span></div>
+      <div class="field goal-field"><label for="inGoals">自定义目标（可选）</label><textarea id="inGoals" rows="4" placeholder="一杯冰美式=19&#10;一份正经午饭=45&#10;一天房租=266.67"></textarea><span class="hint">每行「名称=金额」（名称≤12字），至少 3 项生效；留空用内置。</span><span class="hint" id="goalValidation" aria-live="polite"></span></div>
+      <div class="field goal-field"><label for="inMiniMode">桌宠简要信息卡</label><select id="inMiniMode"><option value="always">收起卡片时常显</option><option value="hover">仅悬停桌宠时显示</option><option value="off">关闭</option></select></div>
     </div>
     <label class="check"><input id="showSalary" type="checkbox">在此处显示输入的月薪</label>
     <label class="check"><input id="inMask" type="checkbox" checked>每次打开时默认隐藏金额</label>
     <label class="check"><input id="inAnnounce" type="checkbox" checked>记录时在整点显示提醒</label>
     <label class="check"><input id="inMotion" type="checkbox" checked>启用火焰与小鲸动画</label>
-    <label class="check"><input id="inMini" type="checkbox" checked>工时卡片收起时，在桌宠旁显示今日投入和进度</label>
-    <div class="modal-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
+    <label class="check"><input id="inAutoStart" type="checkbox">打开程序后自动开始记录（不补算关闭期间）</label>
+    <div class="modal-actions settings-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
   </div>
 </div>
 
@@ -329,9 +350,28 @@
   <div class="modal-box">
     <div class="modal-kicker">LOCAL RECORDS / 本机记录</div>
     <h2>每天都算数</h2>
-    <div class="modal-intro">按自然日展示实际记录，金额按该日保存的口径计算；没有记录的日期不会补算。</div>
-    <div class="history-wrap"><table class="history"><thead><tr><th>日期</th><th>活跃工时</th><th>加班</th><th>投入</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    <div class="modal-intro">柱条只显示键鼠活跃工时；补记单独列示，不计入投入和加班。</div>
+    <div class="history-controls"><button class="btn btn-quiet" id="btnPrevMonth" type="button">上月</button><span class="history-month" id="historyMonth"></span><button class="btn btn-quiet" id="btnNextMonth" type="button">下月</button></div>
+    <div class="manual-help" id="historyScale">每日活跃工时（小时） · 悬停或聚焦柱条可查看详情</div>
+    <div class="month-chart" id="monthChart" role="group" aria-label="每日活跃工时"></div>
+    <div class="history-wrap"><table class="history"><thead><tr><th>日期</th><th>活跃工时</th><th>补记</th><th>加班</th><th>投入</th></tr></thead><tbody id="historyBody"></tbody></table></div>
     <div class="modal-actions"><button class="btn btn-primary" id="btnCloseHistory" type="button">关闭</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="manualModal">
+  <div class="modal-box">
+    <div class="modal-kicker">MANUAL NOTES / 手动补记</div>
+    <h2>补记一段时间</h2>
+    <div class="modal-intro">会议、阅读等时间可单独备注；不计入活跃工时、金额或加班。</div>
+    <div class="fields">
+      <div class="field"><label for="manualDate">日期</label><input id="manualDate" type="text" placeholder="YYYY-MM-DD"></div>
+      <div class="field"><label for="manualMinutes">时长（分钟）</label><input id="manualMinutes" type="text" placeholder="例如 30"></div>
+      <div class="field goal-field"><label for="manualKind">类型</label><select id="manualKind"><option value="会议">会议</option><option value="阅读资料">阅读资料</option><option value="其他">其他</option></select></div>
+    </div>
+    <div class="manual-help" id="manualSummary"></div>
+    <div class="manual-list" id="manualList"></div>
+    <div class="modal-actions"><button class="btn btn-primary" id="btnSaveManual" type="button">保存补记</button><button class="btn btn-quiet" id="btnCloseManual" type="button">关闭</button></div>
   </div>
 </div>
 <div class="toast hidden" id="toast"></div>
@@ -351,7 +391,7 @@ function bankMonth(days, month) {
       result.amount += bankDayAmount(days[key]);
       result.activeSeconds += days[key].activeSeconds;
       result.overtimeSeconds += bankOvertime(days[key]);
-      result.days++;
+      if (days[key].activeSeconds > 0 || (!days[key].manualOnly && (!days[key].manualEntries || !days[key].manualEntries.length))) result.days++;
     }
   }
   return result;
@@ -389,6 +429,17 @@ function bankSplitByDay(start, end) {
     start = until;
   }
   return parts;
+}
+function bankManualMinutes(day) {
+  var entries = day && day.manualEntries ? day.manualEntries : [], total = 0;
+  for (var i = 0; i < entries.length; i++) total += entries[i].minutes;
+  return total;
+}
+function bankValidDate(value) {
+  var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match || Number(match[1]) < 1900) return false;
+  var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return bankDate(date.getTime()) === value;
 }
 function bankValidSettings(s) {
   return !!s && typeof s.salary === "number" && isFinite(s.salary) && s.salary > 0 && s.salary <= 1000000000 &&
@@ -429,7 +480,7 @@ var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", p
 var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
 var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = null, panelAnchor = null;
 var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
-var theme = "deep", pendingTheme = "deep";
+var theme = "deep", pendingTheme = "deep", historySelectedMonth = "";
 var PANEL_WIDTH = 530, PANEL_HEIGHT = 720, PANEL_GAP = 12;
 
 function $id(id) { return document.getElementById(id); }
@@ -539,6 +590,17 @@ function parseBank(raw) {
           typeof d.activeSeconds !== "number" || !isFinite(d.activeSeconds) || d.activeSeconds < 0 ||
           typeof d.hourlyRate !== "number" || !isFinite(d.hourlyRate) || d.hourlyRate <= 0 ||
           typeof d.dayHours !== "number" || !isFinite(d.dayHours) || d.dayHours <= 0 || d.dayHours > 24) return null;
+      if (typeof d.manualEntries !== "undefined") {
+        if (Object.prototype.toString.call(d.manualEntries) !== "[object Array]" || d.manualEntries.length > 1440) return null;
+        var manualTotal = 0;
+        for (var i = 0; i < d.manualEntries.length; i++) {
+          var entry = d.manualEntries[i];
+          if (!entry || typeof entry.minutes !== "number" || entry.minutes < 1 || entry.minutes > 1440 || Math.floor(entry.minutes) !== entry.minutes ||
+              (entry.kind !== "会议" && entry.kind !== "阅读资料" && entry.kind !== "其他")) return null;
+          manualTotal += entry.minutes;
+        }
+        if (manualTotal > 1440) return null;
+      }
     }
     return data;
   } catch (e) { return null; }
@@ -690,7 +752,12 @@ function recoverPetPanel(handle) {
       "[DllImport(@user32.dll@)]static extern bool IsWindow(IntPtr h);" +
       "[DllImport(@user32.dll@)]static extern bool IsIconic(IntPtr h);" +
       "[DllImport(@user32.dll@)]static extern bool ShowWindowAsync(IntPtr h,int command);" +
-      "public static void Restore(long value){IntPtr h=new IntPtr(value);if(IsWindow(h)&&IsIconic(h))ShowWindowAsync(h,9);}}";
+      "[DllImport(@user32.dll@,EntryPoint=@GetWindowLongW@)]static extern int GetWindowLong(IntPtr h,int index);" +
+      "[DllImport(@user32.dll@,EntryPoint=@SetWindowLongW@)]static extern int SetWindowLong(IntPtr h,int index,int value);" +
+      "[DllImport(@user32.dll@)]static extern bool SetWindowPos(IntPtr h,IntPtr after,int x,int y,int w,int height,uint flags);" +
+      "public static void Restore(long value){IntPtr h=new IntPtr(value);if(!IsWindow(h))return;" +
+      "SetWindowLong(h,-16,GetWindowLong(h,-16)|0xA0000);SetWindowPos(h,IntPtr.Zero,0,0,0,0,0x37);" +
+      "if(IsIconic(h))ShowWindowAsync(h,9);}}";
     var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
       "Add-Type -TypeDefinition $src;[WorkBankRecovery]::Restore(" + handle + ")} catch {}";
     shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
@@ -724,8 +791,13 @@ function petTip() {
   var day = currentDay(new Date().getTime());
   return "小鲸 · " + petStatusLabel() + "\n活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
 }
+function bankMiniMode(settings) {
+  if (!settings) return "off";
+  if (settings.miniMode === "always" || settings.miniMode === "hover" || settings.miniMode === "off") return settings.miniMode;
+  return settings.miniInfo === false ? "off" : "always";
+}
 function miniVisible() {
-  return !!(bank.settings && bank.settings.miniInfo !== false && !petPanelVisible);
+  return !!(bank.settings && bankMiniMode(bank.settings) !== "off" && !petPanelVisible);
 }
 function writePetState() {
   if (!petStatePath || (!petStarting && !petRunning)) return;
@@ -735,7 +807,7 @@ function writePetState() {
   var amount = bank.settings ? money(bankDayAmount(day), 4) : "¥ ****";
   var detail = bank.settings ? (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时" : "";
   var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" +
-    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? "1" : "0") + "|" +
+    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? (bankMiniMode(bank.settings) === "hover" ? "2" : "1") : "0") + "|" +
     theme + "|" + percent + "|" + amount + "|" + detail + "|" + petTip();
   if (state !== petLastState && writePath(petStatePath, state, true)) petLastState = state;
 }
@@ -1003,6 +1075,7 @@ function addActivity(start, end) {
       bank.days[part.date] = day;
     }
     day.activeSeconds += (part.end - part.start) / 1000;
+    if (day.manualOnly) delete day.manualOnly;
     dirty = true;
   }
 }
@@ -1012,22 +1085,34 @@ function currentDay(now) {
   return { activeSeconds: 0, hourlyRate: bank.settings ? bank.settings.salary / bank.settings.monthHours : 0,
     dayHours: bank.settings ? bank.settings.dayHours : 8 };
 }
-function bankGoalCustom(text) {
-  if (!text) return null;
-  var lines = String(text).split(/\r?\n/), goals = [], used = {};
-  for (var i = 0; i < lines.length && goals.length < 20; i++) {
+function bankParseGoals(text) {
+  var lines = String(text || "").split(/\r\n|\r|\n/), goals = [], used = {}, ignored = 0, count = 0;
+  for (var i = 0; i < lines.length; i++) {
     var line = lines[i].replace(/^\s+|\s+$/g, "");
     if (!line) continue;
+    count++;
     var match = /^(.{1,12}?)[=＝]\s*([0-9]+(?:\.[0-9]+)?)$/.exec(line);
-    if (!match) continue;
-    var name = match[1].replace(/^\s+|\s+$/g, ""), value = Number(match[2]);
-    if (!name || !isFinite(value) || value <= 0 || value > 100000000) continue;
+    var name = match ? match[1].replace(/^\s+|\s+$/g, "") : "", value = match ? Number(match[2]) : 0;
     var key = String(Math.round(value * 100));
-    if (used[key]) continue;
+    if (!match || !name || !isFinite(value) || value <= 0 || value > 100000000 || used[key] || goals.length >= 20) {
+      ignored++;
+      continue;
+    }
     used[key] = true;
     goals.push({ name: name, value: value });
   }
-  return goals.length >= 3 ? goals : null;
+  return { goals: goals, ignored: ignored, count: count };
+}
+function bankGoalCustom(text) {
+  var result = bankParseGoals(text);
+  return result.goals.length >= 3 ? result.goals : null;
+}
+function showGoalValidation() {
+  var result = bankParseGoals($id("inGoals").value);
+  if (!result.count) { text("goalValidation", "留空时使用内置目标。"); return; }
+  var merged = result.goals.length - bankMergeGoals(result.goals.slice(0)).length;
+  text("goalValidation", "已识别 " + result.goals.length + " 项，忽略 " + result.ignored + " 行" +
+    (merged ? "，金额接近的 " + merged + " 项会合并" : "") + (result.goals.length < 3 ? "；不足 3 项，使用内置目标。" : "。"));
 }
 function bankMergeGoals(goals) {
   goals.sort(function (a, b) { return a.value - b.value; });
@@ -1125,7 +1210,7 @@ function render(now) {
   applyTheme();
   text("petSay", petSayText(day));
   checkMilestone(now, pct);
-  text("activeText", "已记录 " + duration(day.activeSeconds));
+  text("activeText", "已记录 " + duration(day.activeSeconds) + (bankManualMinutes(day) ? " · 补记 " + bankManualMinutes(day) + " 分" : ""));
   text("endText", endDescription(now));
   text("monthAmount", money(month.amount));
   text("monthDetail", "已记录 " + month.days + " 天 · 活跃 " + duration(month.activeSeconds));
@@ -1214,8 +1299,10 @@ function openSettings() {
   $id("inMask").checked = !s || s.maskByDefault !== false;
   $id("inAnnounce").checked = !s || s.announce !== false;
   $id("inMotion").checked = !s || s.motion !== false;
-  $id("inMini").checked = !s || s.miniInfo !== false;
+  $id("inMiniMode").value = bankMiniMode(s || {});
+  $id("inAutoStart").checked = !!(s && s.autoStart === true);
   $id("inGoals").value = s && typeof s.customGoals === "string" ? s.customGoals : "";
+  showGoalValidation();
   setTheme(s && s.theme === "cream" ? "cream" : "deep", false);
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
@@ -1226,7 +1313,9 @@ function saveSettings() {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
     maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
-    miniInfo: $id("inMini").checked,
+    miniMode: /^(always|hover|off)$/.test($id("inMiniMode").value) ? $id("inMiniMode").value : "always",
+    miniInfo: $id("inMiniMode").value !== "off",
+    autoStart: $id("inAutoStart").checked,
     customGoals: $id("inGoals").value.replace(/^\s+|\s+$/g, ""),
     theme: pendingTheme || "deep",
     alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
@@ -1276,16 +1365,108 @@ function signOff() {
   $id("receiptModal").className = "modal";
   render(now);
 }
-function showHistory() {
-  var keys = [], html = "";
-  for (var key in bank.days) if (Object.prototype.hasOwnProperty.call(bank.days, key)) keys.push(key);
+function renderHistory() {
+  var keys = [], rows = "", bars = "", month = historySelectedMonth;
+  var year = Number(month.substring(0, 4)), monthNumber = Number(month.substring(5, 7));
+  var daysInMonth = new Date(year, monthNumber, 0).getDate(), maxSeconds = 0;
+  for (var key in bank.days) {
+    if (Object.prototype.hasOwnProperty.call(bank.days, key) && /^\d{4}-\d{2}-\d{2}$/.test(key) && key.substring(0, 7) === month) {
+      keys.push(key);
+      maxSeconds = Math.max(maxSeconds, bank.days[key].activeSeconds);
+    }
+  }
+  for (var dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+    var date = month + "-" + pad(dayNumber), record = bank.days[date];
+    var seconds = record ? record.activeSeconds : 0;
+    var height = maxSeconds > 0 ? Math.round(seconds / maxSeconds * 100) : 0;
+    var label = date + (record ? " 活跃 " + duration(seconds) : " 暂无记录");
+    bars += "<button type='button' class='month-bar' title='" + label + "' aria-label='" + label + "'>" +
+      "<span class='month-bar-fill' style='height:" + height + "%'></span>" +
+      "<span class='month-bar-day'>" + (dayNumber === 1 || dayNumber % 5 === 0 || dayNumber === daysInMonth ? dayNumber : "") + "</span></button>";
+  }
   keys.sort(); keys.reverse();
   for (var i = 0; i < keys.length; i++) {
     var day = bank.days[keys[i]];
-    html += "<tr><td>" + keys[i] + "</td><td>" + duration(day.activeSeconds) + "</td><td>" + duration(bankOvertime(day)) + "</td><td>" + money(bankDayAmount(day)) + "</td></tr>";
+    rows += "<tr><td>" + keys[i] + "</td><td>" + duration(day.activeSeconds) + "</td><td>" + duration(bankManualMinutes(day) * 60) +
+      "</td><td>" + duration(bankOvertime(day)) + "</td><td>" + money(bankDayAmount(day)) + "</td></tr>";
   }
-  $id("historyBody").innerHTML = html || "<tr><td colspan='4' style='text-align:center'>暂无实际记录</td></tr>";
+  text("historyMonth", month);
+  text("historyScale", "每日活跃工时 · 峰值 " + (maxSeconds / 3600).toFixed(2) + " 小时；悬停或聚焦查看详情");
+  $id("monthChart").innerHTML = bars;
+  $id("historyBody").innerHTML = rows || "<tr><td colspan='5' style='text-align:center'>本月暂无记录</td></tr>";
+}
+function showHistory() {
+  historySelectedMonth = bankDate(new Date().getTime()).substring(0, 7);
+  renderHistory();
   $id("historyModal").className = "modal";
+}
+function moveHistoryMonth(delta) {
+  var year = Number(historySelectedMonth.substring(0, 4)), month = Number(historySelectedMonth.substring(5, 7));
+  var date = new Date(year, month - 1 + delta, 1);
+  historySelectedMonth = date.getFullYear() + "-" + pad(date.getMonth() + 1);
+  renderHistory();
+}
+function renderManual() {
+  var date = $id("manualDate").value.replace(/^\s+|\s+$/g, ""), day = bank.days[date], html = "";
+  var entries = day && day.manualEntries ? day.manualEntries : [];
+  for (var i = 0; i < entries.length; i++) {
+    html += "<div class='manual-item'>" + entries[i].kind + " · " + entries[i].minutes +
+      " 分钟<button type='button' class='btn btn-quiet' data-manual-index='" + i + "'>删除</button></div>";
+  }
+  text("manualSummary", bankValidDate(date) ? "该日补记 " + bankManualMinutes(day) + " 分钟；不计入活跃、投入或加班。" : "请输入有效日期，例如 2026-01-31。");
+  $id("manualList").innerHTML = html || "<div>该日暂无补记。</div>";
+}
+function openManual() {
+  if (fatalStorage) { alert(storageProblem); return; }
+  if (!bank.settings) { openSettings(); return; }
+  $id("manualDate").value = bankDate(new Date().getTime());
+  $id("manualMinutes").value = "";
+  $id("manualKind").value = "会议";
+  renderManual();
+  $id("manualModal").className = "modal";
+}
+function saveManual() {
+  var date = $id("manualDate").value.replace(/^\s+|\s+$/g, ""), raw = $id("manualMinutes").value.replace(/^\s+|\s+$/g, "");
+  var minutes = Number(raw), kind = $id("manualKind").value, today = bankDate(new Date().getTime());
+  if (!bank.settings || fatalStorage) { alert(storageProblem || "请先设置班表。"); return false; }
+  if (!bankValidDate(date) || date > today || !/^\d+$/.test(raw) || minutes < 1 || minutes > 1440 ||
+      (kind !== "会议" && kind !== "阅读资料" && kind !== "其他")) {
+    alert("请填写有效的过去或今天日期、1–1440 分钟整数及时长类型。"); return false;
+  }
+  var previous = bank.days[date], previousDirty = dirty;
+  if (bankManualMinutes(previous) + minutes > 1440) { alert("同一天的补记不能超过 1440 分钟。"); return false; }
+  var day = previous || { activeSeconds: 0, hourlyRate: bank.settings.salary / bank.settings.monthHours, dayHours: bank.settings.dayHours, manualOnly: true };
+  var oldEntries = day.manualEntries;
+  day.manualEntries = oldEntries ? oldEntries.slice(0) : [];
+  day.manualEntries.push({ minutes: minutes, kind: kind });
+  bank.days[date] = day;
+  dirty = true;
+  if (!saveBank()) {
+    if (!previous) delete bank.days[date]; else if (oldEntries) day.manualEntries = oldEntries; else delete day.manualEntries;
+    dirty = previousDirty;
+    alert(storageProblem); return false;
+  }
+  $id("manualMinutes").value = "";
+  renderManual();
+  render(new Date().getTime());
+  return true;
+}
+function deleteManual(date, index) {
+  var day = bank.days[date];
+  if (!bankValidDate(date) || !day || !day.manualEntries || index < 0 || index >= day.manualEntries.length || Math.floor(index) !== index) return false;
+  var previous = day.manualEntries, previousDirty = dirty;
+  day.manualEntries = previous.slice(0);
+  day.manualEntries.splice(index, 1);
+  var removeDay = day.manualOnly === true && day.activeSeconds === 0 && day.manualEntries.length === 0;
+  if (removeDay) delete bank.days[date];
+  dirty = true;
+  if (!saveBank()) {
+    bank.days[date] = day; day.manualEntries = previous; dirty = previousDirty;
+    alert(storageProblem); return false;
+  }
+  renderManual();
+  render(new Date().getTime());
+  return true;
 }
 
 $id("btnPetRetry").onclick = function () { startPet(); };
@@ -1310,7 +1491,21 @@ $id("showSalary").onclick = function () { $id("inSalary").type = this.checked ? 
 $id("btnSign").onclick = signOff;
 $id("btnCloseReceipt").onclick = function () { $id("receiptModal").className = "modal hidden"; };
 $id("btnHistory").onclick = showHistory;
+$id("btnPrevMonth").onclick = function () { moveHistoryMonth(-1); };
+$id("btnNextMonth").onclick = function () { moveHistoryMonth(1); };
 $id("btnCloseHistory").onclick = function () { $id("historyModal").className = "modal hidden"; };
+$id("btnManual").onclick = openManual;
+$id("btnSaveManual").onclick = saveManual;
+$id("btnCloseManual").onclick = function () { $id("manualModal").className = "modal hidden"; };
+$id("manualDate").oninput = renderManual;
+$id("manualDate").onkeyup = renderManual;
+$id("manualList").onclick = function (event) {
+  event = event || window.event;
+  var target = event.target || event.srcElement, value = target && target.getAttribute("data-manual-index");
+  if (value !== null && /^\d+$/.test(String(value)) && confirm("确定删除这条手动补记吗？")) deleteManual($id("manualDate").value.replace(/^\s+|\s+$/g, ""), Number(value));
+};
+$id("inGoals").oninput = showGoalValidation;
+$id("inGoals").onkeyup = showGoalValidation;
 window.onload = function () {
   try {
     var width = Math.min(530, screen.availWidth), height = Math.min(720, screen.availHeight);
@@ -1324,6 +1519,7 @@ window.onload = function () {
   setInterval(tick, 250);
   if (bank.settings && bank.settings.alwaysOnTop === true) requestPin(true, false);
   if (!bank.settings && !fatalStorage) openSettings();
+  if (bank.settings && bank.settings.autoStart === true && !fatalStorage) startTracking();
   startPet();
 };
 window.onunload = function () {

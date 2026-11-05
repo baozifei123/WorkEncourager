@@ -12,7 +12,7 @@
 
 ## 素材来源与修改
 
-- 上游：[vlln/whale-girl](https://github.com/vlln/whale-girl)，素材路径 `lib/assets/characters/whale-girl/{idle,disappointed,welcome,celebrate}.png`；仓库标注 MIT License。
+- 上游：[vlln/whale-girl](https://github.com/vlln/whale-girl)，素材路径 `lib/assets/characters/whale-girl/{idle,disappointed,welcome,celebrate,working}.png`；仓库标注 MIT License。
 - 角色：鲸鱼娘，原形象由 [ZipZipPipe](https://space.bilibili.com/4168597) 创作；上游 README 的致谢同时列出该角色。
-- 本项目修改：从 `idle`、`disappointed`、`welcome` 和 `celebrate` 动画帧中取出待机、眨眼、疲惫、挥手和庆祝五种姿态，使用相同的裁切边界对齐，等比缩放到桌面尺寸，并保留透明通道；卡片头像从站姿帧单独裁切。没有纳入上游的动画播放器或其他角色资源。
+- 本项目修改：从 `idle`、`disappointed`、`welcome`、`celebrate` 和 `working` 动画帧中取出待机、眨眼、疲惫、挥手、庆祝、努力和冲刺姿态，使用相同的裁切边界对齐，等比缩放到桌面尺寸，并保留透明通道；卡片头像从站姿帧单独裁切。没有纳入上游的动画播放器或其他角色资源。
 - 注意：上游代码许可以及角色原设定的适用条件可能不同；公开传播或商用前，请向相应权利人确认。
