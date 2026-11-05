@@ -957,6 +957,45 @@ test('pet state carries panel visibility, mini progress and a masked tooltip', (
   assert.match(env.files[app.petStatePath], /¥ 45\.9770/);
 });
 
+test('pet uses the first two hours of cumulative active overtime for its fighting pose', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, endTime: '00:00' };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.monitorIdle = false;
+  app.petRunning = true;
+  app.petStatePath = 'C:\\Temp\\state';
+  const today = app.bankDate(Date.now());
+  const current = sampleDay(8 * 3600);
+  app.bank.days[today] = current;
+  for (const seconds of [0, 1, 3599, 7199, 7199.99]) {
+    current.activeSeconds = 8 * 3600 + seconds;
+    assert.equal(app.petState(), 'overtime', `fighting stage at ${seconds} overtime seconds`);
+  }
+  current.activeSeconds = 8 * 3600 + 7200;
+  const bankBefore = JSON.stringify(app.bank);
+  app.writePetState();
+  assert.equal(JSON.stringify(app.bank), bankBefore, 'choosing a pose must not modify the bank records');
+  assert.equal(app.petState(), 'overtime-steady');
+  assert.equal(env.files[app.petStatePath].split('|')[0], 'overtime-steady');
+  current.activeSeconds += 3 * 3600;
+  assert.equal(app.petState(), 'overtime-steady');
+
+  app.monitorIdle = true;
+  assert.equal(app.petState(), 'idle', 'inactive tracking keeps its existing state');
+  app.monitorIdle = false;
+  app.tracking = false;
+  assert.equal(app.petState(), 'paused', 'pausing remains higher priority than overtime');
+  app.tracking = true;
+  assert.equal(app.petState(), 'overtime-steady', 'resuming preserves cumulative overtime');
+  const date = new Date();
+  const yesterday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
+  app.bank.days[app.bankDate(yesterday.getTime())] = current;
+  app.bank.days[today] = sampleDay(3600);
+  assert.equal(app.petState(), 'overtime', 'yesterday’s overtime does not affect the new day');
+  assert.equal(app.bankOvertime(app.bank.days[today]), 0, 'passing the planned end time does not create active overtime');
+});
+
 test('milestones announce once at half, near-full and full', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings };

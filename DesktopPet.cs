@@ -92,11 +92,12 @@ public sealed class WorkBankPet : Form
     private readonly string eventDirectory;
     private readonly Bitmap normalFrame;
     private readonly Bitmap blinkFrame;
-    private readonly Bitmap tiredFrame;
     private readonly Bitmap waveFrame;
     private readonly Bitmap celebrateFrame;
     private readonly Bitmap workingFrame;
     private readonly Bitmap sprintFrame;
+    private readonly Bitmap fightFrame;
+    private readonly Bitmap fightRaisedFrame;
     private readonly Timer timer;
     private readonly ToolTip tooltip;
     private readonly ContextMenuStrip menu;
@@ -116,6 +117,8 @@ public sealed class WorkBankPet : Form
     private string miniDetail = "";
     private int miniPercent;
     private string shownFrame = "";
+    private string currentPose = "";
+    private DateTime fightAnimationStart = DateTime.MinValue;
     private bool motion = true;
     private bool dragging;
     private bool moved;
@@ -140,11 +143,12 @@ public sealed class WorkBankPet : Form
         eventDirectory = events;
         normalFrame = LoadPreferredFrame(imageDirectory, "whale-character.png");
         blinkFrame = LoadPreferredFrame(imageDirectory, "whale-blink.png");
-        tiredFrame = LoadPreferredFrame(imageDirectory, "whale-tired.png");
         waveFrame = LoadPreferredFrame(imageDirectory, "whale-wave.png");
         celebrateFrame = LoadPreferredFrame(imageDirectory, "whale-celebrate.png");
         workingFrame = LoadPreferredFrame(imageDirectory, "whale-working.png");
         sprintFrame = LoadPreferredFrame(imageDirectory, "whale-sprint.png");
+        fightFrame = LoadPreferredFrame(imageDirectory, "whale-fight.png");
+        fightRaisedFrame = CreateRaisedFrame(fightFrame);
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -226,6 +230,17 @@ public sealed class WorkBankPet : Form
             }
             return frame;
         }
+    }
+
+    private static Bitmap CreateRaisedFrame(Bitmap frame)
+    {
+        Bitmap raised = new Bitmap(frame.Width, frame.Height, PixelFormat.Format32bppPArgb);
+        using (Graphics graphics = Graphics.FromImage(raised))
+        {
+            graphics.Clear(Color.Transparent);
+            graphics.DrawImageUnscaled(frame, 0, -3);
+        }
+        return raised;
     }
 
     private static Point InitialLocation(int x, int y)
@@ -366,13 +381,21 @@ public sealed class WorkBankPet : Form
             }
             WritePosition(false);
             tickCount++;
-            string wanted = SelectFrame(currentState, panelVisible, miniPercent);
+            string pose = SelectFrame(currentState, panelVisible, miniPercent);
+            if (pose != currentPose)
+            {
+                if (pose == "fight") fightAnimationStart = DateTime.UtcNow;
+                currentPose = pose;
+            }
+            string wanted = pose;
+            if (wanted == "fight" && FightFrameRaised(motion, (DateTime.UtcNow - fightAnimationStart).TotalMilliseconds)) wanted = "fight-raised";
             if (motion && wanted == "normal" && tickCount % 25 == 0) wanted = "blink";
             if (wanted != shownFrame)
             {
                 Bitmap frame = wanted == "celebrate" ? celebrateFrame :
-                    (wanted == "tired" ? tiredFrame : (wanted == "wave" ? waveFrame :
-                    (wanted == "working" ? workingFrame : (wanted == "sprint" ? sprintFrame : (wanted == "blink" ? blinkFrame : normalFrame)))));
+                    (wanted == "fight" ? fightFrame : (wanted == "fight-raised" ? fightRaisedFrame :
+                    (wanted == "wave" ? waveFrame : (wanted == "working" ? workingFrame :
+                    (wanted == "sprint" ? sprintFrame : (wanted == "blink" ? blinkFrame : normalFrame))))));
                 DrawFrame(frame);
                 shownFrame = wanted;
             }
@@ -386,10 +409,17 @@ public sealed class WorkBankPet : Form
     {
         if (panelOpen) return "wave";
         if (state == "celebrate") return "celebrate";
-        if (state == "overtime") return "tired";
+        if (state == "overtime") return "fight";
+        if (state == "overtime-steady") return "working";
         if ((state == "active" || state == "urgent") && percent >= 90) return "sprint";
         if ((state == "active" || state == "urgent") && percent >= 50) return "working";
         return "normal";
+    }
+
+    public static bool FightFrameRaised(bool motion, double elapsedMilliseconds)
+    {
+        return motion && elapsedMilliseconds >= 0 && elapsedMilliseconds < 4000 &&
+            (int)(elapsedMilliseconds / 400) % 2 == 1;
     }
 
     private void UpdateMini()
@@ -454,7 +484,8 @@ public sealed class WorkBankPet : Form
             currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
         }
         bool active = values.Length >= 3 ? values[2] == "1" :
-            currentState == "active" || currentState == "urgent" || currentState == "idle" || currentState == "overtime" || currentState == "waiting";
+            currentState == "active" || currentState == "urgent" || currentState == "idle" || currentState == "overtime" ||
+            currentState == "overtime-steady" || currentState == "waiting";
         trackingItem.Text = currentState == "unconfigured" ? "设置并开始记录" : (active ? "暂停记录" : "开始记录");
         UpdateTooltip();
     }
@@ -462,7 +493,7 @@ public sealed class WorkBankPet : Form
     private string StateLabel()
     {
         return currentState == "error" ? "请查看卡片提示" : currentState == "unconfigured" ? "未设置" : currentState == "paused" ? "未开工" :
-            currentState == "idle" ? "键鼠空闲" : currentState == "overtime" ? "加班中" :
+            currentState == "idle" ? "键鼠空闲" : (currentState == "overtime" || currentState == "overtime-steady") ? "加班中" :
             currentState == "urgent" ? "接近计划工时" : currentState == "celebrate" ? "收工快乐" :
             currentState == "waiting" ? "采样未就绪" : "上班中";
     }
@@ -572,11 +603,12 @@ public sealed class WorkBankPet : Form
             menu.Dispose();
             normalFrame.Dispose();
             blinkFrame.Dispose();
-            tiredFrame.Dispose();
             waveFrame.Dispose();
             celebrateFrame.Dispose();
             workingFrame.Dispose();
             sprintFrame.Dispose();
+            fightFrame.Dispose();
+            fightRaisedFrame.Dispose();
             mini.Dispose();
         }
         base.Dispose(disposing);

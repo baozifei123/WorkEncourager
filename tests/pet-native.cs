@@ -33,6 +33,12 @@ public static class PetNativeTests
         {
             if (frame.GetPixel(0, 0).A != 0 || frame.GetPixel(90, 120).A == 0) throw new Exception("Invalid custom image should fall back to the transparent built-in frame");
         }
+        File.Copy(args[2], Path.Combine(directory, "whale-fight.png"));
+        using (Bitmap frame = (Bitmap)load.Invoke(null, new object[] { directory, "whale-fight.png" }))
+        {
+            if (frame.Size != new Size(180, 240) || frame.GetPixel(0, 0).A != 0 || frame.GetPixel(65, 130).A == 0)
+                throw new Exception("Fighting artwork should load with the normal transparent pet dimensions");
+        }
         Rectangle work = new Rectangle(0, 0, 1920, 1080);
         Rectangle pet = new Rectangle(1600, 800, 180, 240);
         Rectangle beside = MiniInfoForm.BoundsFor(pet, work, MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
@@ -65,7 +71,26 @@ public static class PetNativeTests
         if (WorkBankPet.SelectFrame("active", false, 49) != "normal") throw new Exception("Before halfway the pet should rest");
         if (WorkBankPet.SelectFrame("active", false, 50) != "working") throw new Exception("Halfway should show the working pose");
         if (WorkBankPet.SelectFrame("urgent", false, 90) != "sprint") throw new Exception("Ninety percent should show the sprint pose");
-        if (WorkBankPet.SelectFrame("overtime", false, 100) != "tired") throw new Exception("Overtime should show the tired pose");
+        if (WorkBankPet.SelectFrame("overtime", false, 100) != "fight") throw new Exception("Early overtime should use the fighting pose");
+        if (WorkBankPet.SelectFrame("overtime-steady", false, 100) != "working") throw new Exception("Later overtime should use the working pose");
+        if (WorkBankPet.SelectFrame("overtime", true, 100) != "wave") throw new Exception("The open panel should take pose precedence during overtime");
+        if (WorkBankPet.FightFrameRaised(true, 0) || !WorkBankPet.FightFrameRaised(true, 400) ||
+            WorkBankPet.FightFrameRaised(true, 800) || !WorkBankPet.FightFrameRaised(true, 3999) ||
+            WorkBankPet.FightFrameRaised(true, 4000) || WorkBankPet.FightFrameRaised(false, 400) ||
+            WorkBankPet.FightFrameRaised(true, -1))
+            throw new Exception("Fighting pose should alternate briefly and respect the motion setting");
+        MethodInfo raise = typeof(WorkBankPet).GetMethod("CreateRaisedFrame", BindingFlags.Static | BindingFlags.NonPublic);
+        if (raise == null) throw new Exception("Missing raised frame creator");
+        using (Bitmap image = new Bitmap(10, 10, PixelFormat.Format32bppPArgb))
+        {
+            image.SetPixel(5, 6, Color.Red);
+            using (Bitmap raised = (Bitmap)raise.Invoke(null, new object[] { image }))
+            {
+                if (raised.Size != image.Size || raised.GetPixel(5, 3).R != 255 || raised.GetPixel(5, 6).A != 0)
+                    throw new Exception("Raised frame should move the artwork by three pixels without moving or resizing the window");
+                if (image.GetPixel(5, 6).R != 255) throw new Exception("Raised frame must not change the original artwork");
+            }
+        }
         if (WorkBankPet.SelectFrame("celebrate", false, 100) != "celebrate") throw new Exception("Sign-off should celebrate");
         if (WorkBankPet.SelectFrame("celebrate", true, 100) != "wave") throw new Exception("The open panel should take pose precedence");
         if (WorkBankPet.SelectFrame("idle", false, 95) != "normal") throw new Exception("Idle should not show a working pose");

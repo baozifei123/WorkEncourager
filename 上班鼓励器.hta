@@ -521,6 +521,7 @@ function bankPanelBounds(pet, panelWidth, panelHeight, gap) {
 /* 本地数据与输入状态；不会记录具体按键、鼠标位置或操作内容。 */
 var DATA_FILE = "workbank.json", BACKUP_FILE = "workbank.json.bak", TEMP_FILE = "workbank.json.tmp";
 var IDLE_LIMIT = 120000, MAX_TICK_GAP = 2500, SAMPLE_MAX_AGE = 3500;
+var FIGHT_OVERTIME_SECONDS = 2 * 3600;
 var bank = { version: 1, settings: null, days: {} };
 var masked = true, tracking = false, signedOff = false, fatalStorage = false;
 var mainValid = false, storageProblem = "", recovered = false, dirty = false;
@@ -951,8 +952,8 @@ function petState() {
   if (!monitorReady) return "waiting";
   if (monitorIdle) return "idle";
   var d = new Date(), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
-  var day = currentDay(d.getTime());
-  if (time >= bank.settings.endTime || bankOvertime(day) > 0) return "overtime";
+  var day = currentDay(d.getTime()), overtime = bankOvertime(day);
+  if (time >= bank.settings.endTime || overtime > 0) return overtime >= FIGHT_OVERTIME_SECONDS ? "overtime-steady" : "overtime";
   return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "urgent" : "active";
 }
 function petTip() {
