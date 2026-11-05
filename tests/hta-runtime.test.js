@@ -174,13 +174,78 @@ test('stale or missing samples stop accounting until fresh observations resume',
   assert.ok(app.currentDay(Date.now()).activeSeconds >= 0.99);
 });
 
-test('goal messages never promise an already reached or unreachable target', () => {
+test('goal messages follow the ladder and never promise unreachable targets', () => {
   const { context: app } = runtime();
-  app.bank.settings = settings;
-  assert.match(app.goalText(sampleDay(8 * 3600)), /已折合/);
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  const dayAt = value => ({ activeSeconds: value * 3600, hourlyRate: 1, dayHours: 400 });
+  assert.match(app.goalText(dayAt(7)), /今天的地铁/);
+  assert.match(app.goalText(dayAt(8.5)), /早餐豆浆和包子/);
+  assert.match(app.goalText(dayAt(13)), /一杯冰美式/);
+  assert.match(app.goalText(dayAt(19)), /一份小零食/);
+  assert.match(app.goalText(dayAt(80)), /一本小书/);
+  assert.match(app.goalText(dayAt(109)), /半天房租/);
+  assert.match(app.goalText(dayAt(300)), /已折合/);
+  assert.match(app.goalText(dayAt(0)), /^再记录 .*相当于一支好写的签字笔。$/);
+  app.tracking = false;
+  assert.match(app.goalText(dayAt(0)), /^开始记录后，约 .*相当于一支好写的签字笔。$/);
   app.bank.settings = { salary: 20, monthHours: 174, dayHours: 8, endTime: '18:00' };
   const lowWage = { activeSeconds: 6.5 * 3600, hourlyRate: 20 / 174, dayHours: 8 };
-  assert.match(app.goalText(lowWage), /计额有上限/);
+  assert.match(app.goalText(lowWage), /计额快到头了|计额已到上限/);
+});
+
+test('custom goals replace the built-in ladder when they are valid', () => {
+  const { context: app } = runtime();
+  app.bank.settings = { ...settings, customGoals: '咖啡=19\n午饭 = 45\n电影=72\n这一行无效\n负数=-3' };
+  app.tracking = true;
+  const dayAt = value => ({ activeSeconds: value * 3600, hourlyRate: 1, dayHours: 400 });
+  const parsed = app.bankGoalCustom(app.bank.settings.customGoals);
+  assert.equal(parsed.length, 3);
+  assert.equal(parsed[0].name, '咖啡');
+  assert.equal(parsed[1].name, '午饭');
+  assert.equal(parsed[1].value, 45);
+  assert.equal(app.bankGoalCustom('只有一行=10\n两行=20'), null, 'fewer than three valid entries fall back to built-ins');
+  const merged = app.bankMergeGoals([{ name: 'a', value: 6 }, { name: 'b', value: 7.5 }, { name: 'c', value: 12 }]);
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].value, 6);
+  assert.equal(merged[1].value, 12);
+  const kept = app.bankMergeGoals([{ name: 'a', value: 6 }, { name: 'b', value: 8 }]);
+  assert.equal(kept.length, 2, 'goals two yuan apart are both kept');
+  assert.match(app.goalText(dayAt(10)), /咖啡/);
+  assert.match(app.goalText(dayAt(20)), /午饭/);
+  assert.match(app.goalText(dayAt(50)), /电影/);
+  assert.match(app.goalText(dayAt(80)), /超过了当前设定的目标/);
+  app.bank.settings.customGoals = '咖啡=19\n午饭=abc';
+  assert.match(app.goalText(dayAt(10)), /早餐豆浆和包子/);
+});
+
+test('custom goals are saved, restored and invalid entries warn', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.openSettings();
+  env.elements.inSalary.value = '8000';
+  env.elements.inMonthHours.value = '174';
+  env.elements.inDayHours.value = '8';
+  env.elements.inEndTime.value = '18:00';
+  env.elements.inMask.checked = true;
+  env.elements.inMotion.checked = true;
+  env.elements.inMini.checked = true;
+  env.elements.inGoals.value = '冰美式=19\n午饭=45\n电影=72';
+  app.saveSettings();
+  assert.equal(app.bank.settings.customGoals, '冰美式=19\n午饭=45\n电影=72');
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.customGoals, '冰美式=19\n午饭=45\n电影=72');
+  app.openSettings();
+  assert.equal(env.elements.inGoals.value, '冰美式=19\n午饭=45\n电影=72');
+  env.elements.inSalary.value = '8000';
+  env.elements.inMonthHours.value = '174';
+  env.elements.inDayHours.value = '8';
+  env.elements.inEndTime.value = '18:00';
+  env.elements.inMask.checked = true;
+  env.elements.inMotion.checked = true;
+  env.elements.inMini.checked = true;
+  env.elements.inGoals.value = '只有一行=10';
+  app.saveSettings();
+  assert.match(env.elements.toast.innerText, /3 个有效项/);
 });
 
 test('desktop pet receives only status and pauses recording from its menu', () => {

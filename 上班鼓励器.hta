@@ -105,24 +105,26 @@
   .actions .btn { margin: 0 5px 7px 0; }
   .footnote { margin: 6px 0 0; color: #8ba3bb; font-size: 11px; line-height: 1.6; }
   .modal { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; background: rgba(3,9,18,.88); }
-  .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 35px auto; padding: 28px 32px; color: #e7f1ff; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 20px 65px rgba(0,0,0,.6); }
+  .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 24px auto; padding: 22px 26px; color: #e7f1ff; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 20px 65px rgba(0,0,0,.6); }
   .modal-kicker { color: #7fb6e0; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
   .modal h2 { margin: 7px 0 7px; font-size: 24px; letter-spacing: 2px; }
   .modal-intro { color: #a5c0d8; font-size: 12px; line-height: 1.7; }
-  .fields { margin-top: 20px; }
-  .field { display: inline-block; width: 48%; vertical-align: top; margin: 0 1% 16px 0; }
-  .field.theme-field { width: 100%; }
+  .fields { margin-top: 16px; }
+  .fields:after { content: ""; display: block; clear: both; }
+  .field { float: left; width: 47%; vertical-align: top; margin: 0 2% 12px 0; }
+  .field.theme-field, .field.goal-field { float: none; width: 100%; margin-right: 0; }
   .field label { display: block; margin-bottom: 7px; color: #b9d2e8; font-size: 12px; }
   .field input { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
+  .field textarea { width: 100%; height: 62px; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 13px; font-family: "Microsoft YaHei", sans-serif; }
   .field .hint { display: block; margin-top: 5px; color: #88a2bb; font-size: 11px; }
   .seg { float: right; margin-top: -2px; }
   .seg-btn { display: inline-block; padding: 3px 12px; font-size: 11px; color: #9db8d2; background: #0b1a2d; border: 1px solid #3a5d82; cursor: pointer; letter-spacing: 1px; }
   .seg-btn.first { border-radius: 7px 0 0 7px; }
   .seg-btn.last { border-radius: 0 7px 7px 0; border-left: 0; }
   .seg-btn.on { color: #061826; background-image: linear-gradient(180deg, #cfe9ff, #9fd2ff); border-color: #9fd2ff; font-weight: bold; }
-  .check { display: block; margin: 10px 0; color: #c6daec; font-size: 12px; }
+  .check { display: block; margin: 6px 0; color: #c6daec; font-size: 12px; }
   .check input { margin: 0 7px 0 0; vertical-align: middle; }
-  .modal-actions { margin-top: 20px; }
+  .modal-actions { margin-top: 14px; }
   .modal-actions .btn { margin-right: 8px; }
   .receipt { position: relative; margin-top: 18px; padding: 22px 24px; color: #333b4a; background: #eef4fb; border-radius: 12px; }
   .receipt-title { color: #6f8298; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
@@ -207,6 +209,7 @@
   body.theme-cream .modal-intro { color: #7d786b; }
   body.theme-cream .field label { color: #6f685a; }
   body.theme-cream .field input { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
+  body.theme-cream .field textarea { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .field .hint { color: #8f887a; }
   body.theme-cream .seg-btn { color: #6f685a; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .seg-btn.on { color: #fff; background-image: linear-gradient(180deg, #4c90c0, #2c6fa8); border-color: #2c6fa8; }
@@ -278,7 +281,7 @@
   <div class="modal-box">
     <div class="modal-kicker">SETTINGS / 工时账本</div>
     <h2>设置月薪与班表</h2>
-    <div class="modal-intro">按到手月薪计算。修改设置会重新计算今天的投入；此前日期保留各自的计算口径。</div>
+    <div class="modal-intro">修改设置只重算今天，此前日期保留各自口径。</div>
     <div class="fields">
       <div class="field theme-field"><label>界面风格
           <span class="seg">
@@ -289,6 +292,7 @@
       <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
       <div class="field"><label for="inEndTime">计划下班时间</label><input id="inEndTime" type="text" value="18:00"><span class="hint">例如 18:00；只影响状态和倒计时</span></div>
+      <div class="field goal-field"><label for="inGoals">自定义目标（可选）</label><textarea id="inGoals" rows="4" placeholder="一杯冰美式=19&#10;一份正经午饭=45&#10;一天房租=266.67"></textarea><span class="hint">每行「名称=金额」（名称≤12字），至少 3 项生效；留空用内置。</span></div>
     </div>
     <label class="check"><input id="showSalary" type="checkbox">在此处显示输入的月薪</label>
     <label class="check"><input id="inMask" type="checkbox" checked>每次打开时默认隐藏金额</label>
@@ -1008,26 +1012,65 @@ function currentDay(now) {
   return { activeSeconds: 0, hourlyRate: bank.settings ? bank.settings.salary / bank.settings.monthHours : 0,
     dayHours: bank.settings ? bank.settings.dayHours : 8 };
 }
-function goalText(day) {
-  if (!bank.settings) return "每一次认真投入，都值得被看见。";
-  var earned = bankDayAmount(day), rate = day.hourlyRate;
+function bankGoalCustom(text) {
+  if (!text) return null;
+  var lines = String(text).split(/\r?\n/), goals = [], used = {};
+  for (var i = 0; i < lines.length && goals.length < 20; i++) {
+    var line = lines[i].replace(/^\s+|\s+$/g, "");
+    if (!line) continue;
+    var match = /^(.{1,12}?)[=＝]\s*([0-9]+(?:\.[0-9]+)?)$/.exec(line);
+    if (!match) continue;
+    var name = match[1].replace(/^\s+|\s+$/g, ""), value = Number(match[2]);
+    if (!name || !isFinite(value) || value <= 0 || value > 100000000) continue;
+    var key = String(Math.round(value * 100));
+    if (used[key]) continue;
+    used[key] = true;
+    goals.push({ name: name, value: value });
+  }
+  return goals.length >= 3 ? goals : null;
+}
+function bankMergeGoals(goals) {
+  goals.sort(function (a, b) { return a.value - b.value; });
+  var merged = [];
+  for (var i = 0; i < goals.length; i++) {
+    if (!merged.length || goals[i].value - merged[merged.length - 1].value >= 2) merged.push(goals[i]);
+  }
+  return merged;
+}
+function bankGoalList() {
   var goals = [
     { name: "一支好写的签字笔", value: 6 }, { name: "今天的地铁", value: 8 },
-    { name: "一杯冰美式", value: 19 }, { name: "一份小零食", value: 25 },
-    { name: "一顿加班外卖", value: 32 }, { name: "一天房租", value: bank.settings.salary / 30 }
+    { name: "早餐豆浆和包子", value: 12 }, { name: "一杯冰美式", value: 19 },
+    { name: "一份小零食", value: 25 }, { name: "一顿加班外卖", value: 32 },
+    { name: "一份正经午饭", value: 45 }, { name: "奶茶和小食", value: 58 },
+    { name: "一场电影", value: 72 }, { name: "一本小书", value: 88 },
+    { name: "一顿小火锅", value: 108 },
+    { name: "半天房租", value: bank.settings.salary / 60 },
+    { name: "四分之三天房租", value: bank.settings.salary / 40 },
+    { name: "一天房租", value: bank.settings.salary / 30 }
   ];
-  goals.sort(function (a, b) { return a.value - b.value; });
-  var target = null;
+  return bankMergeGoals(bankGoalCustom(bank.settings.customGoals) || goals);
+}
+function goalText(day) {
+  if (!bank.settings) return "每一次认真投入，都值得被看见。";
+  var earned = bankDayAmount(day), rate = day.hourlyRate, salary = bank.settings.salary;
+  var maxValue = day.dayHours * rate, goals = bankGoalList(), next = null, capped = null;
   for (var i = 0; i < goals.length; i++) {
-    if (goals[i].value > earned + 0.000001) { target = goals[i]; break; }
+    if (goals[i].value > earned + 0.000001) {
+      if (goals[i].value <= maxValue + 0.000001) next = goals[i];
+      else capped = goals[i];
+      break;
+    }
   }
-  if (!target) return "今天投进去的，已折合 " + (earned / (bank.settings.salary / 30)).toFixed(1) + " 天房租。";
-  if (target.value > day.dayHours * rate || day.activeSeconds >= day.dayHours * 3600) {
-    return "今天的计额有上限；超过计划的时间，单独记在加班里。";
+  if (!next) {
+    var atCap = day.activeSeconds >= day.dayHours * 3600 - 0.5;
+    if (capped) return atCap ? "今天的计额已到上限；再往后的时间记在加班里。" : "今天的计额快到头了；再往后的时间记在加班里。";
+    if (salary > 0 && earned >= salary / 30 - 0.000001) return "今天投进去的，已折合 " + (earned / (salary / 30)).toFixed(1) + " 天房租。";
+    return "今天的投入已经超过了当前设定的目标。";
   }
-  var minutes = Math.max(1, Math.ceil((target.value - earned) / rate * 60));
+  var minutes = Math.max(1, Math.ceil((next.value - earned) / rate * 60));
   var time = minutes >= 60 ? Math.floor(minutes / 60) + " 小时 " + (minutes % 60) + " 分钟" : minutes + " 分钟";
-  return "再记录 " + time + " 活跃时间，就能攒下" + target.name + "。";
+  return tracking ? "再记录 " + time + "，相当于" + next.name + "。" : "开始记录后，约 " + time + " 相当于" + next.name + "。";
 }
 function endDescription(now) {
   if (!bank.settings) return "计划下班 --:--";
@@ -1172,6 +1215,7 @@ function openSettings() {
   $id("inAnnounce").checked = !s || s.announce !== false;
   $id("inMotion").checked = !s || s.motion !== false;
   $id("inMini").checked = !s || s.miniInfo !== false;
+  $id("inGoals").value = s && typeof s.customGoals === "string" ? s.customGoals : "";
   setTheme(s && s.theme === "cream" ? "cream" : "deep", false);
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
@@ -1183,6 +1227,7 @@ function saveSettings() {
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
     maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
     miniInfo: $id("inMini").checked,
+    customGoals: $id("inGoals").value.replace(/^\s+|\s+$/g, ""),
     theme: pendingTheme || "deep",
     alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
     petOnTop: petTopMost,
@@ -1211,6 +1256,7 @@ function saveSettings() {
     return;
   }
   $id("settingsModal").className = "modal hidden";
+  if (settings.customGoals && !bankGoalCustom(settings.customGoals)) showToast("自定义目标至少需要 3 个有效项，暂用内置目标。");
   if (!previousSettings) startTracking();
   else render(new Date().getTime());
   applyTheme();
