@@ -10,6 +10,8 @@ assert.equal(scripts.length, 2);
 
 function runtime(files = Object.create(null)) {
   const elements = Object.create(null);
+  const alerts = [];
+  const commands = [];
   const fso = {
     FileExists(name) { return Object.hasOwn(files, name); },
     OpenTextFile(name, mode) {
@@ -27,8 +29,11 @@ function runtime(files = Object.create(null)) {
     DeleteFile(name) { delete files[name]; },
     GetSpecialFolder() { return { Path: 'C:\\Temp' }; }
   };
-  const document = { getElementById(id) {
-    if (!elements[id]) elements[id] = { innerText: '', innerHTML: '', className: '', style: {}, value: '', checked: false, title: '' };
+  const document = { title: '上班鼓励器 · 工时银行', getElementById(id) {
+    if (!elements[id]) elements[id] = {
+      innerText: '', innerHTML: '', className: '', style: {}, value: '', checked: false, title: '', attributes: {},
+      setAttribute(name, value) { this.attributes[name] = value; }
+    };
     return elements[id];
   } };
   const context = vm.createContext({
@@ -38,13 +43,13 @@ function runtime(files = Object.create(null)) {
     location: { pathname: '/C:/Projects/%E5%B7%A5%E6%97%B6/app.hta' },
     ActiveXObject: function (name) {
       if (name === 'Scripting.FileSystemObject') return fso;
-      if (name === 'WScript.Shell') return { ExpandEnvironmentStrings: () => 'powershell.exe', Run() {} };
+      if (name === 'WScript.Shell') return { ExpandEnvironmentStrings: () => 'powershell.exe', Run(command) { commands.push(command); } };
       throw new Error('unexpected ActiveX: ' + name);
     },
-    alert() {}, setInterval() {}, setTimeout() { return 1; }, clearTimeout() {}
+    alert(message) { alerts.push(message); }, setInterval() {}, setTimeout() { return 1; }, clearTimeout() {}
   });
   scripts.forEach(script => vm.runInContext(script, context));
-  return { context, files, fso, elements };
+  return { context, files, fso, elements, alerts, commands };
 }
 
 const settings = { salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', maskByDefault: true, announce: true };
@@ -179,6 +184,83 @@ test('masking applies to the card, tooltip, history and receipt', () => {
   elements.btnPrivacy.onclick();
   assert.match(elements.toast.className, /hidden/);
   assert.match(elements.todayAmount.innerText, /\*\*\*\*/);
+});
+
+test('window pinning is confirmed before its state is saved and can be undone', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.render(Date.now());
+  assert.match(env.elements.todayAmount.innerText, /\*\*\*\*/);
+  app.requestPin(true, true);
+  assert.equal(app.pinPending, true);
+  assert.equal(app.pinned, false);
+  assert.notEqual(app.document.title, '上班鼓励器 · 工时银行');
+  assert.match(env.commands[0], /SetWindowPos/);
+  env.files[app.pinResultPath] = '1';
+  app.checkPin();
+  assert.equal(app.pinned, true);
+  assert.equal(app.bank.settings.alwaysOnTop, true);
+  assert.equal(app.masked, true);
+  app.render(Date.now());
+  assert.match(env.elements.todayAmount.innerText, /\*\*\*\*/);
+  assert.equal(app.document.title, '上班鼓励器 · 工时银行');
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.alwaysOnTop, true);
+  app.requestPin(false, true);
+  env.files[app.pinResultPath] = '1';
+  app.checkPin();
+  assert.equal(app.pinned, false);
+  assert.equal(app.bank.settings.alwaysOnTop, false);
+});
+
+test('window pin failures and timeouts do not falsely change or save the state', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.requestPin(true, true);
+  env.files[app.pinResultPath] = '-1';
+  app.checkPin();
+  assert.equal(app.pinned, false);
+  assert.equal(app.pinPending, false);
+  assert.equal(app.document.title, '上班鼓励器 · 工时银行');
+  assert.equal(app.bank.settings.alwaysOnTop, undefined);
+  assert.equal(env.alerts.length, 1);
+  app.requestPin(true, true);
+  app.pinStarted = Date.now() - 20000;
+  app.checkPin();
+  assert.equal(app.pinned, false);
+  assert.equal(app.pinPending, false);
+  assert.equal(env.alerts.length, 2);
+});
+
+test('pinning remains truthful if the preference cannot be saved', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.requestPin(true, true);
+  app.requestPin(false, true);
+  assert.equal(env.commands.length, 1, 'ignore a second request while the first is pending');
+  env.fso.failWrites = true;
+  env.files[app.pinResultPath] = '1';
+  app.checkPin();
+  assert.equal(app.pinned, true);
+  assert.equal(app.bank.settings.alwaysOnTop, true);
+  assert.equal(app.dirty, true);
+  assert.match(app.storageProblem, /保存失败/);
+  assert.match(env.elements.toast.innerText, /偏好保存失败/);
+});
+
+test('a saved pin preference is reapplied on launch and retained when editing settings', () => {
+  const first = runtime();
+  first.context.bank.settings = { ...settings, alwaysOnTop: true };
+  assert.equal(first.context.saveBank(), true);
+  const restored = runtime(first.files), app = restored.context;
+  app.window.onload();
+  assert.equal(app.pinPending, true);
+  assert.equal(app.pinned, false);
+  restored.files[app.pinResultPath] = '1';
+  app.checkPin();
+  assert.equal(app.pinned, true);
+  app.openSettings();
+  app.saveSettings();
+  assert.equal(app.bank.settings.alwaysOnTop, true);
 });
 
 test('settings updates revalue today but leave earlier days unchanged', () => {

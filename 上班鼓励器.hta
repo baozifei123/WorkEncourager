@@ -31,50 +31,53 @@
   button { cursor: pointer; }
   button:focus, input:focus { outline: 2px solid #d5b879; outline-offset: 2px; }
   .hidden { display: none !important; }
-  .shell { width: auto; max-width: 704px; margin: 0 auto; padding: 28px 20px 34px; }
-  .top { height: 66px; position: relative; }
-  .eyebrow { color: #b99d69; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
-  h1 { margin: 5px 0 0; font-family: SimSun, serif; font-size: 30px; letter-spacing: 5px; }
-  .top-note { position: absolute; right: 0; bottom: 7px; color: #8c9897; font-size: 11px; letter-spacing: 1px; }
-  .card { position: relative; padding: 24px 28px 20px; background: #1b2226; border: 1px solid #43504c; box-shadow: 0 18px 48px rgba(0,0,0,.3); }
-  .card:before { content: ""; position: absolute; top: -1px; left: 28px; width: 58px; height: 3px; background: #d4b77c; }
+  .shell { width: auto; max-width: 510px; margin: 0 auto; padding: 18px 16px 22px; }
+  .top { height: 57px; position: relative; }
+  .eyebrow { color: #b99d69; font: bold 9px Consolas, monospace; letter-spacing: 2px; }
+  h1 { margin: 5px 0 0; font-family: SimSun, serif; font-size: 25px; letter-spacing: 4px; }
+  .pin { position: absolute; right: 0; top: 8px; padding: 7px 10px; border: 1px solid #5b6a60; background: #202b27; color: #d6dfd3; font-size: 12px; }
+  .pin:hover, .pin.on { border-color: #d4b77c; color: #f1d9ac; }
+  .pin.on { background: #403a29; }
+  .pin[disabled] { color: #9ba69d; cursor: wait; }
+  .card { position: relative; padding: 19px 20px 16px; background: #1b2226; border: 1px solid #43504c; box-shadow: 0 14px 32px rgba(0,0,0,.3); }
+  .card:before { content: ""; position: absolute; top: -1px; left: 20px; width: 52px; height: 3px; background: #d4b77c; }
   .card-top { height: 29px; }
-  .status { display: inline-block; padding: 5px 11px; color: #c7d7ca; background: #2b3d37; border: 1px solid #405a4f; font-size: 12px; letter-spacing: 1px; }
+  .status { display: inline-block; padding: 5px 10px; color: #c7d7ca; background: #2b3d37; border: 1px solid #405a4f; font-size: 12px; letter-spacing: 1px; }
   .status.off { color: #a4adaa; background: #2a3032; border-color: #414849; }
   .status.overtime { color: #f1c38b; background: #503a27; border-color: #795a39; }
-  .date { margin-left: 12px; color: #9da6a2; font-size: 12px; }
+  .date { margin-left: 8px; color: #9da6a2; font-size: 12px; }
   .privacy { float: right; padding: 5px 10px; border: 1px solid #68746d; background: transparent; color: #d3d8d1; font-size: 12px; }
   .privacy:hover, .btn-quiet:hover { border-color: #d4b77c; color: #ead5ab; }
-  .label { margin-top: 26px; color: #a8b2ab; font-size: 12px; letter-spacing: 3px; }
-  .amount { margin: 7px 0 2px; color: #f1debb; font: bold 58px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; }
+  .label { margin-top: 16px; color: #a8b2ab; font-size: 12px; letter-spacing: 3px; }
+  .amount { margin: 5px 0 2px; color: #f1debb; font: bold 48px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; }
   .caption { min-height: 20px; color: #aab4ac; font-size: 12px; }
-  .progress-head { margin-top: 23px; color: #cdd3c9; font-size: 12px; }
-  .progress-head .right { float: right; color: #d4b77c; font-family: Consolas, monospace; font-size: 14px; }
-  .track { height: 8px; margin-top: 9px; background: #0d1214; overflow: hidden; }
+  .progress-head { margin-top: 16px; color: #cdd3c9; font-size: 12px; }
+  .progress-head .right { float: right; color: #d4b77c; font-family: Consolas, monospace; font-size: 13px; }
+  .track { height: 8px; margin-top: 8px; background: #0d1214; overflow: hidden; }
   .fill { height: 100%; width: 0; background: #a8bd9c; transition: width .3s; }
   .fill.overtime { background: #d89b56; }
   .progress-foot { margin-top: 8px; color: #8f9c94; font-size: 11px; }
   .progress-foot .right { float: right; }
-  .rule { height: 1px; margin: 23px 0 19px; background: #414a45; }
+  .rule { height: 1px; margin: 17px 0 15px; background: #414a45; }
   .stat { display: inline-block; vertical-align: top; width: 49%; }
-  .stat + .stat { padding-left: 24px; border-left: 1px solid #414a45; }
+  .stat + .stat { padding-left: 15px; border-left: 1px solid #414a45; }
   .stat-label { color: #9ca99f; font-size: 12px; letter-spacing: 1px; }
-  .stat-value { margin-top: 8px; color: #f0ebe0; font: 26px Consolas, monospace; }
+  .stat-value { margin-top: 7px; color: #f0ebe0; font: 22px Consolas, monospace; }
   .stat-detail { margin-top: 5px; color: #98a59a; font-size: 11px; }
-  .anchor { margin: 21px -28px -20px; padding: 16px 28px; color: #d8c49e; background: #222a29; border-top: 1px solid #39443d; font-family: SimSun, serif; font-size: 14px; line-height: 1.6; }
+  .anchor { margin: 17px -20px -16px; padding: 12px 20px; color: #d8c49e; background: #222a29; border-top: 1px solid #39443d; font-family: SimSun, serif; font-size: 13px; line-height: 1.6; }
   .anchor-mark { color: #b99d69; margin-right: 8px; }
-  .monitor { margin: 14px 1px 0; color: #94a199; font-size: 12px; line-height: 1.8; }
+  .monitor { margin: 10px 1px 0; color: #a5b1a9; font-size: 11px; line-height: 1.7; }
   .monitor.error { color: #edb080; }
   .monitor button { margin-left: 8px; padding: 2px 7px; border: 1px solid #92764d; color: #edc99b; background: transparent; font-size: 11px; }
-  .actions { margin-top: 18px; }
-  .btn { display: inline-block; padding: 10px 17px; border: 1px solid transparent; font-size: 13px; letter-spacing: 1px; }
+  .actions { margin-top: 13px; }
+  .btn { display: inline-block; padding: 9px 12px; border: 1px solid transparent; font-size: 12px; letter-spacing: 1px; }
   .btn-primary { color: #19221c; background: #c7d5b8; border-color: #c7d5b8; font-weight: bold; }
   .btn-primary:hover { background: #dce8ce; }
   .btn-stamp { color: #f4e1cb; background: #753b32; border-color: #a76051; }
   .btn-stamp:hover { background: #8c493e; }
   .btn-quiet { color: #c7d0c9; background: transparent; border-color: #52605a; }
-  .actions .btn { margin: 0 8px 8px 0; }
-  .footnote { margin: 13px 0 0; color: #7f8f86; font-size: 11px; line-height: 1.7; }
+  .actions .btn { margin: 0 5px 7px 0; }
+  .footnote { margin: 8px 0 0; color: #97a69c; font-size: 11px; line-height: 1.7; }
   .modal { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; background: rgba(5,9,10,.86); }
   .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 35px auto; padding: 28px 32px; color: #e8e8de; background: #1c2526; border: 1px solid #58665a; box-shadow: 0 20px 65px rgba(0,0,0,.55); }
   .modal-kicker { color: #bda372; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
@@ -111,7 +114,7 @@
   <div class="top">
     <div class="eyebrow">WORK ENCOURAGER / TIME BANK</div>
     <h1>工时银行</h1>
-    <div class="top-note">把投入的时间，认真记一笔。</div>
+    <button class="pin" id="btnPin" type="button" aria-pressed="false" title="将窗口固定在其他普通窗口前面">置顶窗口</button>
   </div>
 
   <div class="card" id="bankCard">
@@ -274,6 +277,8 @@ var mainValid = false, storageProblem = "", recovered = false, dirty = false;
 var lastTick = 0, previousInput = null, lastHeartbeat = 0, lastSave = 0;
 var monitorStarted = 0, monitorReady = false, monitorIdle = false;
 var alivePath = "", samplePath = "", lastHour = "", toastTimer = null;
+var pinned = false, pinPending = false, pinDesired = false, pinRemember = false;
+var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
 
 function $id(id) { return document.getElementById(id); }
 function text(id, value) { $id(id).innerText = value; }
@@ -375,8 +380,84 @@ function saveBank() {
   }
 }
 
-/* 用隐藏的 PowerShell 进程查询 GetLastInputInfo；临时文件仅传递时间戳。 */
+/* PowerShell 命令中的路径和窗口标题使用单引号转义。 */
 function psQuote(value) { return "'" + value.replace(/'/g, "''") + "'"; }
+
+/* 临时唯一标题用于只定位当前 HTA 窗口；确认系统置顶成功后才更新按钮。 */
+function pinCommand(title, desired, resultPath) {
+  var nativeCode = "using System;using System.Runtime.InteropServices;" +
+    "public static class WorkBankWindow {" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode,SetLastError=true)] private static extern IntPtr FindWindow(string cls,string name);" +
+    "[DllImport(@user32.dll@,SetLastError=true)] private static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);" +
+    "[DllImport(@user32.dll@,EntryPoint=@GetWindowLongW@)] private static extern int GetWindowLong(IntPtr window,int index);" +
+    "public static int Set(string title,bool topmost) { IntPtr window=FindWindow(null,title);" +
+    "if(window==IntPtr.Zero)return -1;" +
+    "if(!SetWindowPos(window,new IntPtr(topmost ? -1 : -2),0,0,0,0,0x13))return -2;" +
+    "bool actual=(GetWindowLong(window,-20)&8)!=0;return actual==topmost ? 1 : -3; }}";
+  return "$ErrorActionPreference='Stop';$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
+    "try { Add-Type -TypeDefinition $src; $result=[WorkBankWindow]::Set(" + psQuote(title) + "," + (desired ? "$true" : "$false") + ") }" +
+    "catch { $result=-9 };[IO.File]::WriteAllText(" + psQuote(resultPath) + ",[string]$result,[Text.Encoding]::ASCII)";
+}
+function renderPin() {
+  var button = $id("btnPin");
+  text("btnPin", pinPending ? "设置中…" : (pinned ? "取消置顶" : "置顶窗口"));
+  button.className = "pin" + (pinned ? " on" : "");
+  button.disabled = pinPending;
+  button.setAttribute("aria-pressed", pinned ? "true" : "false");
+  button.title = pinned ? "取消窗口置顶" : "将窗口固定在其他普通窗口前面";
+}
+function finishPin(success) {
+  if (pinTimer) clearTimeout(pinTimer);
+  pinTimer = null;
+  deletePath(pinResultPath);
+  pinResultPath = "";
+  document.title = pinPreviousTitle;
+  pinPending = false;
+  if (success) {
+    pinned = pinDesired;
+    if (pinRemember && bank.settings) {
+      bank.settings.alwaysOnTop = pinned;
+      dirty = true;
+      if (!saveBank()) showToast("置顶已切换，但偏好保存失败；请检查目录权限。");
+    }
+  } else if (pinRemember) {
+    alert("无法切换窗口置顶。请检查 PowerShell 和系统策略，然后重试。");
+  } else {
+    showToast("无法恢复窗口置顶，可检查 PowerShell 后手动重试。");
+  }
+  renderPin();
+}
+function checkPin() {
+  if (!pinPending) return;
+  var result = readPath(pinResultPath, false);
+  if (result === "1") { finishPin(true); return; }
+  if (/^-?\d+$/.test(result) || new Date().getTime() - pinStarted >= 12000) { finishPin(false); return; }
+  pinTimer = setTimeout(checkPin, 250);
+}
+function requestPin(desired, remember) {
+  if (pinPending) return;
+  try {
+    var shell = new ActiveXObject("WScript.Shell");
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var token = "WorkBankPin-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000);
+    pinResultPath = fso.GetSpecialFolder(2).Path + "\\" + token + ".result";
+    pinPreviousTitle = document.title;
+    document.title = pinPreviousTitle + " [" + token + "]";
+    pinDesired = desired;
+    pinRemember = remember;
+    pinStarted = new Date().getTime();
+    pinPending = true;
+    renderPin();
+    var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + pinCommand(document.title, desired, pinResultPath) + '"', 0, false);
+    pinTimer = setTimeout(checkPin, 250);
+  } catch (e) {
+    if (pinPending) finishPin(false);
+    else alert("无法切换窗口置顶。请检查 PowerShell 和系统策略，然后重试。");
+  }
+}
+
+/* 采样进程只查询 GetLastInputInfo，临时文件仅传递时间戳。 */
 function workerCommand(alive, sample) {
   var nativeCode = "using System;using System.Runtime.InteropServices;" +
     "public static class WorkBankIdle {" +
@@ -596,7 +677,8 @@ function saveSettings() {
   var settings = {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
-    maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked
+    maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked,
+    alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned
   };
   if (!bankValidSettings(settings)) {
     alert("请填写有效的到手月薪、月计划工时（不超过 744）、日计划工时（不超过 24）和下班时间（如 18:00）。");
@@ -649,6 +731,7 @@ function showHistory() {
   $id("historyModal").className = "modal";
 }
 
+$id("btnPin").onclick = function () { requestPin(!pinned, true); };
 $id("btnPrivacy").onclick = function () {
   masked = !masked;
   if (masked) $id("toast").className = "toast hidden";
@@ -665,18 +748,23 @@ $id("btnHistory").onclick = showHistory;
 $id("btnCloseHistory").onclick = function () { $id("historyModal").className = "modal hidden"; };
 window.onload = function () {
   try {
-    window.resizeTo(790, 820);
-    window.moveTo(Math.max(0, (screen.availWidth - 790) / 2), Math.max(0, (screen.availHeight - 820) / 2));
+    var width = Math.min(530, screen.availWidth), height = Math.min(720, screen.availHeight);
+    window.resizeTo(width, height);
+    window.moveTo(Math.max(0, screen.availWidth - width - 16), Math.max(0, Math.min(40, screen.availHeight - height)));
   } catch (e) {}
   loadBank();
   render(new Date().getTime());
+  renderPin();
   setInterval(tick, 1000);
+  if (bank.settings && bank.settings.alwaysOnTop === true) requestPin(true, false);
   if (!bank.settings && !fatalStorage) openSettings();
 };
 window.onunload = function () {
   if (tracking) pauseTracking();
   else if (dirty) saveBank();
   stopMonitor();
+  if (pinTimer) clearTimeout(pinTimer);
+  deletePath(pinResultPath);
 };
 </script>
 </body>
