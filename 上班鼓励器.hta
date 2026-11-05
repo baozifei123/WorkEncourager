@@ -294,6 +294,7 @@
     <label class="check"><input id="inMask" type="checkbox" checked>每次打开时默认隐藏金额</label>
     <label class="check"><input id="inAnnounce" type="checkbox" checked>记录时在整点显示提醒</label>
     <label class="check"><input id="inMotion" type="checkbox" checked>启用火焰与小鲸动画</label>
+    <label class="check"><input id="inMini" type="checkbox" checked>工时卡片收起时，在桌宠旁显示今日投入和进度</label>
     <div class="modal-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
   </div>
 </div>
@@ -446,11 +447,48 @@ function setTheme(value, remember) {
   $id("segDeep").className = "seg-btn first" + (theme === "deep" ? " on" : "");
   $id("segCream").className = "seg-btn last" + (theme === "cream" ? " on" : "");
   applyTheme();
+  applyWindowChrome();
   if (remember && bank.settings) {
     bank.settings.theme = theme;
     dirty = true;
     if (!saveBank()) showToast("主题已切换，但偏好保存失败；请检查目录权限。");
   }
+}
+/* Windows 11 支持给标题栏和边框着色；旧系统会忽略这些调用。 */
+var chromeTimer = null;
+var CHROME_COLORS = {
+  deep: { caption: "#0a1424", text: "#e7f1ff", border: "#2b4a6e", dark: 1 },
+  cream: { caption: "#f2ebdd", text: "#3b3a33", border: "#d9c9a8", dark: 0 }
+};
+function chromeColor(hex) {
+  var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
+  return r | (g << 8) | (b << 16);
+}
+function chromeCommand(title, colors) {
+  var nativeCode = "using System;using System.Runtime.InteropServices;" +
+    "public static class WorkBankChrome {" +
+    "[DllImport(@dwmapi.dll@)]static extern int DwmSetWindowAttribute(IntPtr h,int attribute,ref int value,int size);" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern IntPtr FindWindow(string cls,string title);" +
+    "public static int Apply(string title,int caption,int text,int border,int dark){" +
+    "IntPtr h=FindWindow(null,title);if(h==IntPtr.Zero)return 0;" +
+    "DwmSetWindowAttribute(h,20,ref dark,4);" +
+    "DwmSetWindowAttribute(h,35,ref caption,4);" +
+    "DwmSetWindowAttribute(h,36,ref text,4);" +
+    "return DwmSetWindowAttribute(h,34,ref border,4);}}";
+  var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
+    "Add-Type -TypeDefinition $src;[WorkBankChrome]::Apply(" + psQuote(title) + "," +
+    chromeColor(colors.caption) + "," + chromeColor(colors.text) + "," + chromeColor(colors.border) + "," + colors.dark +
+    ")} catch {}";
+  var shell = new ActiveXObject("WScript.Shell");
+  var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+  shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
+}
+function applyWindowChrome() {
+  if (chromeTimer) clearTimeout(chromeTimer);
+  chromeTimer = setTimeout(function () {
+    chromeTimer = null;
+    try { chromeCommand(document.title, CHROME_COLORS[theme] || CHROME_COLORS.deep); } catch (e) {}
+  }, 300);
 }
 function appPath(name) {
   var p;
@@ -629,7 +667,7 @@ function requestPin(desired, remember) {
   }
 }
 
-/* 桌宠与主窗口仅交换状态、位置和操作，不交换金额或薪资。 */
+/* 桌宠与主窗口仅通过临时文件交换展示状态、位置和操作。 */
 function petLaunchCommand(title, x, y) {
   var args = [psQuote(title), psQuote(appPath("assets")), psQuote(petAlivePath), psQuote(petStatePath),
     psQuote(petBeatPath), psQuote(petReadyPath), psQuote(petControlPath), psQuote(petNoticePath),
@@ -682,10 +720,19 @@ function petTip() {
   var day = currentDay(new Date().getTime());
   return "小鲸 · " + petStatusLabel() + "\n活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
 }
+function miniVisible() {
+  return !!(bank.settings && bank.settings.miniInfo !== false && !petPanelVisible);
+}
 function writePetState() {
   if (!petStatePath || (!petStarting && !petRunning)) return;
+  var now = new Date().getTime(), day = currentDay(now);
+  var percent = bank.settings ? Math.floor(day.activeSeconds / (day.dayHours * 3600) * 100) : 0;
+  percent = Math.max(0, Math.min(100, percent));
+  var amount = bank.settings ? money(bankDayAmount(day), 4) : "¥ ****";
+  var detail = bank.settings ? (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时" : "";
   var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" +
-    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + petTip();
+    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? "1" : "0") + "|" +
+    theme + "|" + percent + "|" + amount + "|" + detail + "|" + petTip();
   if (state !== petLastState && writePath(petStatePath, state, true)) petLastState = state;
 }
 function readPetBounds() {
@@ -1124,6 +1171,7 @@ function openSettings() {
   $id("inMask").checked = !s || s.maskByDefault !== false;
   $id("inAnnounce").checked = !s || s.announce !== false;
   $id("inMotion").checked = !s || s.motion !== false;
+  $id("inMini").checked = !s || s.miniInfo !== false;
   setTheme(s && s.theme === "cream" ? "cream" : "deep", false);
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
@@ -1134,6 +1182,7 @@ function saveSettings() {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
     maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
+    miniInfo: $id("inMini").checked,
     theme: pendingTheme || "deep",
     alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
     petOnTop: petTopMost,

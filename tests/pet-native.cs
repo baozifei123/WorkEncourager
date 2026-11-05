@@ -31,7 +31,18 @@ public static class PetNativeTests
         {
             if (frame.GetPixel(0, 0).A != 0 || frame.GetPixel(90, 120).A == 0) throw new Exception("Invalid custom image should fall back to the transparent built-in frame");
         }
-        Console.WriteLine("Custom frame selection, aspect ratio, transparency and fallback passed.");
+        Rectangle work = new Rectangle(0, 0, 1920, 1080);
+        Rectangle pet = new Rectangle(1600, 800, 180, 240);
+        Rectangle beside = MiniInfoForm.BoundsFor(pet, work, MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
+        if (beside.Left != pet.Left - MiniInfoForm.CardWidth - 8) throw new Exception("Mini card should sit left of the pet");
+        if (beside.Bottom != pet.Bottom) throw new Exception("Mini card should align with the pet's bottom");
+        Rectangle leftEdge = MiniInfoForm.BoundsFor(new Rectangle(20, 800, 180, 240), work, MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
+        if (leftEdge.Left != 208) throw new Exception("Mini card should move to the right at the left edge");
+        Rectangle bottomEdge = MiniInfoForm.BoundsFor(new Rectangle(1600, 1000, 180, 240), work, MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
+        if (bottomEdge.Bottom != work.Bottom) throw new Exception("Mini card should stay inside the work area");
+        Rectangle narrow = MiniInfoForm.BoundsFor(new Rectangle(10, 500, 180, 240), new Rectangle(0, 0, 300, 900), MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
+        if (narrow.Left != 0 || narrow.Right > 300) throw new Exception("Mini card should clamp to a narrow work area");
+        Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback and mini card bounds passed.");
         return 0;
     }
 }

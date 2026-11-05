@@ -492,6 +492,13 @@ test('opening the panel places it beside the pet and follows the pet', () => {
   assert.equal(env.files[app.petControlPath], 'hide', 'a late expand command cannot leave the window open');
 });
 
+test('window chrome colours follow the theme palette', () => {
+  const { context: app } = runtime();
+  assert.equal(app.chromeColor('#0a1424'), 0x24140a);
+  assert.equal(app.chromeColor('#f2ebdd'), 0xddebf2);
+  assert.equal(app.chromeColor('#2b4a6e'), 0x6e4a2b);
+});
+
 test('theme switches between deep sea and apron paper and persists', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings };
@@ -512,7 +519,26 @@ test('theme switches between deep sea and apron paper and persists', () => {
   assert.match(app.document.body.className, /theme-deep/);
 });
 
-test('pet state carries panel visibility and a masked tooltip', () => {
+test('mini info defaults on for old settings and can be switched off', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.openSettings();
+  assert.equal(env.elements.inMini.checked, true, 'existing settings keep the new card by default');
+  env.elements.inSalary.value = '8000';
+  env.elements.inMonthHours.value = '174';
+  env.elements.inDayHours.value = '8';
+  env.elements.inEndTime.value = '18:00';
+  env.elements.inMask.checked = true;
+  env.elements.inMotion.checked = true;
+  env.elements.inMini.checked = false;
+  app.saveSettings();
+  assert.equal(app.bank.settings.miniInfo, false);
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.miniInfo, false);
+  app.openSettings();
+  assert.equal(env.elements.inMini.checked, false);
+});
+
+test('pet state carries panel visibility, mini progress and a masked tooltip', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings };
   app.tracking = true;
@@ -527,8 +553,27 @@ test('pet state carries panel visibility and a masked tooltip', () => {
   app.writePetState();
   const parts = env.files[app.petStatePath].split('|');
   assert.ok(['active', 'overtime', 'urgent'].includes(parts[0]));
+  assert.equal(parts[2], '1');
   assert.equal(parts[3], '1');
-  assert.match(parts.slice(4).join('|'), /¥ \*\*\*\*/);
+  assert.equal(parts[4], '0', 'the mini card stays hidden while the full panel is open');
+  assert.equal(parts[5], 'deep');
+  assert.equal(parts[6], '12');
+  assert.equal(parts[7], '¥ ****');
+  assert.equal(parts[8], '1.00 / 8.00 小时');
+  assert.match(parts.slice(9).join('|'), /¥ \*\*\*\*/);
+  app.petPanelVisible = false;
+  app.petLastState = '';
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[4], '1', 'the mini card follows a hidden panel');
+  app.bank.settings.miniInfo = false;
+  app.petLastState = '';
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[4], '0', 'the mini card can be switched off');
+  app.bank.settings.miniInfo = true;
+  app.theme = 'cream';
+  app.petLastState = '';
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[5], 'cream');
   app.masked = false;
   app.petLastState = '';
   app.writePetState();

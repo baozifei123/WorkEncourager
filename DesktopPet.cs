@@ -2,13 +2,14 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
-// 本机桌宠只接收状态和操作命令，不读取或传递工资数据。
+// 桌宠只读取工时窗口写入的展示状态，不直接读取本地账本文件。
 public sealed class WorkBankPet : Form
 {
     private const int GWL_EXSTYLE = -20;
@@ -80,9 +81,16 @@ public sealed class WorkBankPet : Form
     private readonly ContextMenuStrip menu;
     private readonly ToolStripMenuItem trackingItem;
     private readonly ToolStripMenuItem pinItem;
+    private readonly MiniInfoForm mini;
     private string currentState = "unconfigured";
     private string currentTip = "";
+    private string lastTooltip = "";
     private bool panelVisible = true;
+    private bool miniEnabled;
+    private string miniTheme = "deep";
+    private string miniAmount = "¥ ****";
+    private string miniDetail = "";
+    private int miniPercent;
     private string shownFrame = "";
     private bool motion = true;
     private bool dragging;
@@ -135,6 +143,13 @@ public sealed class WorkBankPet : Form
         tooltip = new ToolTip();
         tooltip.ShowAlways = true;
         UpdateTooltip();
+        mini = new MiniInfoForm(onTop);
+        mini.OpenRequested += delegate
+        {
+            mini.HideCard();
+            QueueEvent("show");
+            pendingShow = DateTime.UtcNow;
+        };
         timer = new Timer();
         timer.Interval = 200;
         timer.Tick += OnTick;
@@ -246,11 +261,8 @@ public sealed class WorkBankPet : Form
         try
         {
             if ((DateTime.UtcNow - File.GetLastWriteTimeUtc(alivePath)).TotalSeconds > 30) { Close(); return; }
-            if ((DateTime.UtcNow - lastHeartbeat).TotalMilliseconds >= 1000)
-            {
-                WriteHeartbeat();
-                ReadState();
-            }
+            if ((DateTime.UtcNow - lastHeartbeat).TotalMilliseconds >= 1000) WriteHeartbeat();
+            ReadState();
             if (File.Exists(controlPath))
             {
                 string command = File.ReadAllText(controlPath, Encoding.ASCII).Trim();
@@ -294,9 +306,18 @@ public sealed class WorkBankPet : Form
                 DrawFrame(frame);
                 shownFrame = wanted;
             }
+            UpdateMini();
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    private void UpdateMini()
+    {
+        if (!miniEnabled) { mini.HideCard(); return; }
+        Rectangle work = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
+        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, true,
+            new Rectangle(Left, Top, Width, Height), work);
     }
 
     private void WritePosition(bool force)
@@ -330,20 +351,41 @@ public sealed class WorkBankPet : Form
         currentState = values[0];
         motion = values[1] != "0";
         panelVisible = values.Length >= 4 ? values[3] == "1" : true;
-        currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
+        if (values.Length >= 10)
+        {
+            miniEnabled = values[4] == "1";
+            miniTheme = values[5] == "cream" ? "cream" : "deep";
+            int parsed;
+            miniPercent = Int32.TryParse(values[6], out parsed) ? Math.Max(0, Math.Min(100, parsed)) : 0;
+            miniAmount = values[7];
+            miniDetail = values[8];
+            currentTip = String.Join("|", values, 9, values.Length - 9);
+        }
+        else
+        {
+            miniEnabled = false;
+            currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
+        }
         bool active = values.Length >= 3 ? values[2] == "1" :
             currentState == "active" || currentState == "urgent" || currentState == "idle" || currentState == "overtime" || currentState == "waiting";
         trackingItem.Text = currentState == "unconfigured" ? "设置并开始记录" : (active ? "暂停记录" : "开始记录");
         UpdateTooltip();
     }
 
-    private void UpdateTooltip()
+    private string StateLabel()
     {
-        string label = currentState == "error" ? "请查看卡片提示" : currentState == "unconfigured" ? "未设置" : currentState == "paused" ? "未开工" :
+        return currentState == "error" ? "请查看卡片提示" : currentState == "unconfigured" ? "未设置" : currentState == "paused" ? "未开工" :
             currentState == "idle" ? "键鼠空闲" : currentState == "overtime" ? "加班中" :
             currentState == "urgent" ? "接近计划工时" : currentState == "celebrate" ? "收工快乐" :
             currentState == "waiting" ? "采样未就绪" : "上班中";
+    }
+
+    private void UpdateTooltip()
+    {
+        string label = StateLabel();
         string text = String.IsNullOrEmpty(currentTip) ? "小鲸 · " + label : currentTip;
+        if (text == lastTooltip) return;
+        lastTooltip = text;
         tooltip.SetToolTip(this, text + "\n单击打开或收起 · 拖动移动 · 右键菜单");
         AccessibleName = text;
     }
@@ -377,6 +419,7 @@ public sealed class WorkBankPet : Form
     private void TogglePin()
     {
         TopMost = !TopMost;
+        mini.TopMost = TopMost;
         pinItem.Checked = TopMost;
         QueueEvent(TopMost ? "pin|1" : "pin|0");
     }
@@ -417,6 +460,7 @@ public sealed class WorkBankPet : Form
         int x = Math.Max(work.Left - Width + 40, Math.Min(dragWindow.X + dx, work.Right - 40));
         int y = Math.Max(work.Top, Math.Min(dragWindow.Y + dy, work.Bottom - 40));
         Location = new Point(x, y);
+        UpdateMini();
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
@@ -443,6 +487,7 @@ public sealed class WorkBankPet : Form
             tiredFrame.Dispose();
             waveFrame.Dispose();
             celebrateFrame.Dispose();
+            mini.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -488,5 +533,234 @@ public sealed class WorkBankPet : Form
             DeleteFile(positions);
             try { if (Directory.Exists(events)) Directory.Delete(events, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
+    }
+}
+
+// 桌宠旁的小卡片：只显示今日投入和进度，点击可展开完整工时卡片。
+public sealed class MiniInfoForm : Form
+{
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_LAYERED = 0x00080000;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
+    private const int WS_EX_NOACTIVATE = 0x08000000;
+    private const int ULW_ALPHA = 2;
+    private const byte AC_SRC_ALPHA = 1;
+    public const int CardWidth = 224;
+    public const int CardHeight = 88;
+    private const int Gap = 8;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint { public int X; public int Y; public NativePoint(int x, int y) { X = x; Y = y; } }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeSize { public int Width; public int Height; public NativeSize(int w, int h) { Width = w; Height = h; } }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    private struct BlendFunction { public byte Operation; public byte Flags; public byte Alpha; public byte Format; }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr window);
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr window, IntPtr dc);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool UpdateLayeredWindow(IntPtr window, IntPtr screen, ref NativePoint destination,
+        ref NativeSize size, IntPtr source, ref NativePoint sourcePoint, int colorKey, ref BlendFunction blend, int flags);
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateCompatibleDC(IntPtr dc);
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteDC(IntPtr dc);
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr SelectObject(IntPtr dc, IntPtr item);
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr item);
+
+    private readonly Font labelFont = new Font("Microsoft YaHei", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
+    private readonly Font amountFont = new Font("Consolas", 14f, FontStyle.Bold, GraphicsUnit.Point);
+    private readonly Font detailFont = new Font("Microsoft YaHei", 7.5f, FontStyle.Regular, GraphicsUnit.Point);
+    private string themeName = "deep";
+    private string amount = "¥ ****";
+    private string detail = "";
+    private string status = "未设置";
+    private int percent;
+    private bool painted;
+
+    public event EventHandler OpenRequested;
+
+    public MiniInfoForm(bool onTop)
+    {
+        FormBorderStyle = FormBorderStyle.None;
+        ShowInTaskbar = false;
+        StartPosition = FormStartPosition.Manual;
+        Size = new Size(CardWidth, CardHeight);
+        Location = new Point(-32000, -32000);
+        TopMost = onTop;
+        Text = "小鲸简要信息";
+        Cursor = Cursors.Hand;
+        AccessibleName = "小鲸工时进度";
+    }
+
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            CreateParams parameters = base.CreateParams;
+            parameters.ExStyle |= WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            return parameters;
+        }
+    }
+
+    public static Rectangle BoundsFor(Rectangle pet, Rectangle work, int width, int height, int gap)
+    {
+        int left = pet.Left - width - gap;
+        if (left < work.Left)
+        {
+            int right = pet.Right + gap;
+            left = right + width <= work.Right ? right : work.Left;
+        }
+        if (left + width > work.Right) left = work.Right - width;
+        if (left < work.Left) left = work.Left;
+        int top = pet.Bottom - height;
+        if (top + height > work.Bottom) top = work.Bottom - height;
+        if (top < work.Top) top = work.Top;
+        return new Rectangle(left, top, width, height);
+    }
+
+    public void Present(string newTheme, string newAmount, string newDetail, string newStatus, int newPercent,
+        bool show, Rectangle pet, Rectangle work)
+    {
+        bool changed = newTheme != themeName || newAmount != amount || newDetail != detail ||
+            newStatus != status || newPercent != percent;
+        themeName = newTheme == "cream" ? "cream" : "deep";
+        amount = newAmount;
+        detail = newDetail;
+        status = newStatus;
+        percent = Math.Max(0, Math.Min(100, newPercent));
+        Rectangle target = BoundsFor(pet, work, CardWidth, CardHeight, Gap);
+        if (Location != target.Location) Location = target.Location;
+        if (changed || !painted) Redraw();
+        if (show)
+        {
+            if (!Visible) Visible = true;
+        }
+        else if (Visible)
+        {
+            Visible = false;
+        }
+    }
+
+    public void HideCard()
+    {
+        if (Visible) Visible = false;
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        if (e.Button == MouseButtons.Left && OpenRequested != null) OpenRequested(this, EventArgs.Empty);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            labelFont.Dispose();
+            amountFont.Dispose();
+            detailFont.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+
+    private void Redraw()
+    {
+        IntPtr window = Handle;
+        bool cream = themeName == "cream";
+        Color fill = Hex(cream ? "#FFFDF6" : "#12233C");
+        Color border = Hex(cream ? "#D9C9A8" : "#2B4A6E");
+        Color label = Hex(cream ? "#8A8273" : "#8FB1D1");
+        Color ink = Hex(cream ? "#204B73" : "#D9EFFF");
+        Color muted = Hex(cream ? "#7D786B" : "#9FBCD8");
+        Color barBackground = Hex(cream ? "#E9E1CF" : "#0A1626");
+        Color accent = Hex(cream ? "#2C6FA8" : "#7FC4FF");
+
+        using (Bitmap bitmap = new Bitmap(CardWidth, CardHeight, PixelFormat.Format32bppPArgb))
+        using (Graphics graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.Clear(Color.Transparent);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            Rectangle card = new Rectangle(0, 0, CardWidth - 2, CardHeight - 4);
+            using (GraphicsPath shadowPath = RoundedRectangle(new Rectangle(2, 4, card.Width, card.Height), 12))
+            using (SolidBrush shadow = new SolidBrush(Color.FromArgb(34, 0, 8, 20)))
+                graphics.FillPath(shadow, shadowPath);
+            using (GraphicsPath path = RoundedRectangle(card, 12))
+            {
+                using (SolidBrush brush = new SolidBrush(fill)) graphics.FillPath(brush, path);
+                using (Pen pen = new Pen(border, 1f)) graphics.DrawPath(pen, path);
+            }
+            using (SolidBrush brush = new SolidBrush(label))
+            {
+                graphics.DrawString("今日投入", labelFont, brush, 12, 7);
+                SizeF statusSize = graphics.MeasureString(status, labelFont);
+                graphics.DrawString(status, labelFont, brush, card.Right - 12 - statusSize.Width, 7);
+            }
+            using (SolidBrush brush = new SolidBrush(ink))
+                graphics.DrawString(amount, amountFont, brush, 10, 22);
+            int barWidth = card.Width - 24;
+            using (GraphicsPath trackPath = RoundedRectangle(new Rectangle(12, 56, barWidth, 6), 3))
+            using (SolidBrush track = new SolidBrush(barBackground))
+                graphics.FillPath(track, trackPath);
+            int fillWidth = (int)Math.Round(barWidth * percent / 100.0);
+            if (fillWidth >= 4)
+            {
+                using (GraphicsPath fillPath = RoundedRectangle(new Rectangle(12, 56, fillWidth, 6), 3))
+                using (SolidBrush brush = new SolidBrush(accent))
+                    graphics.FillPath(brush, fillPath);
+            }
+            using (SolidBrush brush = new SolidBrush(muted))
+                graphics.DrawString(detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%", detailFont, brush, 12, 65);
+
+            IntPtr screen = GetDC(IntPtr.Zero);
+            IntPtr memory = CreateCompatibleDC(screen);
+            IntPtr handle = IntPtr.Zero;
+            IntPtr previous = IntPtr.Zero;
+            try
+            {
+                handle = bitmap.GetHbitmap(Color.FromArgb(0));
+                previous = SelectObject(memory, handle);
+                NativePoint destination = new NativePoint(Left, Top);
+                NativePoint source = new NativePoint(0, 0);
+                NativeSize size = new NativeSize(bitmap.Width, bitmap.Height);
+                BlendFunction blend = new BlendFunction();
+                blend.Alpha = 255;
+                blend.Format = AC_SRC_ALPHA;
+                UpdateLayeredWindow(window, screen, ref destination, ref size, memory, ref source, 0, ref blend, ULW_ALPHA);
+            }
+            finally
+            {
+                if (previous != IntPtr.Zero) SelectObject(memory, previous);
+                if (handle != IntPtr.Zero) DeleteObject(handle);
+                DeleteDC(memory);
+                ReleaseDC(IntPtr.Zero, screen);
+            }
+        }
+        painted = true;
+    }
+
+    private static Color Hex(string value)
+    {
+        return Color.FromArgb(
+            Convert.ToInt32(value.Substring(1, 2), 16),
+            Convert.ToInt32(value.Substring(3, 2), 16),
+            Convert.ToInt32(value.Substring(5, 2), 16));
+    }
+
+    private static GraphicsPath RoundedRectangle(Rectangle rect, int radius)
+    {
+        GraphicsPath path = new GraphicsPath();
+        int diameter = radius * 2;
+        path.AddArc(rect.Left, rect.Top, diameter, diameter, 180, 90);
+        path.AddArc(rect.Right - diameter, rect.Top, diameter, diameter, 270, 90);
+        path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(rect.Left, rect.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 }
