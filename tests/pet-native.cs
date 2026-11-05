@@ -3,9 +3,11 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Windows.Forms;
 
 public static class PetNativeTests
 {
+    [STAThread]
     public static int Main(string[] args)
     {
         string directory = args[0];
@@ -42,6 +44,24 @@ public static class PetNativeTests
         if (bottomEdge.Bottom != work.Bottom) throw new Exception("Mini card should stay inside the work area");
         Rectangle narrow = MiniInfoForm.BoundsFor(new Rectangle(10, 500, 180, 240), new Rectangle(0, 0, 300, 900), MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
         if (narrow.Left != 0 || narrow.Right > 300) throw new Exception("Mini card should clamp to a narrow work area");
+        if (!MiniInfoForm.IsAmountArea(new Point(20, 30))) throw new Exception("The mini amount row should be clickable");
+        if (MiniInfoForm.IsAmountArea(new Point(20, 8))) throw new Exception("The mini label row should open the panel");
+        if (MiniInfoForm.IsAmountArea(new Point(20, 70))) throw new Exception("The mini progress row should open the panel");
+        if (MiniInfoForm.IsAmountArea(new Point(MiniInfoForm.CardWidth - 1, 30))) throw new Exception("The card border should not mask the amount");
+        using (MiniInfoForm mini = new MiniInfoForm(false))
+        {
+            int opened = 0, amounts = 0, menus = 0;
+            mini.OpenRequested += delegate { opened++; };
+            mini.AmountRequested += delegate { amounts++; };
+            mini.MenuRequested += delegate { menus++; };
+            MethodInfo click = typeof(MiniInfoForm).GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (click == null) throw new Exception("Missing mini card click handler");
+            click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 20, 30, 0) });
+            click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 20, 70, 0) });
+            click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Right, 1, 20, 30, 0) });
+            if (amounts != 1 || opened != 1 || menus != 1)
+                throw new Exception("Mini card should mask on the amount, open elsewhere, and show its menu on right click");
+        }
         if (WorkBankPet.SelectFrame("active", false, 49) != "normal") throw new Exception("Before halfway the pet should rest");
         if (WorkBankPet.SelectFrame("active", false, 50) != "working") throw new Exception("Halfway should show the working pose");
         if (WorkBankPet.SelectFrame("urgent", false, 90) != "sprint") throw new Exception("Ninety percent should show the sprint pose");
@@ -49,7 +69,7 @@ public static class PetNativeTests
         if (WorkBankPet.SelectFrame("celebrate", false, 100) != "celebrate") throw new Exception("Sign-off should celebrate");
         if (WorkBankPet.SelectFrame("celebrate", true, 100) != "wave") throw new Exception("The open panel should take pose precedence");
         if (WorkBankPet.SelectFrame("idle", false, 95) != "normal") throw new Exception("Idle should not show a working pose");
-        Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback and mini card bounds passed.");
+        Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card bounds and click routing passed.");
         return 0;
     }
 }

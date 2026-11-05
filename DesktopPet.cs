@@ -176,6 +176,8 @@ public sealed class WorkBankPet : Form
             QueueEvent("show");
             pendingShow = DateTime.UtcNow;
         };
+        mini.AmountRequested += delegate { QueueEvent("privacy"); };
+        mini.MenuRequested += delegate { menu.Show(Cursor.Position); };
         timer = new Timer();
         timer.Interval = 200;
         timer.Tick += OnTick;
@@ -671,6 +673,13 @@ public sealed class MiniInfoForm : Form
     private bool painted;
 
     public event EventHandler OpenRequested;
+    public event EventHandler AmountRequested;
+    public event EventHandler MenuRequested;
+
+    public static bool IsAmountArea(Point point)
+    {
+        return new Rectangle(4, 17, CardWidth - 12, 34).Contains(point);
+    }
 
     public MiniInfoForm(bool onTop)
     {
@@ -742,7 +751,18 @@ public sealed class MiniInfoForm : Form
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
-        if (e.Button == MouseButtons.Left && OpenRequested != null) OpenRequested(this, EventArgs.Empty);
+        if (e.Button == MouseButtons.Right)
+        {
+            if (MenuRequested != null) MenuRequested(this, EventArgs.Empty);
+            return;
+        }
+        if (e.Button != MouseButtons.Left) return;
+        if (IsAmountArea(e.Location))
+        {
+            if (AmountRequested != null) AmountRequested(this, EventArgs.Empty);
+            return;
+        }
+        if (OpenRequested != null) OpenRequested(this, EventArgs.Empty);
     }
 
     protected override void Dispose(bool disposing)

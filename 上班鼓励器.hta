@@ -87,6 +87,8 @@
   .stat + .stat { padding-left: 15px; border-left: 1px solid #24405f; }
   .stat-label { color: #93aec9; font-size: 12px; letter-spacing: 1px; }
   .stat-value { margin-top: 7px; color: #e4f2ff; font: 22px Consolas, monospace; }
+  .month-amount { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+  .month-amount:hover { color: #fff; }
   .stat-detail { margin-top: 5px; color: #8fa9c2; font-size: 11px; }
   .anchor { margin: 12px -20px -13px; padding: 10px 20px; color: #a9cdef; background: #0e1b30; border-top: 1px solid #24405f; border-radius: 0 0 18px 18px; font-size: 13px; line-height: 1.6; }
   .anchor-mark { color: #7fc4ff; margin-right: 8px; }
@@ -118,6 +120,15 @@
   .field input, .field select { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
   .field textarea { width: 100%; height: 62px; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 13px; font-family: "Microsoft YaHei", sans-serif; }
   .field .hint { display: block; margin-top: 5px; color: #88a2bb; font-size: 11px; }
+  .field input[type=range] { height: 22px; padding: 0; border: 0; background: transparent; }
+  .field input[type=range]::-ms-ticks-before, .field input[type=range]::-ms-ticks-after { display: none; }
+  .field input[type=range]::-ms-track { height: 4px; border-color: transparent; background: #24405f; color: transparent; }
+  .field input[type=range]::-ms-fill-lower { background: #7fc4ff; }
+  .field input[type=range]::-ms-fill-upper { background: #24405f; }
+  .field input[type=range]::-ms-thumb { width: 13px; height: 13px; border: 1px solid #7fc4ff; border-radius: 50%; background: #d9efff; }
+  #opacityValue { float: right; color: #8fd0ff; font-family: Consolas, monospace; }
+  .shortcut-hint { margin: 8px 0 0; color: #88a2bb; font-size: 11px; line-height: 1.6; }
+  .shortcut-hint span { white-space: nowrap; }
   .seg { float: right; margin-top: -2px; }
   .seg-btn { display: inline-block; padding: 3px 12px; font-size: 11px; color: #9db8d2; background: #0b1a2d; border: 1px solid #3a5d82; cursor: pointer; letter-spacing: 1px; }
   .seg-btn.first { border-radius: 7px 0 0 7px; }
@@ -205,6 +216,13 @@
   body.theme-cream .stat + .stat { border-left-color: #e2d7c0; }
   body.theme-cream .stat-label { color: #8a8273; }
   body.theme-cream .stat-value { color: #2b2a24; }
+  body.theme-cream .month-amount:hover { color: #2c6fa8; }
+  body.theme-cream #opacityValue { color: #2c6fa8; }
+  body.theme-cream .shortcut-hint { color: #8f887a; }
+  body.theme-cream .field input[type=range]::-ms-track { background: #e2d7c0; }
+  body.theme-cream .field input[type=range]::-ms-fill-lower { background: #2c6fa8; }
+  body.theme-cream .field input[type=range]::-ms-fill-upper { background: #e2d7c0; }
+  body.theme-cream .field input[type=range]::-ms-thumb { background: #fffdf8; border-color: #2c6fa8; }
   body.theme-cream .stat-detail { color: #8f887a; }
   body.theme-cream .anchor { background: #f7f0e0; border-top-color: #e0d5bd; color: #6b5f47; border-radius: 0 0 18px 18px; }
   body.theme-cream .anchor-mark { color: #b08c4f; }
@@ -269,6 +287,13 @@
   body.theme-glass .month-bar-fill { background: #82c7cf; }
   body.theme-glass .history th { background: #284953; }
   body.theme-glass .toast { background: #284d57; border-left-color: #b9eded; }
+  body.theme-glass .month-amount:hover { color: #f2ffff; }
+  body.theme-glass #opacityValue { color: #b9eded; }
+  body.theme-glass .shortcut-hint { color: #a9c9cd; }
+  body.theme-glass .field input[type=range]::-ms-track { background: #152e37; }
+  body.theme-glass .field input[type=range]::-ms-fill-lower { background: #82c7cf; }
+  body.theme-glass .field input[type=range]::-ms-fill-upper { background: #152e37; }
+  body.theme-glass .field input[type=range]::-ms-thumb { background: #d9f6f5; border-color: #82c7cf; }
 </style>
 </head>
 <body>
@@ -301,7 +326,7 @@
     <div class="rule"></div>
     <div class="stat">
       <div class="stat-label">本月累计投入</div>
-      <div class="stat-value" id="monthAmount">¥ ****</div>
+      <button class="stat-value month-amount" id="monthAmount" type="button" aria-pressed="true" aria-label="本月累计投入已隐藏，点击显示金额">¥ ****</button>
       <div class="stat-detail" id="monthDetail">仅计算实际记录的日期</div>
     </div>
     <div class="stat">
@@ -334,7 +359,8 @@
           <span class="seg">
             <button type="button" class="seg-btn first on" id="segDeep">深海蓝</button><button type="button" class="seg-btn middle" id="segCream">围裙纸</button><button type="button" class="seg-btn last" id="segGlass">海雾玻璃</button>
           </span>
-        </label><span class="hint">玻璃主题为整个窗口半透明，可透出后面的桌面。</span></div>
+        </label><span class="hint">选择配色；三款主题都可在下方单独调整窗口透明度。</span></div>
+      <div class="field goal-field"><label for="inOpacity">窗口透明度 <span id="opacityValue">100%</span></label><input id="inOpacity" type="range" min="60" max="100" step="1" value="100"><span class="hint">60% 更透，100% 不透明；三款主题分别记住自己的透明度。</span></div>
       <div class="field"><label for="inSalary">到手月薪（元）</label><input id="inSalary" type="password" autocomplete="off"><span class="hint">扣除五险一金和个税后的金额</span></div>
       <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
@@ -347,6 +373,7 @@
     <label class="check"><input id="inAnnounce" type="checkbox" checked>记录时在整点显示提醒</label>
     <label class="check"><input id="inMotion" type="checkbox" checked>启用火焰与小鲸动画</label>
     <label class="check"><input id="inAutoStart" type="checkbox">打开程序后自动开始记录（不补算关闭期间）</label>
+    <div class="shortcut-hint">快捷键：<span>Esc 关闭弹窗</span> · <span>Alt+M 隐藏/显示金额</span> · <span>Alt+T 开始/暂停记录</span> · <span>Alt+S 设置</span> · <span>Alt+H 收起卡片（需桌宠运行）</span></div>
     <div class="modal-actions settings-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
   </div>
 </div>
@@ -509,6 +536,11 @@ var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = nul
 var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
 var receiptDayAmount = 0, receiptMonthAmount = 0;
 var theme = "deep", pendingTheme = "deep", historySelectedMonth = "";
+/* 三款主题分别记忆窗口透明度（60–100%）；玻璃默认 82%，其余默认不透明。 */
+var THEME_DEFAULT_ALPHA = { deep: 100, cream: 100, glass: 82 };
+var savedThemeAlpha = { deep: 100, cream: 100, glass: 82 };
+var draftThemeAlpha = { deep: 100, cream: 100, glass: 82 };
+var activeAlpha = 100, pendingAlpha = 100, settingsEditing = false;
 var PANEL_WIDTH = 530, PANEL_HEIGHT = 720, PANEL_GAP = 12;
 
 function $id(id) { return document.getElementById(id); }
@@ -527,9 +559,45 @@ function applyTheme() {
 function normalizeTheme(value) {
   return value === "cream" || value === "glass" ? value : "deep";
 }
+function clampAlpha(value, fallback) {
+  if (value === null || typeof value === "undefined" || value === "") return fallback;
+  var n = Number(value);
+  if (!isFinite(n)) return fallback;
+  n = Math.round(n);
+  return n < 60 ? 60 : (n > 100 ? 100 : n);
+}
+function bankThemeAlpha(settings) {
+  var stored = settings && settings.themeAlpha && typeof settings.themeAlpha === "object" ? settings.themeAlpha : {};
+  return {
+    deep: clampAlpha(stored.deep, THEME_DEFAULT_ALPHA.deep),
+    cream: clampAlpha(stored.cream, THEME_DEFAULT_ALPHA.cream),
+    glass: clampAlpha(stored.glass, THEME_DEFAULT_ALPHA.glass)
+  };
+}
+function copyThemeAlpha(source) {
+  return {
+    deep: clampAlpha(source.deep, THEME_DEFAULT_ALPHA.deep),
+    cream: clampAlpha(source.cream, THEME_DEFAULT_ALPHA.cream),
+    glass: clampAlpha(source.glass, THEME_DEFAULT_ALPHA.glass)
+  };
+}
+/* 分层窗口使用 0–255 的 alpha；100% 时完全移除透明层。 */
+function alphaByte(pct) {
+  pct = clampAlpha(pct, 100);
+  return pct >= 100 ? 255 : Math.round(pct * 255 / 100);
+}
+function syncOpacityControl() {
+  var input = $id("inOpacity");
+  if (!input) return;
+  pendingAlpha = clampAlpha(pendingAlpha, THEME_DEFAULT_ALPHA[pendingTheme]);
+  input.value = String(pendingAlpha);
+  text("opacityValue", pendingAlpha + "%");
+}
 function setTheme(value, remember) {
   theme = normalizeTheme(value);
   pendingTheme = theme;
+  activeAlpha = (settingsEditing ? draftThemeAlpha : savedThemeAlpha)[theme];
+  pendingAlpha = activeAlpha;
   $id("segDeep").className = "seg-btn first" + (theme === "deep" ? " on" : "");
   $id("segCream").className = "seg-btn middle" + (theme === "cream" ? " on" : "");
   $id("segGlass").className = "seg-btn last" + (theme === "glass" ? " on" : "");
@@ -538,24 +606,34 @@ function setTheme(value, remember) {
   $id("segGlass").setAttribute("aria-pressed", theme === "glass" ? "true" : "false");
   applyTheme();
   applyWindowChrome();
+  if (settingsEditing) syncOpacityControl();
   if (remember && bank.settings) {
     bank.settings.theme = theme;
     dirty = true;
     if (!saveBank()) showToast("主题已切换，但偏好保存失败；请检查目录权限。");
   }
 }
+function previewOpacity(value) {
+  if (!settingsEditing) return;
+  pendingAlpha = clampAlpha(value, THEME_DEFAULT_ALPHA[pendingTheme]);
+  draftThemeAlpha[pendingTheme] = pendingAlpha;
+  theme = pendingTheme;
+  activeAlpha = pendingAlpha;
+  syncOpacityControl();
+  applyWindowChrome();
+}
 /* 标题栏着色和玻璃主题由独立辅助进程设置到当前 HTA 窗口。 */
 var chromeTimer = null, chromeGatePath = "", chromeBasePath = "", chromeRevision = 0;
 var CHROME_COLORS = {
-  deep: { caption: "#0a1424", text: "#e7f1ff", border: "#2b4a6e", dark: 1, alpha: 255 },
-  cream: { caption: "#f2ebdd", text: "#3b3a33", border: "#d9c9a8", dark: 0, alpha: 255 },
-  glass: { caption: "#18303b", text: "#eaf9ff", border: "#85b5bb", dark: 1, alpha: 210 }
+  deep: { caption: "#0a1424", text: "#e7f1ff", border: "#2b4a6e", dark: 1 },
+  cream: { caption: "#f2ebdd", text: "#3b3a33", border: "#d9c9a8", dark: 0 },
+  glass: { caption: "#18303b", text: "#eaf9ff", border: "#85b5bb", dark: 1 }
 };
 function chromeColor(hex) {
   var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
   return r | (g << 8) | (b << 16);
 }
-function chromeCommand(title, handle, colors, gatePath, resultPath, revision) {
+function chromeCommand(title, handle, colors, alphaPct, gatePath, resultPath, revision) {
   var nativeCode = "using System;using System.IO;using System.Runtime.InteropServices;" +
     "public static class WorkBankChrome {const int L=0x80000;const string P=@WorkBankGlassLayer@;" +
     "[DllImport(@dwmapi.dll@)]static extern int DwmSetWindowAttribute(IntPtr h,int a,ref int v,int s);" +
@@ -589,7 +667,7 @@ function chromeCommand(title, handle, colors, gatePath, resultPath, revision) {
   var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
     "Add-Type -TypeDefinition $src;$result=[WorkBankChrome]::Apply(" + psQuote(title) + "," + psQuote(handle) + "," +
     chromeColor(colors.caption) + "," + chromeColor(colors.text) + "," + chromeColor(colors.border) + "," + colors.dark + "," +
-    colors.alpha + "," + psQuote(gatePath) + "," + psQuote(String(revision)) + ")}" +
+    alphaByte(alphaPct) + "," + psQuote(gatePath) + "," + psQuote(String(revision)) + ")}" +
     "catch {$result=-9};if($result -ne 2){try{[IO.File]::WriteAllText(" + psQuote(resultPath) + ",[string]$result,[Text.Encoding]::ASCII)}catch{}}";
   var shell = new ActiveXObject("WScript.Shell");
   var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
@@ -616,14 +694,14 @@ function applyWindowChrome() {
       chromeBasePath = fso.GetSpecialFolder(2).Path + "\\WorkBankChrome-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000);
       chromeGatePath = chromeBasePath + ".current";
     }
-    var revision = ++chromeRevision, requestedTheme = theme;
+    var revision = ++chromeRevision, requestedTheme = theme, requestedAlpha = activeAlpha;
     if (!writePath(chromeGatePath, String(revision), false)) throw new Error("window theme gate unavailable");
     chromeTimer = setTimeout(function () {
       chromeTimer = null;
       var resultPath = chromeBasePath + "." + revision + ".result";
       try {
         chromeCommand(document.title, petRunning ? petParentHandle : "", CHROME_COLORS[requestedTheme] || CHROME_COLORS.deep,
-          chromeGatePath, resultPath, revision);
+          requestedAlpha, chromeGatePath, resultPath, revision);
         setTimeout(function () { checkChromeResult(resultPath, revision, new Date().getTime()); }, 300);
       } catch (e) { if (revision === chromeRevision) showToast("窗口透明效果未能切换，请检查 PowerShell 和系统策略。"); }
     }, 300);
@@ -712,6 +790,10 @@ function loadBank() {
     masked = !bank.settings || bank.settings.maskByDefault !== false;
     theme = normalizeTheme(bank.settings && bank.settings.theme);
     pendingTheme = theme;
+    savedThemeAlpha = bankThemeAlpha(bank.settings);
+    draftThemeAlpha = copyThemeAlpha(savedThemeAlpha);
+    activeAlpha = savedThemeAlpha[theme];
+    pendingAlpha = activeAlpha;
     if (bank.settings) {
       petTopMost = bank.settings.petOnTop !== false;
       petPositionX = typeof bank.settings.petX === "number" && isFinite(bank.settings.petX) && Math.abs(bank.settings.petX) <= 100000 ? Math.round(bank.settings.petX) : null;
@@ -1022,6 +1104,8 @@ function handlePetEvent(value) {
     render(new Date().getTime());
   } else if (value === "toggle") {
     if (tracking) pauseTracking(); else startTracking();
+  } else if (value === "privacy") {
+    togglePrivacy();
   } else if (value === "pin|1" || value === "pin|0") {
     petTopMost = value === "pin|1";
     if (bank.settings) { bank.settings.petOnTop = petTopMost; dirty = true; }
@@ -1305,6 +1389,9 @@ function render(now) {
   text("activeText", "已记录 " + duration(day.activeSeconds) + (bankManualMinutes(day) ? " · 补记 " + bankManualMinutes(day) + " 分" : ""));
   text("endText", endDescription(now));
   text("monthAmount", money(month.amount));
+  $id("monthAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
+  $id("monthAmount").setAttribute("aria-label", "本月累计投入 " + money(month.amount) + "，" + $id("monthAmount").title);
+  $id("monthAmount").setAttribute("aria-pressed", masked ? "true" : "false");
   text("monthDetail", "已记录 " + month.days + " 天 · 活跃 " + duration(month.activeSeconds));
   text("monthOvertime", duration(month.overtimeSeconds));
   text("leaveDetail", "折合 " + (month.overtimeSeconds / 28800).toFixed(1) + " 个标准日（仅供参考）");
@@ -1395,12 +1482,19 @@ function openSettings() {
   $id("inAutoStart").checked = !!(s && s.autoStart === true);
   $id("inGoals").value = s && typeof s.customGoals === "string" ? s.customGoals : "";
   showGoalValidation();
+  savedThemeAlpha = bankThemeAlpha(s);
+  draftThemeAlpha = copyThemeAlpha(savedThemeAlpha);
+  settingsEditing = true;
   setTheme(normalizeTheme(s && s.theme), false);
+  syncOpacityControl();
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
   $id("settingsModal").className = "modal";
 }
 function saveSettings() {
+  var chosenTheme = pendingTheme || "deep";
+  var alphaDraft = copyThemeAlpha(draftThemeAlpha);
+  alphaDraft[chosenTheme] = pendingAlpha;
   var settings = {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
@@ -1409,7 +1503,8 @@ function saveSettings() {
     miniInfo: $id("inMiniMode").value !== "off",
     autoStart: $id("inAutoStart").checked,
     customGoals: $id("inGoals").value.replace(/^\s+|\s+$/g, ""),
-    theme: pendingTheme || "deep",
+    theme: chosenTheme,
+    themeAlpha: alphaDraft,
     alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
     petOnTop: petTopMost,
     petX: petPositionX,
@@ -1432,15 +1527,32 @@ function saveSettings() {
     if (day) { day.hourlyRate = previousRate; day.dayHours = previousHours; }
     masked = previousMask;
     dirty = previousDirty;
+    settingsEditing = true;
+    draftThemeAlpha = copyThemeAlpha(savedThemeAlpha);
+    setTheme(normalizeTheme(previousSettings && previousSettings.theme), false);
     alert(storageProblem);
     render(new Date().getTime());
     return;
   }
+  savedThemeAlpha = copyThemeAlpha(alphaDraft);
+  theme = chosenTheme;
+  pendingTheme = chosenTheme;
+  activeAlpha = savedThemeAlpha[chosenTheme];
+  pendingAlpha = activeAlpha;
+  settingsEditing = false;
   $id("settingsModal").className = "modal hidden";
   if (settings.customGoals && !bankGoalCustom(settings.customGoals)) showToast("自定义目标至少需要 3 个有效项，暂用内置目标。");
   if (!previousSettings) startTracking();
   else render(new Date().getTime());
   applyTheme();
+  applyWindowChrome();
+}
+function cancelSettings() {
+  settingsEditing = false;
+  draftThemeAlpha = copyThemeAlpha(savedThemeAlpha);
+  setTheme(normalizeTheme(bank.settings && bank.settings.theme), false);
+  syncOpacityControl();
+  $id("settingsModal").className = "modal hidden";
 }
 function signOff() {
   if (!bank.settings) { openSettings(); return; }
@@ -1583,14 +1695,61 @@ function togglePrivacy() {
 }
 $id("btnPrivacy").onclick = togglePrivacy;
 $id("todayAmount").onclick = togglePrivacy;
+$id("monthAmount").onclick = togglePrivacy;
 $id("btnTrack").onclick = function () { if (tracking) pauseTracking(); else startTracking(); };
 $id("btnSettings").onclick = openSettings;
 $id("btnSaveSettings").onclick = saveSettings;
-$id("btnCancelSettings").onclick = function () {
-  theme = normalizeTheme(bank.settings && bank.settings.theme);
-  setTheme(theme, false);
-  $id("settingsModal").className = "modal hidden";
-};
+$id("btnCancelSettings").onclick = cancelSettings;
+$id("inOpacity").oninput = function () { previewOpacity(this.value); };
+$id("inOpacity").onchange = function () { previewOpacity(this.value); };
+function modalVisible() {
+  var ids = ["settingsModal", "receiptModal", "historyModal", "manualModal"];
+  for (var i = 0; i < ids.length; i++) if ($id(ids[i]).className === "modal") return true;
+  return false;
+}
+function closeTopModal() {
+  var ids = ["settingsModal", "receiptModal", "historyModal", "manualModal"];
+  for (var i = 0; i < ids.length; i++) {
+    if ($id(ids[i]).className !== "modal") continue;
+    if (ids[i] === "settingsModal") cancelSettings();
+    else $id(ids[i]).className = "modal hidden";
+    return true;
+  }
+  return false;
+}
+function hideViaPet() {
+  if (!petRunning) { showToast("小鲸桌宠未在运行，暂时无法快捷收起卡片。"); return; }
+  handlePetEvent("hide");
+}
+function shortcutFieldTarget(target) {
+  var tag = target && target.tagName ? String(target.tagName).toUpperCase() : "";
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+/* Esc 关闭当前弹窗；Alt+M 打码、Alt+T 计时、Alt+S 设置、Alt+H 经桌宠收起卡片。 */
+function handleShortcut(event) {
+  event = event || window.event;
+  var keyCode = event.keyCode || event.which || 0, target = event.target || event.srcElement;
+  if (keyCode === 27) {
+    if (!modalVisible()) return true;
+    closeTopModal();
+    if (event.preventDefault) event.preventDefault();
+    event.returnValue = false;
+    return false;
+  }
+  if (!event.altKey || shortcutFieldTarget(target)) return true;
+  if (keyCode === 77) togglePrivacy();
+  else if (keyCode === 84) {
+    if (tracking) pauseTracking(); else startTracking();
+  } else if (keyCode === 83) {
+    if (!modalVisible()) openSettings();
+  } else if (keyCode === 72) {
+    if (!modalVisible()) hideViaPet();
+  } else return true;
+  if (event.preventDefault) event.preventDefault();
+  event.returnValue = false;
+  return false;
+}
+document.onkeydown = handleShortcut;
 $id("showSalary").onclick = function () { $id("inSalary").type = this.checked ? "text" : "password"; };
 $id("btnSign").onclick = signOff;
 $id("btnCloseReceipt").onclick = function () { $id("receiptModal").className = "modal hidden"; };
@@ -1618,6 +1777,7 @@ window.onload = function () {
   } catch (e) {}
   loadBank();
   setTheme(theme, false);
+  syncOpacityControl();
   render(new Date().getTime());
   renderPin();
   setInterval(tick, 250);

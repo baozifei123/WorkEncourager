@@ -708,7 +708,10 @@ test('window chrome colours follow the theme palette', () => {
   assert.equal(app.chromeColor('#f2ebdd'), 0xddebf2);
   assert.equal(app.chromeColor('#2b4a6e'), 0x6e4a2b);
   assert.equal(app.chromeColor('#18303b'), 0x3b3018);
-  assert.equal(app.CHROME_COLORS.glass.alpha, 210);
+  assert.equal(app.THEME_DEFAULT_ALPHA.glass, 82);
+  assert.equal(app.alphaByte(app.THEME_DEFAULT_ALPHA.glass), 209);
+  assert.equal(app.alphaByte(100), 255);
+  assert.equal(app.alphaByte(60), 153);
   assert.equal(app.normalizeTheme('glass'), 'glass');
   assert.equal(app.normalizeTheme('unknown'), 'deep');
 });
@@ -753,6 +756,133 @@ test('glass theme cycles, persists, restores after reload, and cancels preview',
   restored.elements.btnTheme.onclick();
   assert.equal(next.theme, 'deep');
   assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'deep');
+});
+
+test('three themes remember their own opacity, preview it, and persist it', () => {
+  const first = runtime(), seeded = first.context;
+  seeded.bank.settings = { ...settings, theme: 'glass', themeAlpha: { deep: 100, cream: 90, glass: 70 } };
+  assert.equal(seeded.saveBank(), true);
+
+  const env = runtime(first.files), app = env.context, elements = env.elements;
+  app.loadBank();
+  assert.equal(app.theme, 'glass');
+  assert.equal(app.activeAlpha, 70);
+  assert.equal(app.savedThemeAlpha.cream, 90);
+  app.openSettings();
+  assert.equal(elements.inOpacity.value, '70');
+  assert.equal(elements.opacityValue.innerText, '70%');
+  elements.segCream.onclick();
+  assert.equal(app.activeAlpha, 90, 'another theme uses its own saved opacity');
+  elements.inOpacity.value = '63';
+  elements.inOpacity.oninput();
+  assert.equal(app.activeAlpha, 63);
+  assert.equal(app.draftThemeAlpha.cream, 63);
+  elements.segGlass.onclick();
+  assert.equal(app.activeAlpha, 70);
+  elements.segCream.onclick();
+  assert.equal(app.activeAlpha, 63, 'an edited theme keeps its draft while the dialog is open');
+  elements.btnCancelSettings.onclick();
+  assert.equal(app.theme, 'glass');
+  assert.equal(app.activeAlpha, 70);
+  assert.equal(app.draftThemeAlpha.cream, 90);
+
+  app.openSettings();
+  elements.segCream.onclick();
+  elements.inOpacity.value = '64';
+  elements.inOpacity.oninput();
+  elements.inSalary.value = '8000';
+  elements.inMonthHours.value = '174';
+  elements.inDayHours.value = '8';
+  elements.inEndTime.value = '18:00';
+  elements.inMask.checked = true;
+  app.saveSettings();
+  assert.equal(app.bank.settings.theme, 'cream');
+  assert.equal(app.bank.settings.themeAlpha.cream, 64);
+  assert.equal(app.activeAlpha, 64);
+  const stored = JSON.parse(env.files[app.appPath('workbank.json')]).settings;
+  assert.equal(stored.themeAlpha.cream, 64);
+  assert.equal(stored.themeAlpha.glass, 70);
+
+  const reloaded = runtime(env.files).context;
+  reloaded.loadBank();
+  assert.equal(reloaded.theme, 'cream');
+  assert.equal(reloaded.activeAlpha, 64);
+});
+
+test('opacity defaults and out-of-range values are sanitised', () => {
+  const { context: app } = runtime();
+  const defaults = app.bankThemeAlpha(null);
+  assert.equal(defaults.deep, 100);
+  assert.equal(defaults.cream, 100);
+  assert.equal(defaults.glass, 82);
+  assert.equal(app.clampAlpha(59, 100), 60);
+  assert.equal(app.clampAlpha(101, 88), 100);
+  assert.equal(app.clampAlpha('bad', 88), 88);
+  assert.equal(app.clampAlpha(null, 87), 87);
+  const stored = app.bankThemeAlpha({ themeAlpha: { deep: 61, cream: 'bad', glass: 120 } });
+  assert.equal(stored.deep, 61);
+  assert.equal(stored.cream, 100);
+  assert.equal(stored.glass, 100);
+});
+
+test('keyboard shortcuts close dialogs, mask amounts, toggle tracking, and hide via the pet', () => {
+  const env = runtime(), app = env.context, elements = env.elements;
+  app.bank.settings = { ...settings, theme: 'glass', themeAlpha: { deep: 100, cream: 100, glass: 75 } };
+  app.savedThemeAlpha = app.bankThemeAlpha(app.bank.settings);
+  app.setTheme('glass', false);
+  app.openSettings();
+  elements.segDeep.onclick();
+  assert.equal(app.activeAlpha, 100);
+  const esc = { keyCode: 27, altKey: false, target: { tagName: 'INPUT' }, preventDefault() { this.prevented = true; } };
+  assert.equal(app.handleShortcut(esc), false);
+  assert.equal(elements.settingsModal.className, 'modal hidden');
+  assert.equal(app.theme, 'glass');
+  assert.equal(app.activeAlpha, 75);
+  assert.equal(esc.prevented, true);
+
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.render(Date.now());
+  assert.equal(app.masked, true);
+  const maskKey = { keyCode: 77, altKey: true, target: { tagName: 'BODY' }, preventDefault() {} };
+  assert.equal(app.handleShortcut(maskKey), false);
+  assert.equal(app.masked, false);
+
+  app.startMonitor = () => {};
+  const trackKey = { keyCode: 84, altKey: true, target: { tagName: 'BODY' }, preventDefault() {} };
+  app.handleShortcut(trackKey);
+  assert.equal(app.tracking, true);
+  app.handleShortcut(trackKey);
+  assert.equal(app.tracking, false);
+
+  app.petControlPath = 'C:\\Temp\\control';
+  app.petRunning = true;
+  const hideKey = { keyCode: 72, altKey: true, target: { tagName: 'BODY' }, preventDefault() {} };
+  app.handleShortcut(hideKey);
+  assert.equal(env.files[app.petControlPath], 'hide');
+  assert.equal(app.petPanelVisible, false);
+
+  const typed = { keyCode: 77, altKey: true, target: { tagName: 'TEXTAREA' }, preventDefault() {} };
+  const before = app.masked;
+  app.handleShortcut(typed);
+  assert.equal(app.masked, before, 'shortcuts typed into form fields are ignored');
+});
+
+test('the mini card privacy event and the monthly amount share the mask toggle', () => {
+  const env = runtime(), app = env.context, elements = env.elements;
+  app.bank.settings = { ...settings, maskByDefault: true };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.petControlPath = 'C:\\Temp\\control';
+  app.petRunning = true;
+  app.render(Date.now());
+  assert.match(elements.monthAmount.innerText, /\*\*\*\*/);
+  app.handlePetEvent('privacy');
+  assert.equal(app.masked, false);
+  assert.match(elements.monthAmount.innerText, /45\.98/);
+  assert.equal(elements.monthAmount.attributes['aria-pressed'], 'false');
+  elements.monthAmount.onclick();
+  assert.equal(app.masked, true);
+  assert.match(elements.monthAmount.innerText, /\*\*\*\*/);
+  assert.equal(elements.monthAmount.attributes['aria-pressed'], 'true');
 });
 
 test('mini info modes migrate old settings and persist', () => {
