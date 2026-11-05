@@ -53,9 +53,23 @@
   .caption { min-height: 20px; color: #aab4ac; font-size: 12px; }
   .progress-head { margin-top: 16px; color: #cdd3c9; font-size: 12px; }
   .progress-head .right { float: right; color: #d4b77c; font-family: Consolas, monospace; font-size: 13px; }
-  .track { height: 8px; margin-top: 8px; background: #0d1214; overflow: hidden; }
-  .fill { height: 100%; width: 0; background: #a8bd9c; transition: width .3s; }
-  .fill.overtime { background: #d89b56; }
+  .energy { position: relative; height: 22px; margin-top: 7px; padding-right: 29px; }
+  .track { position: relative; top: 7px; height: 10px; background: #0d161b; border: 1px solid #334b50; border-radius: 8px; overflow: hidden; }
+  .fill { position: relative; height: 100%; width: 0; border-radius: 8px; transition: width .3s; }
+  .fill:after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) 4px, transparent 4px, transparent 15px); animation: energyFlow 1.1s linear infinite; }
+  .energy.cool .fill { background: linear-gradient(90deg, #247d90, #7addd0); }
+  .energy.warm .fill { background: linear-gradient(90deg, #c57a35, #ffd16c); }
+  .energy.hot .fill, .energy.overtime .fill { background: linear-gradient(90deg, #d64930, #ffad3e); }
+  .flame-icon { position: absolute; right: 2px; top: 0; width: 18px; height: 22px; transform-origin: 50% 95%; animation: flamePulse 1s ease-in-out infinite alternate; }
+  .flame-outer { fill: #6dcbd1; }
+  .energy.warm .flame-outer { fill: #f4b050; }
+  .energy.hot .flame-outer, .energy.overtime .flame-outer { fill: #ff7037; }
+  .flame-inner { fill: #ffe2a0; }
+  .energy.paused .fill, .energy.paused .flame-icon { opacity: .45; }
+  .energy.paused .fill:after, .energy.paused .flame-icon, .motion-off .fill:after, .motion-off .flame-icon { animation: none; }
+  .motion-off .fill { transition: none; }
+  @keyframes energyFlow { from { background-position: 0 0; } to { background-position: 32px 0; } }
+  @keyframes flamePulse { from { transform: scale(.92,.92); } to { transform: scale(1.06,1.08); } }
   .progress-foot { margin-top: 8px; color: #8f9c94; font-size: 11px; }
   .progress-foot .right { float: right; }
   .rule { height: 1px; margin: 17px 0 15px; background: #414a45; }
@@ -69,6 +83,9 @@
   .monitor { margin: 10px 1px 0; color: #a5b1a9; font-size: 11px; line-height: 1.7; }
   .monitor.error { color: #edb080; }
   .monitor button { margin-left: 8px; padding: 2px 7px; border: 1px solid #92764d; color: #edc99b; background: transparent; font-size: 11px; }
+  .pet-status { margin: 7px 1px 0; color: #9ccbd3; font-size: 11px; line-height: 1.6; }
+  .pet-status.error { color: #edb080; }
+  .pet-status button { padding: 2px 7px; margin-left: 5px; border: 1px solid #527c87; color: #d2edf0; background: #1b3038; font-size: 11px; }
   .actions { margin-top: 13px; }
   .btn { display: inline-block; padding: 9px 12px; border: 1px solid transparent; font-size: 12px; letter-spacing: 1px; }
   .btn-primary { color: #19221c; background: #c7d5b8; border-color: #c7d5b8; font-weight: bold; }
@@ -127,7 +144,10 @@
     <div class="caption" id="todayCaption">先设置到手月薪和计划工时</div>
 
     <div class="progress-head"><span>今日活跃工时</span><span class="right" id="progressText">0.00 / 8.00 小时 · 0%</span></div>
-    <div class="track"><div class="fill" id="progressFill"></div></div>
+    <div class="energy cool paused" id="energyMeter">
+      <div class="track"><div class="fill" id="progressFill"></div></div>
+      <svg class="flame-icon" viewBox="0 0 24 30" aria-hidden="true"><path class="flame-outer" d="M13 1 C14 7 18 9 19 14 C21 21 18 28 12 29 C6 28 3 24 4 18 C4 14 7 11 9 9 C9 13 11 14 12 14 C13 10 12 6 13 1 Z"/><path class="flame-inner" d="M13 15 C16 18 17 21 16 24 C15 27 10 28 8 25 C6 22 8 19 10 17 C10 20 12 20 13 15 Z"/></svg>
+    </div>
     <div class="progress-foot"><span id="activeText">已记录 00:00:00</span><span class="right" id="endText">计划下班 --:--</span></div>
 
     <div class="rule"></div>
@@ -145,6 +165,7 @@
   </div>
 
   <div class="monitor" id="monitorText">仅在开启记录且程序运行时统计；2 分钟内有键鼠操作视为活跃。</div>
+  <div class="pet-status hidden" id="petStatus"><span id="petStatusText"></span><button id="btnPetRetry" type="button">重试桌宠</button></div>
   <div class="actions">
     <button class="btn btn-primary" id="btnTrack" type="button">开始记录</button>
     <button class="btn btn-stamp" id="btnSign" type="button">今日收工 · 签章</button>
@@ -168,6 +189,7 @@
     <label class="check"><input id="showSalary" type="checkbox">在此处显示输入的月薪</label>
     <label class="check"><input id="inMask" type="checkbox" checked>每次打开时默认隐藏金额</label>
     <label class="check"><input id="inAnnounce" type="checkbox" checked>记录时在整点显示提醒</label>
+    <label class="check"><input id="inMotion" type="checkbox" checked>启用火焰与小鲸动画</label>
     <div class="modal-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
   </div>
 </div>
@@ -279,11 +301,15 @@ var monitorStarted = 0, monitorReady = false, monitorIdle = false;
 var alivePath = "", samplePath = "", lastHour = "", toastTimer = null;
 var pinned = false, pinPending = false, pinDesired = false, pinRemember = false;
 var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
+var petStarting = false, petRunning = false, petStarted = 0, petLastHeartbeat = 0, petLastState = "";
+var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", petControlPath = "", petNoticePath = "", petEventsPath = "";
+var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
+var petTopMost = true, petPositionX = null, petPositionY = null;
 
 function $id(id) { return document.getElementById(id); }
 function text(id, value) { $id(id).innerText = value; }
 function pad(n) { return (n < 10 ? "0" : "") + n; }
-function money(n) { return masked ? "¥ ****" : "¥ " + Math.max(0, n).toFixed(2); }
+function money(n, precision) { return masked ? "¥ ****" : "¥ " + Math.max(0, n).toFixed(precision === 4 ? 4 : 2); }
 function duration(seconds) {
   seconds = Math.floor(Math.max(0, seconds));
   return pad(Math.floor(seconds / 3600)) + ":" + pad(Math.floor(seconds % 3600 / 60)) + ":" + pad(seconds % 60);
@@ -356,6 +382,11 @@ function loadBank() {
     }
     bank = data;
     masked = !bank.settings || bank.settings.maskByDefault !== false;
+    if (bank.settings) {
+      petTopMost = bank.settings.petOnTop !== false;
+      petPositionX = typeof bank.settings.petX === "number" && isFinite(bank.settings.petX) && Math.abs(bank.settings.petX) <= 100000 ? Math.round(bank.settings.petX) : null;
+      petPositionY = typeof bank.settings.petY === "number" && isFinite(bank.settings.petY) && Math.abs(bank.settings.petY) <= 100000 ? Math.round(bank.settings.petY) : null;
+    }
   } catch (e) {
     fatalStorage = true;
     storageProblem = "无法访问本机文件，已暂停保存。请检查目录权限。";
@@ -402,7 +433,7 @@ function renderPin() {
   var button = $id("btnPin");
   text("btnPin", pinPending ? "设置中…" : (pinned ? "取消置顶" : "置顶窗口"));
   button.className = "pin" + (pinned ? " on" : "");
-  button.disabled = pinPending;
+  button.disabled = pinPending || petStarting;
   button.setAttribute("aria-pressed", pinned ? "true" : "false");
   button.title = pinned ? "取消窗口置顶" : "将窗口固定在其他普通窗口前面";
 }
@@ -426,6 +457,7 @@ function finishPin(success) {
     showToast("无法恢复窗口置顶，可检查 PowerShell 后手动重试。");
   }
   renderPin();
+  if (petStarted === -1) { petStarted = 0; startPet(); }
 }
 function checkPin() {
   if (!pinPending) return;
@@ -435,7 +467,7 @@ function checkPin() {
   pinTimer = setTimeout(checkPin, 250);
 }
 function requestPin(desired, remember) {
-  if (pinPending) return;
+  if (pinPending || petStarting) return;
   try {
     var shell = new ActiveXObject("WScript.Shell");
     var fso = new ActiveXObject("Scripting.FileSystemObject");
@@ -455,6 +487,194 @@ function requestPin(desired, remember) {
     if (pinPending) finishPin(false);
     else alert("无法切换窗口置顶。请检查 PowerShell 和系统策略，然后重试。");
   }
+}
+
+/* 桌宠与主窗口仅交换状态、位置和操作，不交换金额或薪资。 */
+function petLaunchCommand(title, x, y) {
+  var args = [psQuote(title), psQuote(appPath("assets")), psQuote(petAlivePath), psQuote(petStatePath),
+    psQuote(petBeatPath), psQuote(petReadyPath), psQuote(petControlPath), psQuote(petNoticePath), psQuote(petEventsPath)];
+  return "$ErrorActionPreference='Stop';try { Add-Type -Path " + psQuote(appPath("DesktopPet.cs")) +
+    " -ReferencedAssemblies @('System.Windows.Forms','System.Drawing');[WorkBankPet]::Run(" + args.join(",") +
+    "," + (petTopMost ? "$true" : "$false") + "," + x + "," + y + ") }" +
+    " catch { try { [IO.File]::WriteAllText(" + psQuote(petReadyPath) + ",'error',[Text.Encoding]::ASCII) } catch {} }";
+}
+function recoverPetPanel(handle) {
+  if (!/^\d{1,20}$/.test(handle)) return;
+  try {
+    var shell = new ActiveXObject("WScript.Shell");
+    var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    var nativeCode = "using System;using System.Runtime.InteropServices;public static class WorkBankRecovery {" +
+      "[DllImport(@user32.dll@)]static extern bool IsWindow(IntPtr h);" +
+      "[DllImport(@user32.dll@)]static extern bool IsIconic(IntPtr h);" +
+      "[DllImport(@user32.dll@)]static extern bool ShowWindowAsync(IntPtr h,int command);" +
+      "public static void Restore(long value){IntPtr h=new IntPtr(value);if(IsWindow(h)&&IsIconic(h))ShowWindowAsync(h,9);}}";
+    var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
+      "Add-Type -TypeDefinition $src;[WorkBankRecovery]::Restore(" + handle + ")} catch {}";
+    shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
+  } catch (e) {}
+}
+function petState() {
+  if (fatalStorage || storageProblem) return "error";
+  if (!bank.settings) return "unconfigured";
+  if (!tracking) return "paused";
+  if (!monitorReady) return "waiting";
+  if (monitorIdle) return "idle";
+  var d = new Date(), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  var day = currentDay(d.getTime());
+  if (time >= bank.settings.endTime || bankOvertime(day) > 0) return "overtime";
+  return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "urgent" : "active";
+}
+function writePetState() {
+  if (!petStatePath || (!petStarting && !petRunning)) return;
+  var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" + (tracking ? "1" : "0");
+  if (state !== petLastState && writePath(petStatePath, state, false)) petLastState = state;
+}
+function showPetStatus(message) {
+  text("petStatusText", message);
+  $id("petStatus").className = message ? "pet-status error" : "pet-status hidden";
+}
+function cleanupPetFiles() {
+  deletePath(petAlivePath);
+  deletePath(petStatePath);
+  deletePath(petBeatPath);
+  deletePath(petReadyPath);
+  deletePath(petControlPath);
+  deletePath(petNoticePath);
+  if (petEventsPath) {
+    try {
+      var fso = new ActiveXObject("Scripting.FileSystemObject");
+      if (fso.FolderExists(petEventsPath)) fso.DeleteFolder(petEventsPath, true);
+    } catch (e) {}
+  }
+}
+function stopPet() {
+  petStarting = false;
+  petRunning = false;
+  petStarted = 0;
+  cleanupPetFiles();
+}
+function failPet(message) {
+  var restoreHandle = petRunning ? petParentHandle : "";
+  if (petStarting && document.title === petTargetTitle) document.title = petPreviousTitle;
+  stopPet();
+  recoverPetPanel(restoreHandle);
+  renderPin();
+  showPetStatus(message);
+  showToast(message);
+}
+function startPet() {
+  if (petStarting || petRunning) return true;
+  if (pinPending) { petStarted = -1; return false; }
+  try {
+    var shell = new ActiveXObject("WScript.Shell");
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var temp = fso.GetSpecialFolder(2).Path;
+    var token = "WorkBankPet-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000);
+    var base = temp + "\\" + token;
+    petAlivePath = base + ".alive";
+    petStatePath = base + ".state";
+    petBeatPath = base + ".beat";
+    petReadyPath = base + ".ready";
+    petControlPath = base + ".control";
+    petNoticePath = base + ".notice";
+    petEventsPath = base + ".events";
+    fso.CreateFolder(petEventsPath);
+    if (!writePath(petAlivePath, "alive", false)) throw new Error("heartbeat failed");
+    petPreviousTitle = document.title;
+    petTargetTitle = petPreviousTitle + " [" + token + "]";
+    document.title = petTargetTitle;
+    petStarting = true;
+    petRunning = false;
+    petPanelVisible = true;
+    petParentHandle = "";
+    petStarted = new Date().getTime();
+    petLastHeartbeat = petStarted;
+    petLastState = "";
+    renderPin();
+    writePetState();
+    var petX = petPositionX !== null ? petPositionX : -2147483648;
+    var petY = petPositionY !== null ? petPositionY : -2147483648;
+    var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    var command = petLaunchCommand(petTargetTitle, petX, petY);
+    shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -Sta -WindowStyle Hidden -Command "' + command + '"', 0, false);
+    showPetStatus("");
+    return true;
+  } catch (e) {
+    failPet("小鲸桌宠启动失败，工时卡片仍可正常使用。");
+    return false;
+  }
+}
+function handlePetEvent(value) {
+  if (value === "hide" || value === "show") {
+    petPanelVisible = value === "show";
+    if (!petPanelVisible) $id("toast").className = "toast hidden";
+  } else if (value === "toggle") {
+    if (tracking) pauseTracking(); else startTracking();
+  } else if (value === "pin|1" || value === "pin|0") {
+    petTopMost = value === "pin|1";
+    if (bank.settings) { bank.settings.petOnTop = petTopMost; dirty = true; }
+  } else {
+    var match = /^position\|(-?\d{1,6})\|(-?\d{1,6})$/.exec(value);
+    if (match && Math.abs(Number(match[1])) <= 100000 && Math.abs(Number(match[2])) <= 100000) {
+      petPositionX = Number(match[1]);
+      petPositionY = Number(match[2]);
+      if (bank.settings) { bank.settings.petX = petPositionX; bank.settings.petY = petPositionY; dirty = true; }
+    }
+  }
+  if (dirty && !tracking && !saveBank()) showToast("桌宠设置未能保存，请检查目录权限。");
+}
+function readPetEvents() {
+  if (!petEventsPath) return;
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    if (!fso.FolderExists(petEventsPath)) return;
+    var paths = [], files = new Enumerator(fso.GetFolder(petEventsPath).Files);
+    for (; !files.atEnd(); files.moveNext()) {
+      var path = String(files.item().Path);
+      if (/\.evt$/i.test(path)) paths.push(path);
+    }
+    paths.sort();
+    for (var i = 0; i < paths.length; i++) {
+      var value = readPath(paths[i], false);
+      deletePath(paths[i]);
+      handlePetEvent(value);
+    }
+  } catch (e) {}
+}
+function petTick() {
+  if (!petStarting && !petRunning) return;
+  var now = new Date().getTime();
+  if (now - petLastHeartbeat >= 5000) {
+    if (!writePath(petAlivePath, "alive", false)) { failPet("桌宠连接中断，工时卡片仍可正常使用。"); return; }
+    petLastHeartbeat = now;
+  }
+  if (petStarting) {
+    var ready = readPath(petReadyPath, false);
+    var readyMatch = /^ready\|(\d{1,20})$/.exec(ready);
+    if (readyMatch) {
+      petParentHandle = readyMatch[1];
+      deletePath(petReadyPath);
+      if (document.title === petTargetTitle) document.title = petPreviousTitle;
+      petStarting = false;
+      petRunning = true;
+      petStarted = now;
+      renderPin();
+      showPetStatus("");
+      petPanelVisible = !!fatalStorage;
+      writePath(petControlPath, fatalStorage ? "show" : "hide", false);
+    } else if (ready === "error" || now - petStarted > 20000) {
+      failPet("小鲸桌宠未能启动，请检查 PowerShell 或组件文件。");
+      return;
+    }
+  } else {
+    var beat = Number(readPath(petBeatPath, false));
+    if (now - petStarted > 8000 && (!(beat > 0) || now - beat > 12000 || beat - now > 3000)) {
+      failPet("小鲸桌宠已退出或连接中断，工时卡片仍可使用。");
+      return;
+    }
+    readPetEvents();
+  }
+  writePetState();
 }
 
 /* 采样进程只查询 GetLastInputInfo，临时文件仅传递时间戳。 */
@@ -582,11 +802,13 @@ function render(now) {
   status.className = statusClass;
   text("status", stateText);
   text("dateText", bankDate(now));
-  text("todayAmount", money(bankDayAmount(day)));
+  text("todayAmount", money(bankDayAmount(day), 4));
   text("todayCaption", bank.settings ? "折合 " + (day.activeSeconds / 28800).toFixed(2) + " 个标准日（8小时） · 时薪 " + money(day.hourlyRate) : "先设置到手月薪和计划工时");
   text("progressText", (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时 · " + Math.floor(pct) + "%");
   $id("progressFill").style.width = Math.min(100, Math.max(0, pct)) + "%";
-  $id("progressFill").className = "fill" + (pct >= 100 ? " overtime" : "");
+  var stage = pct >= 100 ? "overtime" : (pct >= 90 ? "hot" : (pct >= 60 ? "warm" : "cool"));
+  $id("energyMeter").className = "energy " + stage + ((!tracking || !monitorReady || monitorIdle) ? " paused" : "");
+  document.body.className = bank.settings && bank.settings.motion === false ? "motion-off" : "";
   text("activeText", "已记录 " + duration(day.activeSeconds));
   text("endText", endDescription(now));
   text("monthAmount", money(month.amount));
@@ -596,7 +818,7 @@ function render(now) {
   text("anchorText", goalText(day));
   text("btnPrivacy", masked ? "显示金额" : "隐藏金额");
   text("btnTrack", tracking ? "暂停记录" : "开始记录");
-  $id("bankCard").title = stateText + " · 活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day));
+  $id("bankCard").title = stateText + " · 活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
   var monitor = $id("monitorText");
   monitor.className = "monitor" + (storageProblem || (tracking && !monitorReady && now - monitorStarted > 8000) ? " error" : "");
   if (storageProblem) text("monitorText", storageProblem);
@@ -609,12 +831,17 @@ function render(now) {
 }
 function hourKey(d) { return bankDate(d.getTime()) + "-" + pad(d.getHours()); }
 function showToast(message) {
+  if (petRunning && !petPanelVisible) {
+    var notice = message.indexOf("整点") >= 0 || message.indexOf("时薪参考") === 0 ? "hour" : "attention";
+    writePath(petNoticePath, notice, false);
+    return;
+  }
   text("toast", message);
   $id("toast").className = "toast";
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { $id("toast").className = "toast hidden"; }, 6000);
 }
-function tick() {
+function tick(skipPet) {
   var now = new Date().getTime();
   if (tracking && bank.settings) {
     if (alivePath && now - lastHeartbeat >= 5000) {
@@ -640,6 +867,7 @@ function tick() {
     }
   }
   render(now);
+  if (skipPet !== true) petTick();
 }
 function startTracking() {
   if (fatalStorage) { alert(storageProblem); return; }
@@ -654,7 +882,7 @@ function startTracking() {
 }
 function pauseTracking() {
   if (!tracking) return;
-  tick();
+  tick(true);
   tracking = false;
   stopMonitor();
   if (dirty) saveBank();
@@ -669,6 +897,7 @@ function openSettings() {
   $id("inEndTime").value = s ? s.endTime : "18:00";
   $id("inMask").checked = !s || s.maskByDefault !== false;
   $id("inAnnounce").checked = !s || s.announce !== false;
+  $id("inMotion").checked = !s || s.motion !== false;
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
   $id("settingsModal").className = "modal";
@@ -677,8 +906,11 @@ function saveSettings() {
   var settings = {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
-    maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked,
-    alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned
+    maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
+    alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
+    petOnTop: petTopMost,
+    petX: petPositionX,
+    petY: petPositionY
   };
   if (!bankValidSettings(settings)) {
     alert("请填写有效的到手月薪、月计划工时（不超过 744）、日计划工时（不超过 24）和下班时间（如 18:00）。");
@@ -731,6 +963,7 @@ function showHistory() {
   $id("historyModal").className = "modal";
 }
 
+$id("btnPetRetry").onclick = function () { startPet(); };
 $id("btnPin").onclick = function () { requestPin(!pinned, true); };
 $id("btnPrivacy").onclick = function () {
   masked = !masked;
@@ -758,11 +991,13 @@ window.onload = function () {
   setInterval(tick, 1000);
   if (bank.settings && bank.settings.alwaysOnTop === true) requestPin(true, false);
   if (!bank.settings && !fatalStorage) openSettings();
+  startPet();
 };
 window.onunload = function () {
   if (tracking) pauseTracking();
   else if (dirty) saveBank();
   stopMonitor();
+  stopPet();
   if (pinTimer) clearTimeout(pinTimer);
   deletePath(pinResultPath);
 };

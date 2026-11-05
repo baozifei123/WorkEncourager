@@ -14,6 +14,16 @@ function runtime(files = Object.create(null)) {
   const commands = [];
   const fso = {
     FileExists(name) { return Object.hasOwn(files, name); },
+    FolderExists(name) { return Object.hasOwn(files, name + '\\__folder'); },
+    CreateFolder(name) { files[name + '\\__folder'] = ''; },
+    DeleteFolder(name) {
+      delete files[name + '\\__folder'];
+      for (const key of Object.keys(files)) if (key.startsWith(name + '\\')) delete files[key];
+    },
+    GetFolder(name) {
+      const prefix = name + '\\';
+      return { Files: Object.keys(files).filter(key => key.startsWith(prefix) && key.endsWith('.evt')).map(Path => ({ Path })) };
+    },
     OpenTextFile(name, mode) {
       if (mode === 1) {
         if (!Object.hasOwn(files, name)) throw new Error('missing file');
@@ -29,7 +39,7 @@ function runtime(files = Object.create(null)) {
     DeleteFile(name) { delete files[name]; },
     GetSpecialFolder() { return { Path: 'C:\\Temp' }; }
   };
-  const document = { title: '上班鼓励器 · 工时银行', getElementById(id) {
+  const document = { title: '上班鼓励器 · 工时银行', body: { className: '' }, getElementById(id) {
     if (!elements[id]) elements[id] = {
       innerText: '', innerHTML: '', className: '', style: {}, value: '', checked: false, title: '', attributes: {},
       setAttribute(name, value) { this.attributes[name] = value; }
@@ -41,6 +51,12 @@ function runtime(files = Object.create(null)) {
     window: { resizeTo() {}, moveTo() {} },
     screen: { availWidth: 1200, availHeight: 900 },
     location: { pathname: '/C:/Projects/%E5%B7%A5%E6%97%B6/app.hta' },
+    Enumerator: function (items) {
+      this.index = 0;
+      this.atEnd = () => this.index >= items.length;
+      this.moveNext = () => { this.index++; };
+      this.item = () => items[this.index];
+    },
     ActiveXObject: function (name) {
       if (name === 'Scripting.FileSystemObject') return fso;
       if (name === 'WScript.Shell') return { ExpandEnvironmentStrings: () => 'powershell.exe', Run(command) { commands.push(command); } };
@@ -164,6 +180,163 @@ test('goal messages never promise an already reached or unreachable target', () 
   app.bank.settings = { salary: 20, monthHours: 174, dayHours: 8, endTime: '18:00' };
   const lowWage = { activeSeconds: 6.5 * 3600, hourlyRate: 20 / 174, dayHours: 8 };
   assert.match(app.goalText(lowWage), /计额有上限/);
+});
+
+test('desktop pet receives only status and pauses recording from its menu', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  assert.equal(app.startPet(), true);
+  assert.equal(app.petStarting, true);
+  assert.match(env.commands[0], /DesktopPet\.cs/);
+  assert.doesNotMatch(env.commands[0], /ExecutionPolicy\s+Bypass/i);
+  assert.doesNotMatch(env.files[app.petStatePath], /8000|salary/i);
+  env.files[app.petReadyPath] = 'ready|12345';
+  env.files[app.petBeatPath] = String(Date.now());
+  app.petTick();
+  assert.equal(app.petRunning, true);
+  assert.equal(env.files[app.petControlPath], 'hide');
+  env.files[app.petEventsPath + '\\0001.evt'] = 'toggle';
+  app.petTick();
+  assert.equal(app.tracking, true);
+  env.files[app.petEventsPath + '\\0002.evt'] = 'toggle';
+  app.petTick();
+  assert.equal(app.tracking, false);
+});
+
+test('storage corruption keeps the panel visible so the warning is not hidden by the pet', () => {
+  const env = runtime(), app = env.context;
+  app.fatalStorage = true;
+  app.storageProblem = '无法读取本机数据';
+  assert.equal(app.startPet(), true);
+  assert.match(env.files[app.petStatePath], /^error\|/);
+  env.files[app.petReadyPath] = 'ready|12345';
+  app.petTick();
+  assert.equal(app.petPanelVisible, true);
+  assert.equal(env.files[app.petControlPath], 'show');
+});
+
+test('hidden-panel reminders go to the pet without leaking salary or amounts', () => {
+  const env = runtime(), app = env.context;
+  app.petRunning = true;
+  app.petPanelVisible = false;
+  app.petNoticePath = 'C:\\Temp\\notice';
+  app.masked = false;
+  app.showToast('时薪参考 ¥ 45.98；仅活跃时间计入。');
+  assert.equal(env.files[app.petNoticePath], 'hour');
+  app.showToast('本机记录保存失败');
+  assert.equal(env.files[app.petNoticePath], 'attention');
+});
+
+test('pet startup failure leaves the main application available', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  assert.equal(app.startPet(), true);
+  env.files[app.petReadyPath] = 'error';
+  app.petTick();
+  assert.equal(app.petRunning, false);
+  assert.equal(app.petStarting, false);
+  assert.equal(app.document.title, '上班鼓励器 · 工时银行');
+  assert.match(env.elements.toast.innerText, /桌宠/);
+});
+
+test('a lost pet heartbeat does not stop active work tracking', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.startPet();
+  env.files[app.petReadyPath] = 'ready|12345';
+  app.petTick();
+  app.petStarted = Date.now() - 20000;
+  env.files[app.petBeatPath] = String(Date.now() - 20000);
+  app.petTick();
+  assert.equal(app.petRunning, false);
+  assert.equal(app.tracking, true);
+  assert.match(env.elements.petStatusText.innerText, /连接中断/);
+  assert.ok(env.commands.some(command => /WorkBankRecovery/.test(command) && /ShowWindow/.test(command)), 'restore the minimized panel after the pet dies');
+});
+
+test('pet position and topmost preference are validated and persisted', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.handlePetEvent('position|100|200');
+  app.handlePetEvent('pin|1');
+  assert.equal(app.bank.settings.petX, 100);
+  assert.equal(app.bank.settings.petY, 200);
+  assert.equal(app.bank.settings.petOnTop, true);
+  app.handlePetEvent('position|999999999|bad');
+  assert.equal(app.bank.settings.petX, 100);
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.petOnTop, true);
+});
+
+test('pet preferences chosen before first setup survive saving the initial settings', () => {
+  const { context: app, elements } = runtime();
+  app.handlePetEvent('position|120|240');
+  app.handlePetEvent('pin|0');
+  app.openSettings();
+  elements.inSalary.value = '8000';
+  elements.inMonthHours.value = '174';
+  elements.inDayHours.value = '8';
+  elements.inEndTime.value = '18:00';
+  elements.inMask.checked = true;
+  app.saveSettings();
+  assert.equal(app.bank.settings.petX, 120);
+  assert.equal(app.bank.settings.petY, 240);
+  assert.equal(app.bank.settings.petOnTop, false);
+});
+
+test('editing settings preserves the pet position and pin preference', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, petX: 120, petY: 240, petOnTop: false };
+  assert.equal(app.saveBank(), true);
+  const restored = runtime(env.files), next = restored.context;
+  next.loadBank();
+  next.openSettings();
+  restored.elements.inMotion.checked = false;
+  next.saveSettings();
+  assert.equal(next.bank.settings.petX, 120);
+  assert.equal(next.bank.settings.petY, 240);
+  assert.equal(next.bank.settings.petOnTop, false);
+  assert.equal(next.bank.settings.motion, false);
+});
+
+test('today uses four decimal places while monthly and receipt totals use two', () => {
+  const { context: app, elements } = runtime();
+  app.bank.settings = { ...settings };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.masked = false;
+  app.render(Date.now());
+  assert.equal(elements.todayAmount.innerText, '¥ 45.9770');
+  assert.equal(elements.monthAmount.innerText, '¥ 45.98');
+  assert.match(elements.bankCard.title, /¥ 45\.9770/);
+  app.signOff();
+  assert.equal(elements.receiptAmount.innerText, '¥ 45.98');
+});
+
+test('energy indicator warms with progress and pauses when tracking is idle', () => {
+  const { context: app, elements } = runtime();
+  app.bank.settings = { ...settings, motion: true };
+  app.tracking = true;
+  app.monitorReady = true;
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = sampleDay(3600);
+  app.render(Date.now());
+  assert.match(elements.energyMeter.className, /cool/);
+  app.bank.days[today].activeSeconds = 5 * 3600;
+  app.render(Date.now());
+  assert.match(elements.energyMeter.className, /warm/);
+  app.bank.days[today].activeSeconds = 7.5 * 3600;
+  app.render(Date.now());
+  assert.match(elements.energyMeter.className, /hot/);
+  app.bank.days[today].activeSeconds = 9 * 3600;
+  app.render(Date.now());
+  assert.equal(elements.progressFill.style.width, '100%');
+  assert.match(elements.energyMeter.className, /overtime/);
+  app.monitorIdle = true;
+  app.render(Date.now());
+  assert.match(elements.energyMeter.className, /paused/);
+  app.bank.settings.motion = false;
+  app.render(Date.now());
+  assert.match(app.document.body.className, /motion-off/);
 });
 
 test('masking applies to the card, tooltip, history and receipt', () => {
