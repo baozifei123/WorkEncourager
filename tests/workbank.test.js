@@ -67,4 +67,19 @@ test('financial formatting and settings validation reject invalid input', () => 
   assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 0, dayHours: 8, endTime: '18:00' }), false);
   assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 174, dayHours: 25, endTime: '18:00' }), false);
   assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 174, dayHours: 8, endTime: '25:00' }), false);
+  assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00',
+    autoLaunch: false, lockMode: 'manual', maskTimeoutSeconds: 30, restReminderMinutes: 60 }), true);
+  assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', lockMode: 'unknown' }), false);
+  assert.equal(core.bankValidSettings({ salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', maskTimeoutSeconds: 15 }), false);
+});
+
+test('rest reminders count only valid active time and never emit a burst', () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(core.bankReminderProgress(3500, 99, 60))), { seconds: 3599, notify: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(core.bankReminderProgress(3599, 2, 60))), { seconds: 1, notify: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(core.bankReminderProgress(3580, 7600, 60))), { seconds: 380, notify: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(core.bankReminderProgress(200, 500, 0))), { seconds: 0, notify: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(core.bankReminderProgress(200, 0, 60))), { seconds: 0, notify: false });
+  assert.equal(core.bankReminderSnoozeProgress(900, 0), 900, 'paused and idle seconds do not reduce a snooze');
+  assert.equal(core.bankReminderSnoozeProgress(900, 899), 1);
+  assert.equal(core.bankReminderSnoozeProgress(900, 901), 0);
 });

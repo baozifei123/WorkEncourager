@@ -18,6 +18,9 @@ public sealed class WorkBankPet : Form
     private const int SW_MINIMIZE = 6;
     private const int SW_RESTORE = 9;
     private const int WM_CLOSE = 0x0010;
+    private const int WM_WTSSESSION_CHANGE = 0x02B1;
+    private const int WTS_SESSION_LOCK = 0x7;
+    private const int WTS_SESSION_UNLOCK = 0x8;
     private const int GWL_STYLE = -16;
     private const int WS_SYSMENU = 0x00080000;
     private const int WS_MINIMIZEBOX = 0x00020000;
@@ -65,6 +68,10 @@ public sealed class WorkBankPet : Form
     private static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")]
     private static extern bool SetProcessDPIAware();
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSRegisterSessionNotification(IntPtr window, int flags);
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSUnRegisterSessionNotification(IntPtr window);
     [DllImport("user32.dll")]
     private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")]
@@ -103,10 +110,22 @@ public sealed class WorkBankPet : Form
     private readonly ContextMenuStrip menu;
     private readonly ToolStripMenuItem trackingItem;
     private readonly ToolStripMenuItem pinItem;
+    private readonly ToolStripMenuItem miniModeItem;
+    private readonly ToolStripMenuItem miniAlwaysItem;
+    private readonly ToolStripMenuItem miniHoverItem;
+    private readonly ToolStripMenuItem miniOffItem;
+    private readonly ToolStripMenuItem restSnoozeItem;
     private readonly MiniInfoForm mini;
     private string currentState = "unconfigured";
     private string currentTip = "";
+    private string lockMode = "off";
+    private string miniPreference = "off";
     private string lastTooltip = "";
+    private bool sessionNotificationsRegistered;
+    private bool sessionNotificationAttempted;
+    private IntPtr sessionNotificationWindow = IntPtr.Zero;
+    private bool isTracking;
+    private bool restReminderPending;
     private bool panelVisible = true;
     private int miniMode;
     private DateTime lastMiniHover = DateTime.MinValue;
@@ -163,6 +182,17 @@ public sealed class WorkBankPet : Form
         menu.Items.Add("打开 / 收起工时卡片", null, delegate { TogglePanel(); });
         trackingItem = new ToolStripMenuItem("开始记录", null, delegate { ToggleTracking(); });
         menu.Items.Add(trackingItem);
+        miniModeItem = new ToolStripMenuItem("简要信息卡显示模式");
+        miniAlwaysItem = new ToolStripMenuItem("收起主卡时常显", null, delegate { QueueEvent("mini-mode|always"); });
+        miniHoverItem = new ToolStripMenuItem("仅悬停时显示", null, delegate { QueueEvent("mini-mode|hover"); });
+        miniOffItem = new ToolStripMenuItem("关闭（仍可从此菜单恢复）", null, delegate { QueueEvent("mini-mode|off"); });
+        miniModeItem.DropDownItems.Add(miniAlwaysItem);
+        miniModeItem.DropDownItems.Add(miniHoverItem);
+        miniModeItem.DropDownItems.Add(miniOffItem);
+        menu.Items.Add(miniModeItem);
+        restSnoozeItem = new ToolStripMenuItem("休息提醒稍后 15 分钟（累计活跃）", null, delegate { QueueEvent("rest-snooze"); });
+        menu.Items.Add(restSnoozeItem);
+        menu.Opening += delegate { UpdateMiniModeMenu(); restSnoozeItem.Enabled = restReminderPending; };
         menu.Items.Add(new ToolStripSeparator());
         pinItem = new ToolStripMenuItem("小鲸窗口置顶", null, delegate { TogglePin(); });
         pinItem.Checked = onTop;
@@ -181,6 +211,8 @@ public sealed class WorkBankPet : Form
             pendingShow = DateTime.UtcNow;
         };
         mini.AmountRequested += delegate { QueueEvent("privacy"); };
+        mini.ModeRequested += delegate { QueueEvent("mini-mode|" + (MiniInfoForm.NextVisibleMode(miniMode) == 2 ? "hover" : "always")); };
+        mini.TrackingRequested += delegate { ToggleTracking(); };
         mini.MenuRequested += delegate { menu.Show(Cursor.Position); };
         timer = new Timer();
         timer.Interval = 200;
@@ -376,7 +408,8 @@ public sealed class WorkBankPet : Form
             {
                 string notice = File.ReadAllText(noticePath, Encoding.ASCII).Trim();
                 File.Delete(noticePath);
-                string message = notice == "hour" ? "又走过一个整点，活跃工时已记账。" : "请打开工时卡片查看提示。";
+                string message = notice == "hour" ? "又走过一个整点，活跃工时已记账。" :
+                    (notice == "rest" ? "已累计记录一段时间，喝水休息一下吧；右键菜单可稍后提醒。" : "请打开工时卡片查看提示。");
                 tooltip.Show(message, this, new Point(Width / 2, 12), 5000);
             }
             WritePosition(false);
@@ -424,7 +457,7 @@ public sealed class WorkBankPet : Form
 
     private void UpdateMini()
     {
-        if (miniMode == 0) { mini.HideCard(); lastMiniHover = DateTime.MinValue; return; }
+        if (panelVisible || miniMode == 0) { mini.HideCard(); lastMiniHover = DateTime.MinValue; return; }
         bool show = miniMode == 1;
         if (miniMode == 2)
         {
@@ -433,7 +466,7 @@ public sealed class WorkBankPet : Form
             show = lastMiniHover != DateTime.MinValue && (DateTime.UtcNow - lastMiniHover).TotalMilliseconds < 700;
         }
         Rectangle work = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
-        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, show,
+        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, miniMode, isTracking, show,
             new Rectangle(Left, Top, Width, Height), work);
     }
 
@@ -467,27 +500,96 @@ public sealed class WorkBankPet : Form
         if (values.Length < 2) return;
         currentState = values[0];
         motion = values[1] != "0";
+        isTracking = values.Length >= 3 ? values[2] == "1" : false;
         panelVisible = values.Length >= 4 ? values[3] == "1" : true;
         if (values.Length >= 10)
         {
-            miniMode = values[4] == "2" ? 2 : (values[4] == "1" ? 1 : 0);
-            miniTheme = values[5] == "cream" ? "cream" : (values[5] == "glass" ? "glass" : "deep");
             int parsed;
             miniPercent = Int32.TryParse(values[6], out parsed) ? Math.Max(0, Math.Min(100, parsed)) : 0;
+            miniTheme = values[5] == "cream" ? "cream" : (values[5] == "glass" ? "glass" : "deep");
             miniAmount = values[7];
             miniDetail = values[8];
-            currentTip = String.Join("|", values, 9, values.Length - 9);
+            if (values.Length >= 12 && (values[9] == "always" || values[9] == "hover" || values[9] == "off"))
+            {
+                miniPreference = values[9];
+                miniMode = miniPreference == "always" ? 1 : (miniPreference == "hover" ? 2 : 0);
+                ConfigureSessionNotifications(values[10]);
+                if (values.Length >= 13 && (values[11] == "0" || values[11] == "1"))
+                {
+                    restReminderPending = values[11] == "1";
+                    currentTip = String.Join("|", values, 12, values.Length - 12);
+                }
+                else
+                {
+                    restReminderPending = false;
+                    currentTip = String.Join("|", values, 11, values.Length - 11);
+                }
+            }
+            else
+            {
+                miniMode = values[4] == "2" ? 2 : (values[4] == "1" ? 1 : 0);
+                miniPreference = miniMode == 2 ? "hover" : (miniMode == 1 ? "always" : "off");
+                ConfigureSessionNotifications("off");
+                currentTip = String.Join("|", values, 9, values.Length - 9);
+            }
         }
         else
         {
             miniMode = 0;
+            miniPreference = "off";
+            ConfigureSessionNotifications("off");
             currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
         }
-        bool active = values.Length >= 3 ? values[2] == "1" :
-            currentState == "active" || currentState == "urgent" || currentState == "idle" || currentState == "overtime" ||
-            currentState == "overtime-steady" || currentState == "waiting";
-        trackingItem.Text = currentState == "unconfigured" ? "设置并开始记录" : (active ? "暂停记录" : "开始记录");
+        trackingItem.Text = currentState == "unconfigured" ? "设置并开始记录" : (isTracking ? "暂停记录" : "开始记录");
         UpdateTooltip();
+    }
+
+    private void UpdateMiniModeMenu()
+    {
+        miniModeItem.Text = "简要信息卡显示模式（" +
+            (miniPreference == "always" ? "常显" : (miniPreference == "hover" ? "悬停" : "关闭")) + "）";
+        miniAlwaysItem.Checked = miniPreference == "always";
+        miniHoverItem.Checked = miniPreference == "hover";
+        miniOffItem.Checked = miniPreference == "off";
+    }
+
+    private void UnregisterSessionNotifications()
+    {
+        if (sessionNotificationsRegistered && sessionNotificationWindow != IntPtr.Zero)
+            WTSUnRegisterSessionNotification(sessionNotificationWindow);
+        sessionNotificationsRegistered = false;
+        sessionNotificationWindow = IntPtr.Zero;
+    }
+
+    private void ConfigureSessionNotifications(string requestedMode)
+    {
+        string mode = requestedMode == "manual" || requestedMode == "auto" ? requestedMode : "off";
+        if (mode == lockMode && sessionNotificationAttempted) return;
+        UnregisterSessionNotifications();
+        lockMode = mode;
+        sessionNotificationAttempted = true;
+        if (mode == "off") return;
+        IntPtr window = Handle;
+        sessionNotificationsRegistered = WTSRegisterSessionNotification(window, 0);
+        sessionNotificationWindow = sessionNotificationsRegistered ? window : IntPtr.Zero;
+        QueueEvent(sessionNotificationsRegistered ? "session-ready|1" : "session-ready|0");
+    }
+
+    protected override void WndProc(ref Message message)
+    {
+        if (message.Msg == WM_WTSSESSION_CHANGE && sessionNotificationsRegistered)
+        {
+            string command = SessionChangeCommand(message.WParam.ToInt32());
+            if (command != null) QueueEvent(command);
+        }
+        base.WndProc(ref message);
+    }
+
+    public static string SessionChangeCommand(int reason)
+    {
+        if (reason == WTS_SESSION_LOCK) return "session|locked";
+        if (reason == WTS_SESSION_UNLOCK) return "session|unlocked";
+        return null;
     }
 
     private string StateLabel()
@@ -596,6 +698,7 @@ public sealed class WorkBankPet : Form
     {
         if (disposing)
         {
+            UnregisterSessionNotifications();
             SetParentControls(true);
             timer.Stop();
             timer.Dispose();
@@ -670,6 +773,8 @@ public sealed class MiniInfoForm : Form
     public const int CardWidth = 224;
     public const int CardHeight = 88;
     private const int Gap = 8;
+    private static readonly Rectangle ModeButtonBounds = new Rectangle(132, 4, 40, 17);
+    private static readonly Rectangle TrackingButtonBounds = new Rectangle(176, 4, 38, 17);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint { public int X; public int Y; public NativePoint(int x, int y) { X = x; Y = y; } }
@@ -697,20 +802,37 @@ public sealed class MiniInfoForm : Form
     private readonly Font labelFont = new Font("Microsoft YaHei", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
     private readonly Font amountFont = new Font("Consolas", 14f, FontStyle.Bold, GraphicsUnit.Point);
     private readonly Font detailFont = new Font("Microsoft YaHei", 7.5f, FontStyle.Regular, GraphicsUnit.Point);
+    private readonly Font actionFont = new Font("Microsoft YaHei", 7f, FontStyle.Bold, GraphicsUnit.Point);
     private string themeName = "deep";
     private string amount = "¥ ****";
     private string detail = "";
     private string status = "未设置";
     private int percent;
+    private int miniMode;
+    private bool tracking;
     private bool painted;
 
     public event EventHandler OpenRequested;
     public event EventHandler AmountRequested;
+    public event EventHandler ModeRequested;
+    public event EventHandler TrackingRequested;
     public event EventHandler MenuRequested;
 
+    public static int NextVisibleMode(int currentMode) { return currentMode == 1 ? 2 : 1; }
+    public static string CompactStatus(string value)
+    {
+        if (value == "键鼠空闲") return "空闲";
+        if (value == "接近计划工时") return "近目标";
+        if (value == "采样未就绪") return "待采样";
+        if (value == "请查看卡片提示") return "需注意";
+        if (value == "收工快乐") return "已收工";
+        return value;
+    }
+    public static bool IsModeArea(Point point) { return ModeButtonBounds.Contains(point); }
+    public static bool IsTrackingArea(Point point) { return TrackingButtonBounds.Contains(point); }
     public static bool IsAmountArea(Point point)
     {
-        return new Rectangle(4, 17, CardWidth - 12, 34).Contains(point);
+        return new Rectangle(4, 22, CardWidth - 12, 31).Contains(point);
     }
 
     public MiniInfoForm(bool onTop)
@@ -723,7 +845,8 @@ public sealed class MiniInfoForm : Form
         TopMost = onTop;
         Text = "小鲸简要信息";
         Cursor = Cursors.Hand;
-        AccessibleName = "小鲸工时进度";
+        AccessibleName = "小鲸工时进度与快捷操作";
+        AccessibleDescription = "标题行的常显悬停按钮切换简要卡模式，旁边按钮开始或暂停记录；金额可点击打码，右键可打开菜单。";
     }
 
     protected override CreateParams CreateParams
@@ -753,15 +876,17 @@ public sealed class MiniInfoForm : Form
     }
 
     public void Present(string newTheme, string newAmount, string newDetail, string newStatus, int newPercent,
-        bool show, Rectangle pet, Rectangle work)
+        int newMiniMode, bool isTracking, bool show, Rectangle pet, Rectangle work)
     {
         bool changed = newTheme != themeName || newAmount != amount || newDetail != detail ||
-            newStatus != status || newPercent != percent;
+            newStatus != status || newPercent != percent || newMiniMode != miniMode || isTracking != tracking;
         themeName = newTheme == "cream" ? "cream" : (newTheme == "glass" ? "glass" : "deep");
         amount = newAmount;
         detail = newDetail;
-        status = newStatus;
+        status = CompactStatus(newStatus);
         percent = Math.Max(0, Math.Min(100, newPercent));
+        miniMode = newMiniMode;
+        tracking = isTracking;
         Rectangle target = BoundsFor(pet, work, CardWidth, CardHeight, Gap);
         if (Location != target.Location) Location = target.Location;
         if (changed || !painted) Redraw();
@@ -789,6 +914,16 @@ public sealed class MiniInfoForm : Form
             return;
         }
         if (e.Button != MouseButtons.Left) return;
+        if (IsModeArea(e.Location))
+        {
+            if (ModeRequested != null) ModeRequested(this, EventArgs.Empty);
+            return;
+        }
+        if (IsTrackingArea(e.Location))
+        {
+            if (TrackingRequested != null) TrackingRequested(this, EventArgs.Empty);
+            return;
+        }
         if (IsAmountArea(e.Location))
         {
             if (AmountRequested != null) AmountRequested(this, EventArgs.Empty);
@@ -804,8 +939,25 @@ public sealed class MiniInfoForm : Form
             labelFont.Dispose();
             amountFont.Dispose();
             detailFont.Dispose();
+            actionFont.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    private void DrawActionButton(Graphics graphics, Rectangle bounds, string label, Color accent)
+    {
+        using (GraphicsPath path = RoundedRectangle(bounds, 4))
+        using (SolidBrush fill = new SolidBrush(Color.FromArgb(38, accent)))
+        using (Pen border = new Pen(Color.FromArgb(145, accent), 1f))
+        using (SolidBrush text = new SolidBrush(themeName == "cream" ? Hex("#204B73") : Hex("#E5F5FF")))
+        using (StringFormat format = new StringFormat())
+        {
+            format.Alignment = StringAlignment.Center;
+            format.LineAlignment = StringAlignment.Center;
+            graphics.FillPath(fill, path);
+            graphics.DrawPath(border, path);
+            graphics.DrawString(label, actionFont, text, bounds, format);
+        }
     }
 
     private void Redraw()
@@ -838,9 +990,9 @@ public sealed class MiniInfoForm : Form
             using (SolidBrush brush = new SolidBrush(label))
             {
                 graphics.DrawString("今日投入", labelFont, brush, 12, 7);
-                SizeF statusSize = graphics.MeasureString(status, labelFont);
-                graphics.DrawString(status, labelFont, brush, card.Right - 12 - statusSize.Width, 7);
             }
+            DrawActionButton(graphics, ModeButtonBounds, miniMode == 2 ? "悬停" : "常显", accent);
+            DrawActionButton(graphics, TrackingButtonBounds, tracking ? "暂停" : "开始", accent);
             using (SolidBrush brush = new SolidBrush(ink))
                 graphics.DrawString(amount, amountFont, brush, 10, 22);
             int barWidth = card.Width - 24;
@@ -855,7 +1007,7 @@ public sealed class MiniInfoForm : Form
                     graphics.FillPath(brush, fillPath);
             }
             using (SolidBrush brush = new SolidBrush(muted))
-                graphics.DrawString(detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%", detailFont, brush, 12, 65);
+                graphics.DrawString(status + " · " + detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%", detailFont, brush, 12, 65);
 
             IntPtr screen = GetDC(IntPtr.Zero);
             IntPtr memory = CreateCompatibleDC(screen);

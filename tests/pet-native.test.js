@@ -20,7 +20,7 @@ test('Windows pet loads custom artwork without distortion and falls back on inva
     assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr);
     const result = spawnSync(executable, [directory, path.join(root, 'assets', 'whale-character.png'), path.join(root, 'assets', 'whale-fight.png')], { encoding: 'utf8', timeout: 30000 });
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.match(result.stdout, /selection, aspect ratio, transparency.*passed/);
+    assert.match(result.stdout, /selection, aspect ratio, transparency.*mini card controls, session events and click routing passed/);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

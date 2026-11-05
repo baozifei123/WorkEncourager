@@ -11,7 +11,11 @@ assert.equal(scripts.length, 2);
 function runtime(files = Object.create(null)) {
   const elements = Object.create(null);
   const alerts = [];
+  const confirms = [];
   const commands = [];
+  const execProcesses = [];
+  const timers = Object.create(null);
+  let nextTimer = 0;
   const fso = {
     FileExists(name) { return Object.hasOwn(files, name); },
     FolderExists(name) { return Object.hasOwn(files, name + '\\__folder'); },
@@ -35,6 +39,10 @@ function runtime(files = Object.create(null)) {
     CopyFile(from, to) {
       if (this.failWrites || !Object.hasOwn(files, from)) throw new Error('copy denied');
       files[to] = files[from];
+    },
+    CreateTextFile(name, overwrite) {
+      if (!overwrite && Object.hasOwn(files, name)) throw new Error('file already exists');
+      return { Write(value) { files[name] = value; }, Close() {} };
     },
     DeleteFile(name) { delete files[name]; },
     GetSpecialFolder() { return { Path: 'C:\\Temp' }; }
@@ -60,13 +68,32 @@ function runtime(files = Object.create(null)) {
     },
     ActiveXObject: function (name) {
       if (name === 'Scripting.FileSystemObject') return fso;
-      if (name === 'WScript.Shell') return { ExpandEnvironmentStrings: () => 'powershell.exe', Run(command) { commands.push(command); } };
+      if (name === 'WScript.Shell') return {
+        ExpandEnvironmentStrings(value) { return value.indexOf('%SystemRoot%') >= 0 ? 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' : 'powershell.exe'; },
+        SpecialFolders(name) { return name === 'Startup' ? 'C:\\Users\\tester\\Startup' : 'C:\\Users\\tester\\Documents'; },
+        CreateShortcut(shortcutPath) {
+          const saved = Object.hasOwn(files, shortcutPath) ? JSON.parse(files[shortcutPath]) : {};
+          return Object.assign(saved, { Save() { files[shortcutPath] = JSON.stringify(saved); } });
+        },
+        Run(command) { commands.push(command); },
+        Exec(command) {
+          commands.push(command);
+          const process = { Status: 1, terminated: false, Terminate() { this.terminated = true; } };
+          execProcesses.push(process);
+          return process;
+        }
+      };
       throw new Error('unexpected ActiveX: ' + name);
     },
-    alert(message) { alerts.push(message); }, setInterval() {}, setTimeout() { return 1; }, clearTimeout() {}
+    alert(message) { alerts.push(message); }, confirm(message) { confirms.push(message); return true; }, setInterval() {},
+    setTimeout(callback, delay) { const id = ++nextTimer; timers[id] = { callback, delay }; return id; },
+    clearTimeout(id) { delete timers[id]; }
   });
   scripts.forEach(script => vm.runInContext(script, context));
-  return { context, files, fso, elements, alerts, commands, moves };
+  return {
+    context, files, fso, elements, alerts, confirms, commands, moves, timers, execProcesses,
+    fireTimer(id) { const timer = timers[id]; if (!timer) return false; delete timers[id]; timer.callback(); return true; }
+  };
 }
 
 const settings = { salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', maskByDefault: true, announce: true };
@@ -344,6 +371,57 @@ test('custom goal input reports invalid, duplicate and merged items live', () =>
   env.elements.inGoals.value = '一项=9';
   env.elements.inGoals.onkeyup();
   assert.match(env.elements.goalValidation.innerText, /不足 3 项/);
+});
+
+test('login startup is opt-in, idempotent, local to the user, and never overwrites foreign shortcuts', () => {
+  const env = runtime(), app = env.context;
+  const link = 'C:\\Users\\tester\\Startup\\WorkEncourager-WorkBank.lnk';
+  assert.equal(app.setWindowsAutostart(false), true);
+  assert.equal(env.files[link], undefined);
+  assert.equal(app.setWindowsAutostart(true), true);
+  const created = JSON.parse(env.files[link]);
+  assert.equal(created.Description, app.STARTUP_LINK_MARKER);
+  assert.equal(created.TargetPath, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
+  assert.equal(created.Arguments, '"C:\\Projects\\工时\\上班鼓励器.hta"');
+  assert.equal(app.setWindowsAutostart(true), true, 'an owned link is safe to reconcile on later launches');
+  assert.equal(app.setWindowsAutostart(false), true);
+  assert.equal(env.files[link], undefined, 'disable removes the exact app-owned shortcut');
+
+  env.files[link] = JSON.stringify({ Description: 'A shortcut created by the user', TargetPath: 'C:\\Other\\app.exe', Arguments: '' });
+  const foreign = env.files[link];
+  assert.equal(app.setWindowsAutostart(true), false);
+  assert.equal(app.setWindowsAutostart(false), false);
+  assert.equal(env.files[link], foreign, 'foreign shortcuts are neither replaced nor deleted');
+});
+
+test('settings keep login launch, tracking auto-start, and lock policy independent', () => {
+  const env = runtime(), app = env.context, elements = env.elements;
+  app.bank.settings = { ...settings };
+  app.openSettings();
+  assert.equal(elements.inAutoLaunch.checked, false);
+  assert.equal(elements.inAutoStart.checked, false);
+  assert.equal(elements.inLockMode.value, 'off');
+  assert.equal(elements.inMaskTimeout.value, '0');
+  assert.equal(elements.inRestReminder.value, '0');
+  elements.inSalary.value = '8000';
+  elements.inMonthHours.value = '174';
+  elements.inDayHours.value = '8';
+  elements.inEndTime.value = '18:00';
+  elements.inAutoLaunch.checked = true;
+  elements.inAutoStart.checked = false;
+  elements.inLockMode.value = 'manual';
+  elements.inMaskTimeout.value = '30';
+  elements.inRestReminder.value = '60';
+  app.saveSettings();
+  assert.equal(app.bank.settings.autoLaunch, true);
+  assert.equal(app.bank.settings.autoStart, false);
+  assert.equal(app.bank.settings.lockMode, 'manual');
+  assert.equal(app.bank.settings.maskTimeoutSeconds, 30);
+  assert.equal(app.bank.settings.restReminderMinutes, 60);
+  const saved = JSON.parse(env.files[app.appPath('workbank.json')]).settings;
+  assert.equal(saved.autoLaunch, true);
+  assert.equal(saved.autoStart, false);
+  assert.equal(saved.lockMode, 'manual');
 });
 
 test('automatic start is opt-in and does not count time before launch', () => {
@@ -867,6 +945,149 @@ test('keyboard shortcuts close dialogs, mask amounts, toggle tracking, and hide 
   assert.equal(app.masked, before, 'shortcuts typed into form fields are ignored');
 });
 
+test('mini card buttons and pet menu keep the persisted always, hover, and off modes in sync', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, miniMode: 'always', miniInfo: true };
+  app.petRunning = true;
+  app.petEventsPath = 'C:\\Temp\\events';
+  env.files[app.petEventsPath + '\\__folder'] = '';
+  app.petStatePath = 'C:\\Temp\\state';
+  app.petPanelVisible = true;
+  app.handlePetEvent('mini-mode|hover');
+  assert.equal(app.bank.settings.miniMode, 'hover');
+  assert.equal(env.elements.inMiniMode.value, 'hover');
+  app.writePetState();
+  let fields = env.files[app.petStatePath].split('|');
+  assert.equal(fields[4], '0', 'the collapsed card is hidden while the full panel is open');
+  assert.equal(fields[9], 'hover', 'the preferred mode stays available to the mini-card controls and pet menu');
+  assert.equal(fields[10], 'off', 'lock monitoring stays opt-in');
+  app.petPanelVisible = false;
+  app.petLastState = '';
+  app.writePetState();
+  fields = env.files[app.petStatePath].split('|');
+  assert.equal(fields[4], '2', 'hover mode is shown in the pet state');
+  app.handlePetEvent('mini-mode|off');
+  assert.equal(app.bank.settings.miniInfo, false);
+  assert.equal(app.bank.settings.miniMode, 'off');
+  app.handlePetEvent('mini-mode|always');
+  assert.equal(app.bank.settings.miniInfo, true, 'the right-click menu can restore a hidden card');
+  assert.equal(app.bank.settings.miniMode, 'always');
+});
+
+test('lock events pause only an active tracked session and follow the configured unlock policy', () => {
+  const makeApp = mode => {
+    const env = runtime(), app = env.context;
+    app.bank.settings = { ...settings, lockMode: mode };
+    app.bank.days[app.bankDate(Date.now())] = sampleDay(3600);
+    app.tracking = true;
+    app.monitorReady = true;
+    app.sessionMonitorReady = true;
+    app.startMonitor = () => { app.monitorReady = true; app.monitorIdle = false; };
+    app.stopMonitor = () => { app.monitorReady = false; app.monitorIdle = false; };
+    return { env, app };
+  };
+  const manual = makeApp('manual'), manualDay = manual.app.bank.days[manual.app.bankDate(Date.now())];
+  const before = JSON.stringify(manual.app.bank.days);
+  manual.app.handlePetEvent('session|locked');
+  assert.equal(manual.app.sessionLocked, true);
+  assert.equal(manual.app.tracking, false);
+  assert.equal(manual.app.lockPausedTracking, true);
+  manual.app.handlePetEvent('session|locked');
+  assert.equal(JSON.stringify(manual.app.bank.days), before, 'lock does not fabricate activity or overtime');
+  manual.app.handlePetEvent('session|unlocked');
+  assert.equal(manual.app.sessionLocked, false);
+  assert.equal(manual.app.tracking, false, 'manual-resume mode stays paused after unlock');
+  assert.equal(manual.app.lockPausedTracking, false);
+  assert.ok(manualDay.activeSeconds >= 3600);
+
+  const automatic = makeApp('auto'), autoApp = automatic.app;
+  autoApp.handlePetEvent('session|locked');
+  assert.equal(autoApp.tracking, false);
+  autoApp.handlePetEvent('session|unlocked');
+  assert.equal(autoApp.sessionLocked, false);
+  assert.equal(autoApp.tracking, true, 'auto-resume mode starts a fresh sample window on unlock');
+  assert.equal(autoApp.monitorReady, true);
+});
+
+test('lock monitoring failure fails closed instead of letting tracking continue unprotected', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, lockMode: 'auto' };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.stopMonitor = () => { app.monitorReady = false; };
+  app.handlePetEvent('session-ready|0');
+  assert.equal(app.tracking, false);
+  assert.equal(app.sessionMonitorFailed, true);
+  app.startPet = () => true;
+  app.startTracking();
+  assert.equal(app.tracking, false, 'tracking must wait until lock monitoring is restored or disabled');
+  assert.ok(env.alerts.length === 0);
+});
+
+test('automatic masking hides all amount views without changing the saved default', () => {
+  const env = runtime(), app = env.context, elements = env.elements;
+  const boot = runtime();
+  boot.context.bank.settings = { ...settings, maskByDefault: false, maskTimeoutSeconds: 30 };
+  assert.equal(boot.context.saveBank(), true);
+  const reopened = runtime(boot.files), reopenedApp = reopened.context;
+  reopenedApp.startPet = () => true;
+  reopenedApp.window.onload();
+  assert.equal(reopenedApp.masked, false, 'the configured launch preference still applies');
+  assert.ok(Object.keys(reopened.timers).some(id => reopened.timers[id].delay === 30000), 'an unmasked launch arms its timer');
+
+  app.bank.settings = { ...settings, maskByDefault: true, maskTimeoutSeconds: 30 };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.petStatePath = 'C:\\Temp\\privacy-state';
+  app.petRunning = true;
+  app.render(Date.now());
+  app.togglePrivacy();
+  assert.equal(app.masked, false);
+  assert.match(elements.todayAmount.innerText, /45\.9770/);
+  const timeout = Object.keys(env.timers).map(Number).find(id => env.timers[id].delay === 30000);
+  assert.ok(timeout, 'showing the amount arms the selected timeout');
+  assert.equal(env.fireTimer(timeout), true);
+  assert.equal(app.masked, true);
+  assert.match(elements.todayAmount.innerText, /\*\*\*\*/);
+  assert.match(elements.monthAmount.innerText, /\*\*\*\*/);
+  assert.equal(app.bank.settings.maskByDefault, true, 'the one-time timeout does not rewrite the default');
+  assert.match(env.files[app.petStatePath], /\*\*\*\*/);
+  assert.equal(Object.keys(env.timers).some(id => env.timers[id].delay === 30000), false);
+});
+
+test('rest reminders use sampled active time, repeat at one interval, and reset when disabled', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, restReminderMinutes: 45 };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.monitorIdle = false;
+  app.lastTick = Date.now() - 2000;
+  app.previousInput = app.lastTick;
+  app.readSample = now => ({ idle: 0, input: now });
+  app.restReminderActiveSeconds = 44 * 60 + 59.5;
+  app.tick(true);
+  assert.match(env.elements.toast.innerText, /累计记录约 45 分钟/);
+  assert.ok(app.restReminderActiveSeconds < 2, 'only the interval remainder carries forward');
+  const progress = app.restReminderActiveSeconds;
+  app.readSample = () => null;
+  app.monitorIdle = true;
+  app.tick(true);
+  assert.equal(app.restReminderActiveSeconds, progress, 'idle sampling does not advance the reminder');
+  app.restReminderPending = true;
+  assert.equal(app.snoozeRestReminder(), true);
+  assert.equal(app.restReminderSnoozeSeconds, 900, 'snooze duration is measured in active seconds');
+  assert.match(env.elements.toast.innerText, /再记录 15 分钟活跃时间/);
+  assert.equal(app.restReminderPending, true, 'the reminder stays pending until active time uses the snooze');
+  app.petRunning = true;
+  app.petPanelVisible = false;
+  app.petNoticePath = 'C:\\Temp\\rest-notice';
+  app.showToast("Alt+R 或小鲸右键菜单可稍后提醒");
+  assert.equal(env.files[app.petNoticePath], 'rest', 'a hidden panel forwards the reminder to the pet');
+  app.handlePetEvent('rest-snooze');
+  assert.equal(app.restReminderSnoozeSeconds, 900, 'the pet menu uses the same snooze action');
+  app.bank.settings.restReminderMinutes = 0;
+  assert.deepEqual(JSON.parse(JSON.stringify(app.bankReminderProgress(progress, 1, 0))), { seconds: 0, notify: false });
+});
+
 test('the mini card privacy event and the monthly amount share the mask toggle', () => {
   const env = runtime(), app = env.context, elements = env.elements;
   app.bank.settings = { ...settings, maskByDefault: true };
@@ -883,6 +1104,55 @@ test('the mini card privacy event and the monthly amount share the mask toggle',
   assert.equal(app.masked, true);
   assert.match(elements.monthAmount.innerText, /\*\*\*\*/);
   assert.equal(elements.monthAmount.attributes['aria-pressed'], 'true');
+});
+
+test('manual JSON backup and CSV export are local, explicit, and never overwrite existing files', () => {
+  const env = runtime(), app = env.context;
+  const today = app.bankDate(Date.now());
+  app.bank.settings = { ...settings, autoLaunch: false };
+  app.bank.days[today] = { ...sampleDay(9 * 3600), manualEntries: [{ kind: '会议', minutes: 30 }] };
+  const csv = app.bankCsvText(app.bank);
+  assert.match(csv, /"日期","活跃秒数"/);
+  assert.match(csv, /会议:30分钟/);
+  assert.match(csv, /45\.977011/);
+  assert.doesNotMatch(csv, /salary|8000/);
+
+  const existing = 'C:\\Users\\tester\\Documents\\already-there.json';
+  env.files[existing] = 'keep-me';
+  assert.equal(app.writeDataExport(existing, 'json'), false);
+  assert.equal(env.files[existing], 'keep-me');
+  assert.equal(app.writeDataExport(app.appPath('workbank.json'), 'json'), false, 'the live ledger can never be an export target');
+
+  const backup = 'C:\\Users\\tester\\Documents\\workbank-backup.json';
+  assert.equal(app.writeDataExport(backup, 'json'), true);
+  assert.equal(JSON.parse(env.files[backup]).settings.salary, 8000);
+  const csvPath = 'C:\\Users\\tester\\Documents\\workbank-records.csv';
+  assert.equal(app.writeDataExport(csvPath, 'csv'), true);
+  assert.match(env.files[csvPath], /"当日投入（元）"/);
+  assert.match(env.files[csvPath], /会议:30分钟/);
+});
+
+test('history export buttons require privacy confirmation and launch a save dialog', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  env.elements.btnBackup.onclick();
+  assert.match(env.confirms[0], /包含月薪设置/);
+  assert.match(env.commands[0], /SaveFileDialog/);
+  assert.match(env.commands[0], /OverwritePrompt=\$false/);
+  assert.match(env.commands[0], /-Sta/);
+  const selected = 'C:\\Users\\tester\\Documents\\picked-backup.json';
+  env.files[app.exportDialogPath] = selected;
+  app.checkExportChoice(app.exportDialogPath, 'json', app.exportDialogStarted);
+  assert.ok(Object.hasOwn(env.files, selected));
+  assert.equal(app.exportDialogPath, '');
+
+  app.chooseDataExport('csv');
+  const choiceFile = app.exportDialogPath;
+  const dialogProcess = env.execProcesses[1];
+  dialogProcess.Status = 0;
+  app.window.onunload();
+  assert.equal(dialogProcess.terminated, true, 'closing the HTA cancels its owned file-picker process');
+  assert.equal(env.files[choiceFile], undefined, 'the selection handoff file is cleaned up');
 });
 
 test('mini info modes migrate old settings and persist', () => {

@@ -157,6 +157,8 @@
   .history th:first-child, .history td:first-child { text-align: left; }
   .history-controls { margin: 15px 0 8px; }
   .history-controls .btn { padding: 5px 10px; }
+  .history-export { margin-top: 12px; text-align: right; }
+  .history-export .btn { margin-left: 6px; padding: 7px 10px; }
   .history-month { display: inline-block; min-width: 110px; text-align: center; font-size: 14px; }
   .month-chart { position: relative; height: 112px; padding: 7px 2px 18px; border-bottom: 1px solid #35547a; white-space: nowrap; }
   .month-bar { display: inline-block; position: relative; width: 3.2%; height: 100%; padding: 0; border: 0; vertical-align: bottom; overflow: visible; background: transparent; }
@@ -366,14 +368,18 @@
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
       <div class="field"><label for="inEndTime">计划下班时间</label><input id="inEndTime" type="text" value="18:00"><span class="hint">例如 18:00；只影响状态和倒计时</span></div>
       <div class="field goal-field"><label for="inGoals">自定义目标（可选）</label><textarea id="inGoals" rows="4" placeholder="一杯冰美式=19&#10;一份正经午饭=45&#10;一天房租=266.67"></textarea><span class="hint">每行「名称=金额」（名称≤12字），至少 3 项生效；留空用内置。</span><span class="hint" id="goalValidation" aria-live="polite"></span></div>
-      <div class="field goal-field"><label for="inMiniMode">桌宠简要信息卡</label><select id="inMiniMode"><option value="always">收起卡片时常显</option><option value="hover">仅悬停桌宠时显示</option><option value="off">关闭</option></select></div>
+      <div class="field goal-field"><label for="inMiniMode">桌宠简要信息卡</label><select id="inMiniMode"><option value="always">收起卡片时常显</option><option value="hover">仅悬停桌宠时显示</option><option value="off">关闭</option></select><span class="hint">小卡上可一键切换常显/悬停；关闭时从小鲸右键菜单恢复。</span></div>
+      <div class="field"><label for="inLockMode">Windows 锁屏时</label><select id="inLockMode"><option value="off">不自动暂停</option><option value="manual">暂停，解锁后手动继续</option><option value="auto">暂停，解锁后自动继续</option></select><span class="hint">需要小鲸的系统会话监测保持连接；监测不可用时停止记录。</span></div>
+      <div class="field"><label for="inMaskTimeout">显示金额后自动打码</label><select id="inMaskTimeout"><option value="0">关闭</option><option value="30">30 秒</option><option value="60">60 秒</option></select></div>
+      <div class="field"><label for="inRestReminder">休息提醒</label><select id="inRestReminder"><option value="0">关闭</option><option value="45">累计活跃 45 分钟</option><option value="60">累计活跃 60 分钟</option><option value="90">累计活跃 90 分钟</option></select><span class="hint">只累计程序已记录的活跃时长；暂停或空闲时不增长。</span></div>
     </div>
+    <label class="check"><input id="inAutoLaunch" type="checkbox">登录 Windows 后启动程序（默认关闭；不代表自动开始记录）</label>
     <label class="check"><input id="showSalary" type="checkbox">在此处显示输入的月薪</label>
     <label class="check"><input id="inMask" type="checkbox" checked>每次打开时默认隐藏金额</label>
     <label class="check"><input id="inAnnounce" type="checkbox" checked>记录时在整点显示提醒</label>
     <label class="check"><input id="inMotion" type="checkbox" checked>启用火焰与小鲸动画</label>
     <label class="check"><input id="inAutoStart" type="checkbox">打开程序后自动开始记录（不补算关闭期间）</label>
-    <div class="shortcut-hint">快捷键：<span>Esc 关闭弹窗</span> · <span>Alt+M 隐藏/显示金额</span> · <span>Alt+T 开始/暂停记录</span> · <span>Alt+S 设置</span> · <span>Alt+H 收起卡片（需桌宠运行）</span></div>
+    <div class="shortcut-hint">快捷键：<span>Esc 关闭弹窗</span> · <span>Alt+M 隐藏/显示金额</span> · <span>Alt+T 开始/暂停记录</span> · <span>Alt+S 设置</span> · <span>Alt+H 收起卡片（需桌宠运行）</span> · <span>Alt+R 稍后提醒 15 分钟</span></div>
     <div class="modal-actions settings-actions"><button class="btn btn-primary" id="btnSaveSettings" type="button">保存设置</button><button class="btn btn-quiet" id="btnCancelSettings" type="button">取消</button></div>
   </div>
 </div>
@@ -409,6 +415,7 @@
     <div class="manual-help" id="historyScale">每日活跃工时（小时） · 悬停或聚焦柱条可查看详情</div>
     <div class="month-chart" id="monthChart" role="group" aria-label="每日活跃工时"></div>
     <div class="history-wrap"><table class="history"><thead><tr><th>日期</th><th>活跃工时</th><th>补记</th><th>加班</th><th>投入</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    <div class="history-export"><button class="btn btn-quiet" id="btnBackup" type="button">备份完整 JSON</button><button class="btn btn-quiet" id="btnExportCsv" type="button">导出本机 CSV</button></div>
     <div class="modal-actions"><button class="btn btn-primary" id="btnCloseHistory" type="button">关闭</button></div>
   </div>
 </div>
@@ -449,6 +456,14 @@ function bankMonth(days, month) {
     }
   }
   return result;
+}
+function bankReminderProgress(currentSeconds, addedSeconds, intervalMinutes) {
+  if (!(intervalMinutes > 0) || !(addedSeconds > 0)) return { seconds: 0, notify: false };
+  var interval = intervalMinutes * 60, total = Math.max(0, currentSeconds) + addedSeconds;
+  return total >= interval ? { seconds: total % interval, notify: true } : { seconds: total, notify: false };
+}
+function bankReminderSnoozeProgress(remainingSeconds, addedSeconds) {
+  return Math.max(0, Math.max(0, remainingSeconds) - Math.max(0, addedSeconds));
 }
 function bankActiveRanges(start, end, previousInput, latestInput, limit) {
   var candidates = [], result = [], inputs = [previousInput, latestInput];
@@ -499,7 +514,22 @@ function bankValidSettings(s) {
   return !!s && typeof s.salary === "number" && isFinite(s.salary) && s.salary > 0 && s.salary <= 1000000000 &&
     typeof s.monthHours === "number" && isFinite(s.monthHours) && s.monthHours > 0 && s.monthHours <= 744 &&
     typeof s.dayHours === "number" && isFinite(s.dayHours) && s.dayHours > 0 && s.dayHours <= 24 &&
-    typeof s.endTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.endTime);
+    typeof s.endTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.endTime) &&
+    (typeof s.autoLaunch === "undefined" || typeof s.autoLaunch === "boolean") &&
+    (typeof s.lockMode === "undefined" || s.lockMode === "off" || s.lockMode === "manual" || s.lockMode === "auto") &&
+    (typeof s.maskTimeoutSeconds === "undefined" || s.maskTimeoutSeconds === 0 || s.maskTimeoutSeconds === 30 || s.maskTimeoutSeconds === 60) &&
+    (typeof s.restReminderMinutes === "undefined" || s.restReminderMinutes === 0 || s.restReminderMinutes === 45 || s.restReminderMinutes === 60 || s.restReminderMinutes === 90);
+}
+function bankLockMode(settings) {
+  return settings && (settings.lockMode === "manual" || settings.lockMode === "auto") ? settings.lockMode : "off";
+}
+function bankMaskTimeout(settings) {
+  var value = settings && Number(settings.maskTimeoutSeconds);
+  return value === 30 || value === 60 ? value : 0;
+}
+function bankRestReminder(settings) {
+  var value = settings && Number(settings.restReminderMinutes);
+  return value === 45 || value === 60 || value === 90 ? value : 0;
 }
 /* 面板默认贴在桌宠左侧；放不下就换到右侧，并夹在工作区内。 */
 function bankPanelBounds(pet, panelWidth, panelHeight, gap) {
@@ -527,7 +557,11 @@ var masked = true, tracking = false, signedOff = false, fatalStorage = false;
 var mainValid = false, storageProblem = "", recovered = false, dirty = false;
 var lastTick = 0, previousInput = null, lastHeartbeat = 0, lastSave = 0;
 var monitorStarted = 0, monitorReady = false, monitorIdle = false;
-var alivePath = "", samplePath = "", lastHour = "", toastTimer = null;
+var alivePath = "", samplePath = "", lastHour = "", toastTimer = null, autoMaskTimer = null;
+var restReminderActiveSeconds = 0, restReminderPending = false, restReminderSnoozeSeconds = 0;
+var sessionLocked = false, sessionMonitorReady = false, sessionMonitorFailed = false;
+var lockPausedTracking = false, startWhenSessionReady = false;
+var exportDialogPath = "", exportDialogKind = "", exportDialogStarted = 0, exportDialogTimer = null, exportDialogProcess = null;
 var pinned = false, pinPending = false, pinDesired = false, pinRemember = false;
 var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
 var petStarting = false, petRunning = false, petStarted = 0, petLastHeartbeat = 0, petLastState = "";
@@ -742,6 +776,40 @@ function deletePath(path) {
     var fso = new ActiveXObject("Scripting.FileSystemObject");
     if (fso.FileExists(path)) fso.DeleteFile(path, true);
   } catch (e) {}
+}
+var STARTUP_LINK_NAME = "WorkEncourager-WorkBank.lnk";
+var STARTUP_LINK_MARKER = "WorkEncourager WorkBank startup v1";
+function sameWindowsPath(left, right) {
+  return String(left || "").replace(/\\/g, "/").toLowerCase() === String(right || "").replace(/\\/g, "/").toLowerCase();
+}
+/* Only create or remove the shortcut this app can positively identify as its own. */
+function setWindowsAutostart(enabled) {
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var shell = new ActiveXObject("WScript.Shell");
+    var startup = String(shell.SpecialFolders("Startup") || "");
+    if (!startup) return false;
+    var link = startup + "\\" + STARTUP_LINK_NAME;
+    var executable = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\mshta.exe");
+    var target = appPath("上班鼓励器.hta");
+    var argumentsText = '"' + target + '"';
+    var shortcut = shell.CreateShortcut(link);
+    var exists = fso.FileExists(link);
+    if (exists && (shortcut.Description !== STARTUP_LINK_MARKER || !sameWindowsPath(shortcut.TargetPath, executable) ||
+        String(shortcut.Arguments || "").replace(/^\"|\"$/g, "") !== target)) return false;
+    if (!enabled) {
+      if (exists) fso.DeleteFile(link, true);
+      return true;
+    }
+    shortcut.TargetPath = executable;
+    shortcut.Arguments = argumentsText;
+    shortcut.WorkingDirectory = target.substring(0, target.lastIndexOf("\\"));
+    shortcut.Description = STARTUP_LINK_MARKER;
+    shortcut.WindowStyle = 1;
+    shortcut.IconLocation = executable + ",0";
+    shortcut.Save();
+    return fso.FileExists(link);
+  } catch (e) { return false; }
 }
 function parseBank(raw) {
   try {
@@ -976,9 +1044,11 @@ function writePetState() {
   percent = Math.max(0, Math.min(100, percent));
   var amount = bank.settings ? money(bankDayAmount(day), 4) : "¥ ****";
   var detail = bank.settings ? (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时" : "";
+  var selectedMiniMode = bankMiniMode(bank.settings || {});
   var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" +
-    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? (bankMiniMode(bank.settings) === "hover" ? "2" : "1") : "0") + "|" +
-    theme + "|" + percent + "|" + amount + "|" + detail + "|" + petTip();
+    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? (selectedMiniMode === "hover" ? "2" : "1") : "0") + "|" +
+    theme + "|" + percent + "|" + amount + "|" + detail + "|" + selectedMiniMode + "|" + bankLockMode(bank.settings) + "|" +
+    (restReminderPending ? "1" : "0") + "|" + petTip();
   if (state !== petLastState && writePath(petStatePath, state, true)) petLastState = state;
 }
 function readPetBounds() {
@@ -1040,7 +1110,16 @@ function stopPet() {
 }
 function failPet(message) {
   var restoreHandle = petRunning ? petParentHandle : "";
+  var needsLockFailSafe = bankLockMode(bank.settings) !== "off";
   if (petStarting && document.title === petTargetTitle) document.title = petPreviousTitle;
+  if (needsLockFailSafe) {
+    if (tracking) pauseTracking();
+    sessionMonitorReady = false;
+    sessionMonitorFailed = true;
+    lockPausedTracking = false;
+    startWhenSessionReady = false;
+    message += " 锁屏监测不可用，记录已暂停。";
+  }
   stopPet();
   recoverPetPanel(restoreHandle);
   renderPin();
@@ -1048,8 +1127,58 @@ function failPet(message) {
   showPetStatus(message);
   showToast(message);
 }
+function applyMiniMode(value) {
+  if (value !== "always" && value !== "hover" && value !== "off") return;
+  if (!bank.settings) { showToast("请先设置班表，再调整简要信息卡。"); return; }
+  bank.settings.miniMode = value;
+  bank.settings.miniInfo = value !== "off";
+  if ($id("inMiniMode")) $id("inMiniMode").value = value;
+  dirty = true;
+  petLastState = "";
+  if (!tracking && !saveBank()) showToast("简要信息卡模式未能保存，请检查目录权限。");
+  writePetState();
+}
+function handleSessionEvent(value) {
+  var mode = bankLockMode(bank.settings);
+  if (value === "session-ready|1") {
+    sessionMonitorReady = true;
+    sessionMonitorFailed = false;
+    if (startWhenSessionReady && !sessionLocked) startTracking();
+    return;
+  }
+  if (value === "session-ready|0") {
+    failPet("Windows 锁屏监测不可用；锁屏保护已停止。");
+    return;
+  }
+  if (mode === "off") return;
+  if (value === "session|locked") {
+    if (sessionLocked) return;
+    sessionLocked = true;
+    lockPausedTracking = tracking || startWhenSessionReady;
+    startWhenSessionReady = false;
+    if (tracking) pauseTracking();
+    return;
+  }
+  if (value === "session|unlocked") {
+    if (!sessionLocked) return;
+    sessionLocked = false;
+    var resume = lockPausedTracking;
+    lockPausedTracking = false;
+    if (!resume) return;
+    if (mode === "auto" && sessionMonitorReady && !sessionMonitorFailed) {
+      startTracking();
+      showToast("已解锁，小鲸继续记录；锁屏期间不补算。");
+    } else {
+      showToast("已解锁，记录仍暂停；确认后可手动开始。");
+    }
+  }
+}
 function startPet() {
   if (petStarting || petRunning) return true;
+  if (bankLockMode(bank.settings) !== "off") {
+    sessionMonitorReady = false;
+    sessionMonitorFailed = false;
+  }
   if (pinPending) { petStarted = -1; return false; }
   try {
     var shell = new ActiveXObject("WScript.Shell");
@@ -1107,6 +1236,12 @@ function handlePetEvent(value) {
     if (tracking) pauseTracking(); else startTracking();
   } else if (value === "privacy") {
     togglePrivacy();
+  } else if (value === "mini-mode|always" || value === "mini-mode|hover" || value === "mini-mode|off") {
+    applyMiniMode(value.substring("mini-mode|".length));
+  } else if (value === "rest-snooze") {
+    snoozeRestReminder();
+  } else if (value === "session-ready|1" || value === "session-ready|0" || value === "session|locked" || value === "session|unlocked") {
+    handleSessionEvent(value);
   } else if (value === "pin|1" || value === "pin|0") {
     petTopMost = value === "pin|1";
     if (bank.settings) { bank.settings.petOnTop = petTopMost; dirty = true; }
@@ -1363,7 +1498,8 @@ function render(now) {
   var pct = day.activeSeconds / (day.dayHours * 3600) * 100;
   var status = $id("status"), stateText = "未设置", statusClass = "status off";
   if (bank.settings) {
-    if (!tracking) stateText = signedOff ? "已收工" : "未开工";
+    if (sessionLocked && bankLockMode(bank.settings) !== "off") stateText = "锁屏暂停";
+    else if (!tracking) stateText = signedOff ? "已收工" : "未开工";
     else if (!monitorReady) stateText = "采样未就绪";
     else if (monitorIdle) stateText = "键鼠空闲";
     else {
@@ -1403,6 +1539,9 @@ function render(now) {
   var monitor = $id("monitorText");
   monitor.className = "monitor" + (storageProblem || (tracking && !monitorReady && now - monitorStarted > 8000) ? " error" : "");
   if (storageProblem) text("monitorText", storageProblem);
+  else if (sessionLocked && bankLockMode(bank.settings) !== "off") text("monitorText", "Windows 已锁屏，记录已暂停；解锁后按设置决定是否自动继续。");
+  else if (sessionMonitorFailed && bankLockMode(bank.settings) !== "off") text("monitorText", "锁屏监测不可用，记录已暂停。重试小鲸，或关闭锁屏暂停设置后再开始。");
+  else if (bankLockMode(bank.settings) !== "off" && !sessionMonitorReady) text("monitorText", "正在连接锁屏监测；连接成功前不会开始计时。");
   else if (tracking && !monitorReady && now - monitorStarted > 8000) {
     monitor.innerText = "无法读取系统活跃状态，未计入工时。请检查 PowerShell 和系统策略，然后暂停并重新开始记录。";
   } else if (tracking && !monitorReady) text("monitorText", "正在启动本机活跃状态采样；采样就绪前不计时。");
@@ -1413,7 +1552,8 @@ function render(now) {
 function hourKey(d) { return bankDate(d.getTime()) + "-" + pad(d.getHours()); }
 function showToast(message) {
   if (petRunning && !petPanelVisible) {
-    var notice = message.indexOf("整点") >= 0 || message.indexOf("时薪参考") === 0 ? "hour" : "attention";
+    var notice = message.indexOf("整点") >= 0 || message.indexOf("时薪参考") === 0 ? "hour" :
+      (message.indexOf("Alt+R") >= 0 ? "rest" : "attention");
     writePath(petNoticePath, notice, false);
     return;
   }
@@ -1421,6 +1561,12 @@ function showToast(message) {
   $id("toast").className = "toast";
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { $id("toast").className = "toast hidden"; }, 6000);
+}
+function snoozeRestReminder() {
+  if (!restReminderPending) { showToast("当前没有待处理的休息提醒。"); return false; }
+  restReminderSnoozeSeconds = 15 * 60;
+  showToast("已稍后提醒；再记录 15 分钟活跃时间后提醒。暂停和键鼠空闲时不计时。");
+  return true;
 }
 function tick(skipPet) {
   var now = new Date().getTime();
@@ -1432,9 +1578,23 @@ function tick(skipPet) {
     var sample = readSample(now), elapsed = now - lastTick;
     monitorReady = !!sample;
     monitorIdle = !!sample && sample.idle >= IDLE_LIMIT;
-    if (sample && previousInput !== null && elapsed > 0 && elapsed <= MAX_TICK_GAP) {
-      var ranges = bankActiveRanges(lastTick, now, previousInput, sample.input, IDLE_LIMIT);
-      for (var i = 0; i < ranges.length; i++) addActivity(ranges[i].start, ranges[i].end);
+    if (sample && previousInput !== null && elapsed > 0 && elapsed <= MAX_TICK_GAP && !sessionLocked) {
+      var ranges = bankActiveRanges(lastTick, now, previousInput, sample.input, IDLE_LIMIT), addedSeconds = 0;
+      for (var i = 0; i < ranges.length; i++) {
+        addActivity(ranges[i].start, ranges[i].end);
+        addedSeconds += (ranges[i].end - ranges[i].start) / 1000;
+      }
+      var reminderMinutes = bankRestReminder(bank.settings);
+      var reminder = bankReminderProgress(restReminderActiveSeconds, addedSeconds, reminderMinutes);
+      restReminderActiveSeconds = reminder.seconds;
+      if (reminder.notify) restReminderPending = true;
+      if (restReminderPending && reminderMinutes > 0) {
+        if (restReminderSnoozeSeconds > 0) restReminderSnoozeSeconds = bankReminderSnoozeProgress(restReminderSnoozeSeconds, addedSeconds);
+        if (restReminderSnoozeSeconds === 0) {
+          restReminderPending = false;
+          showToast("已累计记录约 " + reminderMinutes + " 分钟，喝口水、活动一下也很好。Alt+R 或小鲸右键菜单可稍后 15 分钟提醒。");
+        }
+      }
     }
     previousInput = sample ? sample.input : null;
     lastTick = now;
@@ -1453,6 +1613,15 @@ function tick(skipPet) {
 function startTracking() {
   if (fatalStorage) { alert(storageProblem); return; }
   if (!bank.settings) { openSettings(); return; }
+  if (sessionLocked && bankLockMode(bank.settings) !== "off") { showToast("Windows 仍处于锁屏状态，解锁后再开始记录。"); return; }
+  if (bankLockMode(bank.settings) !== "off" && (!sessionMonitorReady || sessionMonitorFailed)) {
+    if (sessionMonitorFailed) { showToast("锁屏监测不可用；请重试小鲸，或在设置里关闭锁屏暂停后再记录。"); return; }
+    startWhenSessionReady = true;
+    if (!petStarting && !petRunning) startPet();
+    showToast("正在连接锁屏监测；连接成功前不会开始计时。");
+    return;
+  }
+  startWhenSessionReady = false;
   tracking = true;
   signedOff = false;
   lastTick = new Date().getTime();
@@ -1480,6 +1649,10 @@ function openSettings() {
   $id("inAnnounce").checked = !s || s.announce !== false;
   $id("inMotion").checked = !s || s.motion !== false;
   $id("inMiniMode").value = bankMiniMode(s || {});
+  $id("inAutoLaunch").checked = !!(s && s.autoLaunch === true);
+  $id("inLockMode").value = bankLockMode(s || {});
+  $id("inMaskTimeout").value = String(bankMaskTimeout(s || {}));
+  $id("inRestReminder").value = String(bankRestReminder(s || {}));
   $id("inAutoStart").checked = !!(s && s.autoStart === true);
   $id("inGoals").value = s && typeof s.customGoals === "string" ? s.customGoals : "";
   showGoalValidation();
@@ -1503,6 +1676,10 @@ function saveSettings() {
     miniMode: /^(always|hover|off)$/.test($id("inMiniMode").value) ? $id("inMiniMode").value : "always",
     miniInfo: $id("inMiniMode").value !== "off",
     autoStart: $id("inAutoStart").checked,
+    autoLaunch: $id("inAutoLaunch").checked,
+    lockMode: $id("inLockMode").value,
+    maskTimeoutSeconds: Number($id("inMaskTimeout").value),
+    restReminderMinutes: Number($id("inRestReminder").value),
     customGoals: $id("inGoals").value.replace(/^\s+|\s+$/g, ""),
     theme: chosenTheme,
     themeAlpha: alphaDraft,
@@ -1512,11 +1689,19 @@ function saveSettings() {
     petY: petPositionY
   };
   if (!bankValidSettings(settings)) {
-    alert("请填写有效的到手月薪、月计划工时（不超过 744）、日计划工时（不超过 24）和下班时间（如 18:00）。");
+    alert("请填写有效的到手月薪、月计划工时（不超过 744）、日计划工时（不超过 24）、班次、锁屏策略和提醒间隔。");
     return;
   }
   if (tracking) tick();
   var previousSettings = bank.settings, previousMask = masked, previousDirty = dirty;
+  var previousAutoLaunch = !!(previousSettings && previousSettings.autoLaunch === true);
+  var autoLaunchChanged = settings.autoLaunch !== previousAutoLaunch;
+  if (autoLaunchChanged && !setWindowsAutostart(settings.autoLaunch)) {
+    alert("登录启动项无法安全创建或删除。已有同名但不属于本程序的快捷方式不会被覆盖；设置没有保存。");
+    return;
+  }
+  var oldLockMode = bankLockMode(previousSettings);
+  var resumeAfterLockRegistration = !!(tracking && oldLockMode === "off" && bankLockMode(settings) !== "off");
   var day = bank.days[bankDate(new Date().getTime())];
   var previousRate = day ? day.hourlyRate : 0, previousHours = day ? day.dayHours : 0;
   bank.settings = settings;
@@ -1528,6 +1713,7 @@ function saveSettings() {
     if (day) { day.hourlyRate = previousRate; day.dayHours = previousHours; }
     masked = previousMask;
     dirty = previousDirty;
+    if (autoLaunchChanged && !setWindowsAutostart(previousAutoLaunch)) showToast("记录保存失败，登录启动快捷方式也未能恢复；请检查 Windows 启动文件夹。");
     settingsEditing = true;
     draftThemeAlpha = copyThemeAlpha(savedThemeAlpha);
     setTheme(normalizeTheme(previousSettings && previousSettings.theme), false);
@@ -1542,9 +1728,32 @@ function saveSettings() {
   pendingAlpha = activeAlpha;
   settingsEditing = false;
   $id("settingsModal").className = "modal hidden";
+  var nextLockMode = bankLockMode(settings);
+  if (nextLockMode === "off") {
+    sessionMonitorReady = true;
+    sessionMonitorFailed = false;
+    sessionLocked = false;
+    lockPausedTracking = false;
+    startWhenSessionReady = false;
+  } else if (nextLockMode !== oldLockMode) {
+    sessionMonitorReady = false;
+    sessionMonitorFailed = false;
+  }
+  scheduleAutomaticMask();
+  if (settings.restReminderMinutes === 0) {
+    restReminderActiveSeconds = 0;
+    restReminderPending = false;
+    restReminderSnoozeSeconds = 0;
+  }
+  if (settings.autoLaunch && !autoLaunchChanged && !setWindowsAutostart(true)) showToast("已保存设置，但 Windows 登录启动快捷方式缺失或与其他快捷方式冲突。");
   if (settings.customGoals && !bankGoalCustom(settings.customGoals)) showToast("自定义目标至少需要 3 个有效项，暂用内置目标。");
   if (!previousSettings) startTracking();
-  else render(new Date().getTime());
+  else if (resumeAfterLockRegistration) {
+    pauseTracking();
+    startWhenSessionReady = true;
+    if (!petStarting && !petRunning) startPet();
+    showToast("正在启用锁屏保护；监测就绪前不会继续计时。");
+  } else render(new Date().getTime());
   applyTheme();
   applyWindowChrome();
 }
@@ -1601,6 +1810,105 @@ function renderHistory() {
   text("historyScale", "每日活跃工时 · 峰值 " + (maxSeconds / 3600).toFixed(2) + " 小时；悬停或聚焦查看详情");
   $id("monthChart").innerHTML = bars;
   $id("historyBody").innerHTML = rows || "<tr><td colspan='5' style='text-align:center'>本月暂无记录</td></tr>";
+}
+function csvCell(value) {
+  var textValue = String(value === null || typeof value === "undefined" ? "" : value);
+  return '"' + textValue.replace(/"/g, '""') + '"';
+}
+function bankCsvText(data) {
+  var rows = [["日期", "活跃秒数", "活跃工时", "补记分钟", "补记明细", "加班秒数", "当日投入（元）", "时薪", "计划日工时"]];
+  var keys = [];
+  for (var key in data.days) if (Object.prototype.hasOwnProperty.call(data.days, key)) keys.push(key);
+  keys.sort();
+  for (var i = 0; i < keys.length; i++) {
+    var day = data.days[keys[i]], entries = day.manualEntries || [], details = [];
+    for (var j = 0; j < entries.length; j++) details.push(entries[j].kind + ":" + entries[j].minutes + "分钟");
+    rows.push([keys[i], day.activeSeconds.toFixed(2), (day.activeSeconds / 3600).toFixed(4), bankManualMinutes(day),
+      details.join("；"), bankOvertime(day).toFixed(2), bankDayAmount(day).toFixed(2), day.hourlyRate.toFixed(6), day.dayHours]);
+  }
+  var output = [];
+  for (var r = 0; r < rows.length; r++) {
+    var cells = [];
+    for (var c = 0; c < rows[r].length; c++) cells.push(csvCell(rows[r][c]));
+    output.push(cells.join(","));
+  }
+  return output.join("\r\n");
+}
+function writeDataExport(path, kind) {
+  if (kind !== "json" && kind !== "csv") return false;
+  var extension = kind === "json" ? /\.json$/i : /\.csv$/i;
+  if (!extension.test(path)) { alert("请选择 ." + kind + " 文件名。"); return false; }
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    if (sameWindowsPath(path, appPath(DATA_FILE)) || sameWindowsPath(path, appPath(BACKUP_FILE)) || sameWindowsPath(path, appPath(TEMP_FILE))) {
+      alert("导出文件不能指向程序正在使用的账本文件。"); return false;
+    }
+    if (fso.FileExists(path)) { alert("该文件已存在，为保护已有文件，本次没有覆盖；请另选文件名。"); return false; }
+    var content = kind === "json" ? JSON.stringify(bank, null, 2) : bankCsvText(bank);
+    var file = fso.CreateTextFile(path, false, true);
+    try { file.Write(content); file.Close(); }
+    catch (writeError) { try { file.Close(); } catch (closeError) {} deletePath(path); throw writeError; }
+    showToast(kind === "json" ? "完整 JSON 备份已写入所选位置。" : "CSV 已导出；内容含每日金额等敏感信息。");
+    return true;
+  } catch (e) {
+    alert("导出未完成；原账本未修改。请检查目标目录权限并重试。");
+    return false;
+  }
+}
+function clearExportChoice() {
+  if (exportDialogTimer) clearTimeout(exportDialogTimer);
+  exportDialogTimer = null;
+  try { if (exportDialogProcess && exportDialogProcess.Status === 0) exportDialogProcess.Terminate(); } catch (e) {}
+  exportDialogProcess = null;
+  deletePath(exportDialogPath);
+  exportDialogPath = "";
+  exportDialogKind = "";
+  exportDialogStarted = 0;
+}
+function checkExportChoice(path, kind, started) {
+  var result = readPath(path, true);
+  if (result) {
+    if (result !== "CANCEL") writeDataExport(result, kind);
+    clearExportChoice();
+    return;
+  }
+  if (new Date().getTime() - started >= 120000) {
+    showToast("文件选择窗口未返回结果；没有导出文件。");
+    clearExportChoice();
+    return;
+  }
+  exportDialogTimer = setTimeout(function () { checkExportChoice(path, kind, started); }, 300);
+}
+function chooseDataExport(kind) {
+  if (exportDialogPath) { showToast("已有文件选择窗口打开。"); return; }
+  if (kind !== "json" && kind !== "csv") return;
+  var warning = kind === "json" ?
+    "完整 JSON 备份包含月薪设置和每日记录，只保存到你选定的本机文件；请妥善保管。继续选择位置吗？" :
+    "CSV 包含每日投入、加班和计算用时薪等敏感信息，但不含原始键鼠内容。文件只写入你选定的位置，且不会覆盖已有文件。继续吗？";
+  if (!confirm(warning)) return;
+  try {
+    var fso = new ActiveXObject("Scripting.FileSystemObject"), shell = new ActiveXObject("WScript.Shell");
+    var temp = fso.GetSpecialFolder(2).Path;
+    exportDialogPath = temp + "\\WorkBankExportChoice-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000) + ".result";
+    exportDialogKind = kind;
+    exportDialogStarted = new Date().getTime();
+    var title = kind === "json" ? "选择完整工时账本备份位置" : "选择工时记录 CSV 导出位置";
+    var filter = kind === "json" ? "JSON 备份 (*.json)|*.json" : "CSV 表格 (*.csv)|*.csv";
+    var stamp = new Date(), fileStamp = bankDate(stamp.getTime()).replace(/-/g, "") + "-" + pad(stamp.getHours()) + pad(stamp.getMinutes()) + pad(stamp.getSeconds());
+    var fileName = (kind === "json" ? "workbank-backup-" : "workbank-records-") + fileStamp + "." + kind;
+    var script = "$ErrorActionPreference='Stop';Add-Type -AssemblyName System.Windows.Forms;" +
+      "$d=New-Object System.Windows.Forms.SaveFileDialog;$d.Title=" + psQuote(title) + ";$d.Filter=" + psQuote(filter) + ";" +
+      "$d.DefaultExt=" + psQuote(kind) + ";$d.AddExtension=$true;$d.OverwritePrompt=$false;$d.CheckPathExists=$true;" +
+      "$d.RestoreDirectory=$true;$d.FileName=" + psQuote(fileName) + ";" +
+      "if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){[IO.File]::WriteAllText(" + psQuote(exportDialogPath) + ",$d.FileName,[Text.Encoding]::Unicode)}" +
+      "else{[IO.File]::WriteAllText(" + psQuote(exportDialogPath) + ",'CANCEL',[Text.Encoding]::Unicode)}";
+    var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    exportDialogProcess = shell.Exec('"' + exe + '" -NoLogo -NoProfile -NonInteractive -Sta -WindowStyle Hidden -Command "' + script + '"');
+    checkExportChoice(exportDialogPath, kind, exportDialogStarted);
+  } catch (e) {
+    clearExportChoice();
+    alert("无法打开系统文件选择窗口。原账本没有变化。");
+  }
 }
 function showHistory() {
   historySelectedMonth = bankDate(new Date().getTime()).substring(0, 7);
@@ -1682,9 +1990,7 @@ $id("segDeep").onclick = function () { setTheme("deep", false); };
 $id("segCream").onclick = function () { setTheme("cream", false); };
 $id("segGlass").onclick = function () { setTheme("glass", false); };
 $id("btnPin").onclick = function () { requestPin(!pinned, true); };
-function togglePrivacy() {
-  masked = !masked;
-  if (masked) $id("toast").className = "toast hidden";
+function refreshPrivacyViews() {
   var now = new Date().getTime();
   render(now);
   if ($id("historyModal").className === "modal" && historySelectedMonth) renderHistory();
@@ -1693,6 +1999,25 @@ function togglePrivacy() {
     text("receiptMonth", money(receiptMonthAmount));
   }
   writePetState();
+}
+function scheduleAutomaticMask() {
+  if (autoMaskTimer) clearTimeout(autoMaskTimer);
+  autoMaskTimer = null;
+  var seconds = bankMaskTimeout(bank.settings);
+  if (masked || !seconds) return;
+  autoMaskTimer = setTimeout(function () {
+    autoMaskTimer = null;
+    if (!masked) applyPrivacyState(true);
+  }, seconds * 1000);
+}
+function applyPrivacyState(value) {
+  masked = !!value;
+  if (masked) $id("toast").className = "toast hidden";
+  refreshPrivacyViews();
+  scheduleAutomaticMask();
+}
+function togglePrivacy() {
+  applyPrivacyState(!masked);
 }
 $id("btnPrivacy").onclick = togglePrivacy;
 $id("todayAmount").onclick = togglePrivacy;
@@ -1745,6 +2070,8 @@ function handleShortcut(event) {
     if (!modalVisible()) openSettings();
   } else if (keyCode === 72) {
     if (!modalVisible()) hideViaPet();
+  } else if (keyCode === 82) {
+    snoozeRestReminder();
   } else return true;
   if (event.preventDefault) event.preventDefault();
   event.returnValue = false;
@@ -1755,6 +2082,8 @@ $id("showSalary").onclick = function () { $id("inSalary").type = this.checked ? 
 $id("btnSign").onclick = signOff;
 $id("btnCloseReceipt").onclick = function () { $id("receiptModal").className = "modal hidden"; };
 $id("btnHistory").onclick = showHistory;
+$id("btnBackup").onclick = function () { chooseDataExport("json"); };
+$id("btnExportCsv").onclick = function () { chooseDataExport("csv"); };
 $id("btnPrevMonth").onclick = function () { moveHistoryMonth(-1); };
 $id("btnNextMonth").onclick = function () { moveHistoryMonth(1); };
 $id("btnCloseHistory").onclick = function () { $id("historyModal").className = "modal hidden"; };
@@ -1777,11 +2106,21 @@ window.onload = function () {
     window.moveTo(Math.max(0, screen.availWidth - width - 16), Math.max(0, Math.min(40, screen.availHeight - height)));
   } catch (e) {}
   loadBank();
+  sessionMonitorReady = bankLockMode(bank.settings) === "off";
+  sessionMonitorFailed = false;
+  sessionLocked = false;
+  lockPausedTracking = false;
+  startWhenSessionReady = false;
+  restReminderActiveSeconds = 0;
+  restReminderPending = false;
+  restReminderSnoozeSeconds = 0;
   setTheme(theme, false);
   syncOpacityControl();
   render(new Date().getTime());
+  scheduleAutomaticMask();
   renderPin();
   setInterval(tick, 250);
+  if (bank.settings && bank.settings.autoLaunch === true && !setWindowsAutostart(true)) showToast("无法确认登录启动快捷方式；请检查 Windows 启动文件夹。");
   if (bank.settings && bank.settings.alwaysOnTop === true) requestPin(true, false);
   if (!bank.settings && !fatalStorage) openSettings();
   if (bank.settings && bank.settings.autoStart === true && !fatalStorage) startTracking();
@@ -1794,6 +2133,9 @@ window.onunload = function () {
   stopPet();
   if (pinTimer) clearTimeout(pinTimer);
   if (chromeTimer) clearTimeout(chromeTimer);
+  if (autoMaskTimer) clearTimeout(autoMaskTimer);
+  if (exportDialogPath) clearExportChoice();
+  else if (exportDialogTimer) clearTimeout(exportDialogTimer);
   deletePath(pinResultPath);
   deletePath(chromeGatePath);
 };

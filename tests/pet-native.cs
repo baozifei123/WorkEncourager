@@ -50,23 +50,32 @@ public static class PetNativeTests
         if (bottomEdge.Bottom != work.Bottom) throw new Exception("Mini card should stay inside the work area");
         Rectangle narrow = MiniInfoForm.BoundsFor(new Rectangle(10, 500, 180, 240), new Rectangle(0, 0, 300, 900), MiniInfoForm.CardWidth, MiniInfoForm.CardHeight, 8);
         if (narrow.Left != 0 || narrow.Right > 300) throw new Exception("Mini card should clamp to a narrow work area");
-        if (!MiniInfoForm.IsAmountArea(new Point(20, 30))) throw new Exception("The mini amount row should be clickable");
-        if (MiniInfoForm.IsAmountArea(new Point(20, 8))) throw new Exception("The mini label row should open the panel");
-        if (MiniInfoForm.IsAmountArea(new Point(20, 70))) throw new Exception("The mini progress row should open the panel");
-        if (MiniInfoForm.IsAmountArea(new Point(MiniInfoForm.CardWidth - 1, 30))) throw new Exception("The card border should not mask the amount");
+        if (MiniInfoForm.NextVisibleMode(1) != 2 || MiniInfoForm.NextVisibleMode(2) != 1 || MiniInfoForm.NextVisibleMode(0) != 1)
+            throw new Exception("The mini mode shortcut should toggle always and hover without making a hidden card unreachable");
+        if (MiniInfoForm.CompactStatus("接近计划工时") != "近目标" || MiniInfoForm.CompactStatus("加班中") != "加班中")
+            throw new Exception("Compact mini status labels should fit beside the quick controls");
+        if (!MiniInfoForm.IsModeArea(new Point(150, 10)) || !MiniInfoForm.IsTrackingArea(new Point(190, 10)))
+            throw new Exception("The mini card mode and tracking controls should have separate click areas");
+        if (MiniInfoForm.IsAmountArea(new Point(150, 10)) || MiniInfoForm.IsTrackingArea(new Point(150, 10)) ||
+            MiniInfoForm.IsAmountArea(new Point(190, 10)) || MiniInfoForm.IsModeArea(new Point(190, 10)))
+            throw new Exception("Header controls must not overlap the amount or each other");
         using (MiniInfoForm mini = new MiniInfoForm(false))
         {
-            int opened = 0, amounts = 0, menus = 0;
+            int opened = 0, amounts = 0, menus = 0, mode = 0, tracking = 0;
             mini.OpenRequested += delegate { opened++; };
             mini.AmountRequested += delegate { amounts++; };
+            mini.ModeRequested += delegate { mode++; };
+            mini.TrackingRequested += delegate { tracking++; };
             mini.MenuRequested += delegate { menus++; };
             MethodInfo click = typeof(MiniInfoForm).GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic);
             if (click == null) throw new Exception("Missing mini card click handler");
+            click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 150, 10, 0) });
+            click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 190, 10, 0) });
             click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 20, 30, 0) });
             click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Left, 1, 20, 70, 0) });
             click.Invoke(mini, new object[] { new MouseEventArgs(MouseButtons.Right, 1, 20, 30, 0) });
-            if (amounts != 1 || opened != 1 || menus != 1)
-                throw new Exception("Mini card should mask on the amount, open elsewhere, and show its menu on right click");
+            if (amounts != 1 || opened != 1 || menus != 1 || mode != 1 || tracking != 1)
+                throw new Exception("Mini card buttons, amount masking, body opening, and right-click routing should stay separate");
         }
         if (WorkBankPet.SelectFrame("active", false, 49) != "normal") throw new Exception("Before halfway the pet should rest");
         if (WorkBankPet.SelectFrame("active", false, 50) != "working") throw new Exception("Halfway should show the working pose");
@@ -94,7 +103,10 @@ public static class PetNativeTests
         if (WorkBankPet.SelectFrame("celebrate", false, 100) != "celebrate") throw new Exception("Sign-off should celebrate");
         if (WorkBankPet.SelectFrame("celebrate", true, 100) != "wave") throw new Exception("The open panel should take pose precedence");
         if (WorkBankPet.SelectFrame("idle", false, 95) != "normal") throw new Exception("Idle should not show a working pose");
-        Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card bounds and click routing passed.");
+        if (WorkBankPet.SessionChangeCommand(7) != "session|locked" || WorkBankPet.SessionChangeCommand(8) != "session|unlocked" ||
+            WorkBankPet.SessionChangeCommand(5) != null)
+            throw new Exception("Only current-session lock and unlock events should be forwarded");
+        Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card controls, session events and click routing passed.");
         return 0;
     }
 }
