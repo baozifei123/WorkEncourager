@@ -55,7 +55,8 @@
   .privacy:hover, .btn-quiet:hover { border-color: #7fc4ff; color: #eaf6ff; }
   .pet-say { margin: 10px 0 0; padding: 8px 11px; color: #a9cdea; background: #0e1f34; border-left: 2px solid #7fc4ff; border-radius: 4px 10px 10px 4px; font-size: 12px; line-height: 1.6; }
   .label { margin-top: 12px; color: #8fb1d1; font-size: 12px; letter-spacing: 3px; }
-  .amount { margin: 5px 0 2px; color: #d9efff; font: bold 48px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; text-shadow: 0 0 18px rgba(110,190,255,.28); }
+  .amount { display: block; margin: 5px 0 2px; padding: 0; border: 0; background: transparent; text-align: left; color: #d9efff; font: bold 48px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; text-shadow: 0 0 18px rgba(110,190,255,.28); }
+  .amount:hover { color: #fff; }
   .caption { min-height: 20px; color: #9fbcd8; font-size: 12px; }
   .progress-head { margin-top: 13px; color: #c6dcf2; font-size: 12px; }
   .progress-head .right { float: right; color: #8fd0ff; font-family: Consolas, monospace; font-size: 13px; }
@@ -120,7 +121,8 @@
   .seg { float: right; margin-top: -2px; }
   .seg-btn { display: inline-block; padding: 3px 12px; font-size: 11px; color: #9db8d2; background: #0b1a2d; border: 1px solid #3a5d82; cursor: pointer; letter-spacing: 1px; }
   .seg-btn.first { border-radius: 7px 0 0 7px; }
-  .seg-btn.last { border-radius: 0 7px 7px 0; border-left: 0; }
+  .seg-btn.middle, .seg-btn.last { border-left: 0; }
+  .seg-btn.last { border-radius: 0 7px 7px 0; }
   .seg-btn.on { color: #061826; background-image: linear-gradient(180deg, #cfe9ff, #9fd2ff); border-color: #9fd2ff; font-weight: bold; }
   .check { display: block; margin: 6px 0; color: #c6daec; font-size: 12px; }
   .check input { margin: 0 7px 0 0; vertical-align: middle; }
@@ -183,6 +185,7 @@
   body.theme-cream .pet-say { color: #586b78; background: #f6efdf; border-left-color: #2c6fa8; }
   body.theme-cream .label { color: #8a8273; }
   body.theme-cream .amount { color: #204b73; text-shadow: none; }
+  body.theme-cream .amount:hover { color: #2c6fa8; }
   body.theme-cream .caption { color: #7d786b; }
   body.theme-cream .progress-head { color: #5f5a4e; }
   body.theme-cream .progress-head .right { color: #2c6fa8; }
@@ -242,6 +245,30 @@
   body.theme-cream .month-bar-day, body.theme-cream .manual-help { color: #665f53; }
   body.theme-cream .manual-item { border-bottom-color: #e6dcc5; }
   body.theme-cream .toast { color: #3b3a33; background: #fff8e8; border-left-color: #2c6fa8; box-shadow: 0 8px 24px rgba(90,70,40,.2); }
+
+  /* 海雾玻璃：窗口由系统合成半透明，文字保持高对比度。 */
+  body.theme-glass { color: #eaf9ff; background: #18303b;
+    background-image: radial-gradient(ellipse at 85% 0%, rgba(130,220,225,.18), transparent 58%),
+      repeating-linear-gradient(0deg, rgba(215,250,255,.025) 0, rgba(215,250,255,.025) 1px, transparent 1px, transparent 7px); }
+  body.theme-glass .card { background: #264650; border-color: #85b5bb; box-shadow: 0 14px 32px rgba(0,15,21,.3); }
+  body.theme-glass .card:before { background: repeating-radial-gradient(circle at 6px 0, rgba(196,246,246,.7) 0, rgba(196,246,246,.7) 3px, transparent 3px, transparent 12px); }
+  body.theme-glass .pet-say, body.theme-glass .anchor { background: #1d3943; color: #d6f2f1; }
+  body.theme-glass .anchor { border-top-color: #628d94; }
+  body.theme-glass .status { background: #315f69; border-color: #80b5bb; color: #f1ffff; }
+  body.theme-glass .status.off { background: #31494f; border-color: #739398; }
+  body.theme-glass .status.overtime { background: #684c39; border-color: #bf956e; }
+  body.theme-glass .track { background: #152d34; border-color: #658c90; }
+  body.theme-glass .rule { background: #628d94; }
+  body.theme-glass .stat + .stat { border-left-color: #628d94; }
+  body.theme-glass .date, body.theme-glass .caption, body.theme-glass .progress-foot,
+  body.theme-glass .stat-detail, body.theme-glass .monitor, body.theme-glass .footnote { color: #d3eae9; }
+  body.theme-glass .pin, body.theme-glass .theme { background: #254852; border-color: #7aa4a9; color: #f0ffff; }
+  body.theme-glass .btn-quiet { border-color: #789da2; color: #e5faf8; }
+  body.theme-glass .modal-box, body.theme-glass .settings-actions { background: #203b46; border-color: #668e94; }
+  body.theme-glass .field input, body.theme-glass .field select, body.theme-glass .field textarea { background: #152e37; border-color: #73999d; }
+  body.theme-glass .month-bar-fill { background: #82c7cf; }
+  body.theme-glass .history th { background: #284953; }
+  body.theme-glass .toast { background: #284d57; border-left-color: #b9eded; }
 </style>
 </head>
 <body>
@@ -250,7 +277,7 @@
     <img class="avatar" src="assets/whale-face.png" alt="">
     <div class="eyebrow">WORK ENCOURAGER / TIME BANK</div>
     <h1>工时银行</h1>
-    <button class="theme" id="btnTheme" type="button" title="在深海蓝和围裙纸主题之间切换">换肤</button>
+    <button class="theme" id="btnTheme" type="button" title="依次切换深海蓝、围裙纸和海雾玻璃">换肤</button>
     <button class="pin" id="btnPin" type="button" aria-pressed="false" title="将窗口固定在其他普通窗口前面">置顶窗口</button>
   </div>
 
@@ -261,7 +288,7 @@
     </div>
     <div class="pet-say" id="petSay">小鲸陪着你。设置好月薪和班表，我们就开始。</div>
     <div class="label">今 日 投 入</div>
-    <div class="amount" id="todayAmount">¥ ****</div>
+    <button class="amount" id="todayAmount" type="button" aria-pressed="true" aria-label="今日投入已隐藏，点击显示金额">¥ ****</button>
     <div class="caption" id="todayCaption">先设置到手月薪和计划工时</div>
 
     <div class="progress-head"><span>今日活跃工时</span><span class="right" id="progressText">0.00 / 8.00 小时 · 0%</span></div>
@@ -305,9 +332,9 @@
     <div class="fields">
       <div class="field theme-field"><label>界面风格
           <span class="seg">
-            <span class="seg-btn first on" id="segDeep">深海蓝</span><span class="seg-btn last" id="segCream">围裙纸</span>
+            <button type="button" class="seg-btn first on" id="segDeep">深海蓝</button><button type="button" class="seg-btn middle" id="segCream">围裙纸</button><button type="button" class="seg-btn last" id="segGlass">海雾玻璃</button>
           </span>
-        </label><span class="hint">深海蓝适合夜间；围裙纸更接近小鲸的浅色女仆装。</span></div>
+        </label><span class="hint">玻璃主题为整个窗口半透明，可透出后面的桌面。</span></div>
       <div class="field"><label for="inSalary">到手月薪（元）</label><input id="inSalary" type="password" autocomplete="off"><span class="hint">扣除五险一金和个税后的金额</span></div>
       <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
@@ -480,6 +507,7 @@ var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", p
 var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
 var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = null, panelAnchor = null;
 var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
+var receiptDayAmount = 0, receiptMonthAmount = 0;
 var theme = "deep", pendingTheme = "deep", historySelectedMonth = "";
 var PANEL_WIDTH = 530, PANEL_HEIGHT = 720, PANEL_GAP = 12;
 
@@ -496,11 +524,18 @@ function applyTheme() {
   if (bank.settings && bank.settings.motion === false) classes += " motion-off";
   document.body.className = classes;
 }
+function normalizeTheme(value) {
+  return value === "cream" || value === "glass" ? value : "deep";
+}
 function setTheme(value, remember) {
-  theme = value === "cream" ? "cream" : "deep";
+  theme = normalizeTheme(value);
   pendingTheme = theme;
   $id("segDeep").className = "seg-btn first" + (theme === "deep" ? " on" : "");
-  $id("segCream").className = "seg-btn last" + (theme === "cream" ? " on" : "");
+  $id("segCream").className = "seg-btn middle" + (theme === "cream" ? " on" : "");
+  $id("segGlass").className = "seg-btn last" + (theme === "glass" ? " on" : "");
+  $id("segDeep").setAttribute("aria-pressed", theme === "deep" ? "true" : "false");
+  $id("segCream").setAttribute("aria-pressed", theme === "cream" ? "true" : "false");
+  $id("segGlass").setAttribute("aria-pressed", theme === "glass" ? "true" : "false");
   applyTheme();
   applyWindowChrome();
   if (remember && bank.settings) {
@@ -509,41 +544,92 @@ function setTheme(value, remember) {
     if (!saveBank()) showToast("主题已切换，但偏好保存失败；请检查目录权限。");
   }
 }
-/* Windows 11 支持给标题栏和边框着色；旧系统会忽略这些调用。 */
-var chromeTimer = null;
+/* 标题栏着色和玻璃主题由独立辅助进程设置到当前 HTA 窗口。 */
+var chromeTimer = null, chromeGatePath = "", chromeBasePath = "", chromeRevision = 0;
 var CHROME_COLORS = {
-  deep: { caption: "#0a1424", text: "#e7f1ff", border: "#2b4a6e", dark: 1 },
-  cream: { caption: "#f2ebdd", text: "#3b3a33", border: "#d9c9a8", dark: 0 }
+  deep: { caption: "#0a1424", text: "#e7f1ff", border: "#2b4a6e", dark: 1, alpha: 255 },
+  cream: { caption: "#f2ebdd", text: "#3b3a33", border: "#d9c9a8", dark: 0, alpha: 255 },
+  glass: { caption: "#18303b", text: "#eaf9ff", border: "#85b5bb", dark: 1, alpha: 210 }
 };
 function chromeColor(hex) {
   var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
   return r | (g << 8) | (b << 16);
 }
-function chromeCommand(title, colors) {
-  var nativeCode = "using System;using System.Runtime.InteropServices;" +
-    "public static class WorkBankChrome {" +
-    "[DllImport(@dwmapi.dll@)]static extern int DwmSetWindowAttribute(IntPtr h,int attribute,ref int value,int size);" +
-    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern IntPtr FindWindow(string cls,string title);" +
-    "public static int Apply(string title,int caption,int text,int border,int dark){" +
-    "IntPtr h=FindWindow(null,title);if(h==IntPtr.Zero)return 0;" +
-    "DwmSetWindowAttribute(h,20,ref dark,4);" +
-    "DwmSetWindowAttribute(h,35,ref caption,4);" +
-    "DwmSetWindowAttribute(h,36,ref text,4);" +
-    "return DwmSetWindowAttribute(h,34,ref border,4);}}";
+function chromeCommand(title, handle, colors, gatePath, resultPath, revision) {
+  var nativeCode = "using System;using System.IO;using System.Runtime.InteropServices;" +
+    "public static class WorkBankChrome {const int L=0x80000;const string P=@WorkBankGlassLayer@;" +
+    "[DllImport(@dwmapi.dll@)]static extern int DwmSetWindowAttribute(IntPtr h,int a,ref int v,int s);" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern IntPtr FindWindow(string c,string t);" +
+    "[DllImport(@user32.dll@)]static extern bool IsWindow(IntPtr h);" +
+    "[DllImport(@user32.dll@,EntryPoint=@GetWindowLongW@)]static extern int GetWindowLong(IntPtr h,int i);" +
+    "[DllImport(@user32.dll@,EntryPoint=@SetWindowLongW@)]static extern int SetWindowLong(IntPtr h,int i,int v);" +
+    "[DllImport(@user32.dll@)]static extern bool SetLayeredWindowAttributes(IntPtr h,int key,byte alpha,uint flags);" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern IntPtr GetProp(IntPtr h,string p);" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern bool SetProp(IntPtr h,string p,IntPtr v);" +
+    "[DllImport(@user32.dll@,CharSet=CharSet.Unicode)]static extern IntPtr RemoveProp(IntPtr h,string p);" +
+    "[DllImport(@user32.dll@)]static extern bool RedrawWindow(IntPtr h,IntPtr r,IntPtr g,uint flags);" +
+    "public static int Apply(string title,string handle,int caption,int text,int border,int dark,int alpha,string gate,string rev){" +
+    "if(!File.Exists(gate)||File.ReadAllText(gate).Trim()!=rev)return 2;" +
+    "long n;IntPtr h=Int64.TryParse(handle,out n)?new IntPtr(n):IntPtr.Zero;" +
+    "if(h==IntPtr.Zero||!IsWindow(h))h=FindWindow(null,title);" +
+    "for(int i=0;i<30&&(h==IntPtr.Zero||!IsWindow(h));i++){System.Threading.Thread.Sleep(100);h=FindWindow(null,title);}" +
+    "if(h==IntPtr.Zero)return -1;" +
+    "int style=GetWindowLong(h,-20);bool owned=GetProp(h,P)!=IntPtr.Zero;" +
+    "if(alpha<255){" +
+    "if((style&L)!=0&&!owned)return -2;" +
+    "if((style&L)==0){SetWindowLong(h,-20,style|L);" +
+    "if((GetWindowLong(h,-20)&L)==0)return -3;" +
+    "if(!SetProp(h,P,new IntPtr(1))){SetWindowLong(h,-20,GetWindowLong(h,-20)&~L);return -4;}}" +
+    "if(!SetLayeredWindowAttributes(h,0,(byte)alpha,2)){" +
+    "SetWindowLong(h,-20,GetWindowLong(h,-20)&~L);RemoveProp(h,P);RedrawWindow(h,IntPtr.Zero,IntPtr.Zero,0x485);return -5;}" +
+    "}else if(owned){SetWindowLong(h,-20,style&~L);if((GetWindowLong(h,-20)&L)!=0)return -6;" +
+    "RemoveProp(h,P);RedrawWindow(h,IntPtr.Zero,IntPtr.Zero,0x485);}" +
+    "try{DwmSetWindowAttribute(h,20,ref dark,4);DwmSetWindowAttribute(h,35,ref caption,4);" +
+    "DwmSetWindowAttribute(h,36,ref text,4);DwmSetWindowAttribute(h,34,ref border,4);}catch(Exception){}return 1;}}";
   var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
-    "Add-Type -TypeDefinition $src;[WorkBankChrome]::Apply(" + psQuote(title) + "," +
-    chromeColor(colors.caption) + "," + chromeColor(colors.text) + "," + chromeColor(colors.border) + "," + colors.dark +
-    ")} catch {}";
+    "Add-Type -TypeDefinition $src;$result=[WorkBankChrome]::Apply(" + psQuote(title) + "," + psQuote(handle) + "," +
+    chromeColor(colors.caption) + "," + chromeColor(colors.text) + "," + chromeColor(colors.border) + "," + colors.dark + "," +
+    colors.alpha + "," + psQuote(gatePath) + "," + psQuote(String(revision)) + ")}" +
+    "catch {$result=-9};if($result -ne 2){try{[IO.File]::WriteAllText(" + psQuote(resultPath) + ",[string]$result,[Text.Encoding]::ASCII)}catch{}}";
   var shell = new ActiveXObject("WScript.Shell");
   var exe = shell.ExpandEnvironmentStrings("%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
   shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
 }
+function checkChromeResult(path, revision, started) {
+  var result = readPath(path, false);
+  if (result) {
+    deletePath(path);
+    if (revision === chromeRevision && result !== "1") showToast("窗口透明效果未能切换，请检查 PowerShell 和系统策略。");
+    return;
+  }
+  if (new Date().getTime() - started < 12000) {
+    setTimeout(function () { checkChromeResult(path, revision, started); }, 300);
+  } else if (revision === chromeRevision) {
+    showToast("窗口外观未能确认，窗口可能保持原样；请检查 PowerShell。");
+  }
+}
 function applyWindowChrome() {
   if (chromeTimer) clearTimeout(chromeTimer);
-  chromeTimer = setTimeout(function () {
-    chromeTimer = null;
-    try { chromeCommand(document.title, CHROME_COLORS[theme] || CHROME_COLORS.deep); } catch (e) {}
-  }, 300);
+  try {
+    if (!chromeBasePath) {
+      var fso = new ActiveXObject("Scripting.FileSystemObject");
+      chromeBasePath = fso.GetSpecialFolder(2).Path + "\\WorkBankChrome-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000000);
+      chromeGatePath = chromeBasePath + ".current";
+    }
+    var revision = ++chromeRevision, requestedTheme = theme;
+    if (!writePath(chromeGatePath, String(revision), false)) throw new Error("window theme gate unavailable");
+    chromeTimer = setTimeout(function () {
+      chromeTimer = null;
+      var resultPath = chromeBasePath + "." + revision + ".result";
+      try {
+        chromeCommand(document.title, petRunning ? petParentHandle : "", CHROME_COLORS[requestedTheme] || CHROME_COLORS.deep,
+          chromeGatePath, resultPath, revision);
+        setTimeout(function () { checkChromeResult(resultPath, revision, new Date().getTime()); }, 300);
+      } catch (e) { if (revision === chromeRevision) showToast("窗口透明效果未能切换，请检查 PowerShell 和系统策略。"); }
+    }, 300);
+  } catch (e) {
+    if (theme === "glass") showToast("透明效果暂不可用，请检查临时目录和系统策略。");
+  }
 }
 function appPath(name) {
   var p;
@@ -624,7 +710,7 @@ function loadBank() {
     }
     bank = data;
     masked = !bank.settings || bank.settings.maskByDefault !== false;
-    theme = bank.settings && bank.settings.theme === "cream" ? "cream" : "deep";
+    theme = normalizeTheme(bank.settings && bank.settings.theme);
     pendingTheme = theme;
     if (bank.settings) {
       petTopMost = bank.settings.petOnTop !== false;
@@ -701,6 +787,7 @@ function finishPin(success) {
     showToast("无法恢复窗口置顶，可检查 PowerShell 后手动重试。");
   }
   renderPin();
+  applyWindowChrome();
   if (petStarted === -1) { petStarted = 0; startPet(); }
 }
 function checkPin() {
@@ -874,6 +961,7 @@ function failPet(message) {
   stopPet();
   recoverPetPanel(restoreHandle);
   renderPin();
+  applyWindowChrome();
   showPetStatus(message);
   showToast(message);
 }
@@ -983,6 +1071,7 @@ function petTick() {
       petRunning = true;
       petStarted = now;
       renderPin();
+      applyWindowChrome();
       showPetStatus("");
       var keepVisible = !!fatalStorage || !bank.settings;
       petPanelVisible = keepVisible;
@@ -1202,6 +1291,9 @@ function render(now) {
   text("status", stateText);
   text("dateText", bankDate(now));
   text("todayAmount", money(bankDayAmount(day), 4));
+  $id("todayAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
+  $id("todayAmount").setAttribute("aria-label", "今日投入 " + money(bankDayAmount(day), 4) + "，" + $id("todayAmount").title);
+  $id("todayAmount").setAttribute("aria-pressed", masked ? "true" : "false");
   text("todayCaption", bank.settings ? "折合 " + (day.activeSeconds / 28800).toFixed(2) + " 个标准日（8小时） · 时薪 " + money(day.hourlyRate) : "先设置到手月薪和计划工时");
   text("progressText", (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时 · " + Math.floor(pct) + "%");
   $id("progressFill").style.width = Math.min(100, Math.max(0, pct)) + "%";
@@ -1303,7 +1395,7 @@ function openSettings() {
   $id("inAutoStart").checked = !!(s && s.autoStart === true);
   $id("inGoals").value = s && typeof s.customGoals === "string" ? s.customGoals : "";
   showGoalValidation();
-  setTheme(s && s.theme === "cream" ? "cream" : "deep", false);
+  setTheme(normalizeTheme(s && s.theme), false);
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
   $id("settingsModal").className = "modal";
@@ -1359,8 +1451,10 @@ function signOff() {
   text("receiptDate", bankDate(now));
   text("receiptActive", duration(day.activeSeconds));
   text("receiptOvertime", duration(bankOvertime(day)));
-  text("receiptAmount", money(bankDayAmount(day)));
-  text("receiptMonth", money(month.amount));
+  receiptDayAmount = bankDayAmount(day);
+  receiptMonthAmount = month.amount;
+  text("receiptAmount", money(receiptDayAmount));
+  text("receiptMonth", money(receiptMonthAmount));
   text("receiptNote", storageProblem ? "注意：本机保存失败，记录暂留内存。请先检查写入权限。" : "人已下班，未完的事明天再说。记录只保存在本机。");
   $id("receiptModal").className = "modal";
   render(now);
@@ -1470,20 +1564,30 @@ function deleteManual(date, index) {
 }
 
 $id("btnPetRetry").onclick = function () { startPet(); };
-$id("btnTheme").onclick = function () { setTheme(theme === "cream" ? "deep" : "cream", true); };
+$id("btnTheme").onclick = function () { setTheme(theme === "deep" ? "cream" : (theme === "cream" ? "glass" : "deep"), true); };
 $id("segDeep").onclick = function () { setTheme("deep", false); };
 $id("segCream").onclick = function () { setTheme("cream", false); };
+$id("segGlass").onclick = function () { setTheme("glass", false); };
 $id("btnPin").onclick = function () { requestPin(!pinned, true); };
-$id("btnPrivacy").onclick = function () {
+function togglePrivacy() {
   masked = !masked;
   if (masked) $id("toast").className = "toast hidden";
-  render(new Date().getTime());
-};
+  var now = new Date().getTime();
+  render(now);
+  if ($id("historyModal").className === "modal" && historySelectedMonth) renderHistory();
+  if ($id("receiptModal").className === "modal") {
+    text("receiptAmount", money(receiptDayAmount));
+    text("receiptMonth", money(receiptMonthAmount));
+  }
+  writePetState();
+}
+$id("btnPrivacy").onclick = togglePrivacy;
+$id("todayAmount").onclick = togglePrivacy;
 $id("btnTrack").onclick = function () { if (tracking) pauseTracking(); else startTracking(); };
 $id("btnSettings").onclick = openSettings;
 $id("btnSaveSettings").onclick = saveSettings;
 $id("btnCancelSettings").onclick = function () {
-  theme = bank.settings && bank.settings.theme === "cream" ? "cream" : "deep";
+  theme = normalizeTheme(bank.settings && bank.settings.theme);
   setTheme(theme, false);
   $id("settingsModal").className = "modal hidden";
 };
@@ -1528,7 +1632,9 @@ window.onunload = function () {
   stopMonitor();
   stopPet();
   if (pinTimer) clearTimeout(pinTimer);
+  if (chromeTimer) clearTimeout(chromeTimer);
   deletePath(pinResultPath);
+  deletePath(chromeGatePath);
 };
 </script>
 </body>

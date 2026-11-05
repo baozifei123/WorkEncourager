@@ -439,7 +439,7 @@ public sealed class WorkBankPet : Form
         if (values.Length >= 10)
         {
             miniMode = values[4] == "2" ? 2 : (values[4] == "1" ? 1 : 0);
-            miniTheme = values[5] == "cream" ? "cream" : "deep";
+            miniTheme = values[5] == "cream" ? "cream" : (values[5] == "glass" ? "glass" : "deep");
             int parsed;
             miniPercent = Int32.TryParse(values[6], out parsed) ? Math.Max(0, Math.Min(100, parsed)) : 0;
             miniAmount = values[7];
@@ -716,7 +716,7 @@ public sealed class MiniInfoForm : Form
     {
         bool changed = newTheme != themeName || newAmount != amount || newDetail != detail ||
             newStatus != status || newPercent != percent;
-        themeName = newTheme == "cream" ? "cream" : "deep";
+        themeName = newTheme == "cream" ? "cream" : (newTheme == "glass" ? "glass" : "deep");
         amount = newAmount;
         detail = newDetail;
         status = newStatus;
@@ -759,14 +759,14 @@ public sealed class MiniInfoForm : Form
     private void Redraw()
     {
         IntPtr window = Handle;
-        bool cream = themeName == "cream";
-        Color fill = Hex(cream ? "#FFFDF6" : "#12233C");
-        Color border = Hex(cream ? "#D9C9A8" : "#2B4A6E");
-        Color label = Hex(cream ? "#8A8273" : "#8FB1D1");
-        Color ink = Hex(cream ? "#204B73" : "#D9EFFF");
-        Color muted = Hex(cream ? "#7D786B" : "#9FBCD8");
-        Color barBackground = Hex(cream ? "#E9E1CF" : "#0A1626");
-        Color accent = Hex(cream ? "#2C6FA8" : "#7FC4FF");
+        bool cream = themeName == "cream", glass = themeName == "glass";
+        Color fill = glass ? Color.FromArgb(210, 38, 70, 80) : Hex(cream ? "#FFFDF6" : "#12233C");
+        Color border = Hex(glass ? "#85B5BB" : (cream ? "#D9C9A8" : "#2B4A6E"));
+        Color label = Hex(glass ? "#D3EAE9" : (cream ? "#8A8273" : "#8FB1D1"));
+        Color ink = Hex(glass ? "#F0FFFF" : (cream ? "#204B73" : "#D9EFFF"));
+        Color muted = Hex(glass ? "#D3EAE9" : (cream ? "#7D786B" : "#9FBCD8"));
+        Color barBackground = Hex(glass ? "#152D34" : (cream ? "#E9E1CF" : "#0A1626"));
+        Color accent = Hex(glass ? "#B9EDED" : (cream ? "#2C6FA8" : "#7FC4FF"));
 
         using (Bitmap bitmap = new Bitmap(CardWidth, CardHeight, PixelFormat.Format32bppPArgb))
         using (Graphics graphics = Graphics.FromImage(bitmap))

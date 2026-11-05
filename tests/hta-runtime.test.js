@@ -541,6 +541,35 @@ test('masking applies to the card, tooltip, history and receipt', () => {
   assert.match(elements.todayAmount.innerText, /\*\*\*\*/);
 });
 
+test('clicking the amount switches privacy everywhere without changing its default setting', () => {
+  const env = runtime(), app = env.context, elements = env.elements;
+  app.bank.settings = { ...settings, maskByDefault: true };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.petStatePath = 'C:\\Temp\\state';
+  app.petRunning = true;
+  app.petPanelVisible = false;
+  app.render(Date.now());
+  assert.match(elements.todayAmount.innerText, /\*\*\*\*/);
+  elements.todayAmount.onclick();
+  assert.equal(app.masked, false);
+  assert.match(elements.todayAmount.innerText, /45\.9770/);
+  assert.match(env.files[app.petStatePath], /45\.9770/);
+  assert.equal(elements.todayAmount.attributes['aria-pressed'], 'false');
+  app.showHistory();
+  app.signOff();
+  assert.doesNotMatch(elements.receiptAmount.innerText, /\*\*\*\*/);
+  elements.todayAmount.onclick();
+  assert.equal(app.masked, true);
+  assert.match(elements.todayAmount.innerText, /\*\*\*\*/);
+  assert.match(elements.receiptAmount.innerText, /\*\*\*\*/);
+  assert.match(elements.historyBody.innerHTML, /\*\*\*\*/);
+  assert.match(env.files[app.petStatePath], /\*\*\*\*/);
+  assert.equal(elements.todayAmount.attributes['aria-pressed'], 'true');
+  assert.equal(app.bank.settings.maskByDefault, true);
+  elements.btnPrivacy.onclick();
+  assert.equal(app.masked, false, 'the existing privacy button shares the same toggle');
+});
+
 test('window pinning is confirmed before its state is saved and can be undone', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings };
@@ -678,6 +707,10 @@ test('window chrome colours follow the theme palette', () => {
   assert.equal(app.chromeColor('#0a1424'), 0x24140a);
   assert.equal(app.chromeColor('#f2ebdd'), 0xddebf2);
   assert.equal(app.chromeColor('#2b4a6e'), 0x6e4a2b);
+  assert.equal(app.chromeColor('#18303b'), 0x3b3018);
+  assert.equal(app.CHROME_COLORS.glass.alpha, 210);
+  assert.equal(app.normalizeTheme('glass'), 'glass');
+  assert.equal(app.normalizeTheme('unknown'), 'deep');
 });
 
 test('theme switches between deep sea and apron paper and persists', () => {
@@ -698,6 +731,28 @@ test('theme switches between deep sea and apron paper and persists', () => {
   assert.equal(app.bank.settings.theme, 'cream');
   app.setTheme('deep', true);
   assert.match(app.document.body.className, /theme-deep/);
+});
+
+test('glass theme cycles, persists, restores after reload, and cancels preview', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, theme: 'cream' };
+  app.setTheme('cream', false);
+  env.elements.btnTheme.onclick();
+  assert.equal(app.theme, 'glass');
+  assert.match(app.document.body.className, /theme-glass/);
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'glass');
+  const restored = runtime(env.files), next = restored.context;
+  next.loadBank();
+  assert.equal(next.theme, 'glass');
+  next.openSettings();
+  assert.match(restored.elements.segGlass.className, /on/);
+  restored.elements.segDeep.onclick();
+  assert.equal(next.theme, 'deep');
+  restored.elements.btnCancelSettings.onclick();
+  assert.equal(next.theme, 'glass');
+  restored.elements.btnTheme.onclick();
+  assert.equal(next.theme, 'deep');
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'deep');
 });
 
 test('mini info modes migrate old settings and persist', () => {
