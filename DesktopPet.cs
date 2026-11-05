@@ -37,6 +37,8 @@ public sealed class WorkBankPet : Form
     private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")]
@@ -66,16 +68,21 @@ public sealed class WorkBankPet : Form
     private readonly string readyPath;
     private readonly string controlPath;
     private readonly string noticePath;
+    private readonly string positionPath;
     private readonly string eventDirectory;
     private readonly Bitmap normalFrame;
     private readonly Bitmap blinkFrame;
     private readonly Bitmap tiredFrame;
+    private readonly Bitmap waveFrame;
+    private readonly Bitmap celebrateFrame;
     private readonly Timer timer;
     private readonly ToolTip tooltip;
     private readonly ContextMenuStrip menu;
     private readonly ToolStripMenuItem trackingItem;
     private readonly ToolStripMenuItem pinItem;
     private string currentState = "unconfigured";
+    private string currentTip = "";
+    private bool panelVisible = true;
     private string shownFrame = "";
     private bool motion = true;
     private bool dragging;
@@ -83,10 +90,12 @@ public sealed class WorkBankPet : Form
     private Point dragCursor;
     private Point dragWindow;
     private DateTime lastHeartbeat = DateTime.MinValue;
+    private DateTime pendingShow = DateTime.MinValue;
+    private string lastBounds = "";
     private int tickCount;
 
     private WorkBankPet(IntPtr parent, string imageDirectory, string alive, string state, string beat,
-        string ready, string control, string notice, string events, bool onTop, int initialX, int initialY)
+        string ready, string control, string notice, string events, string positions, bool onTop, int initialX, int initialY)
     {
         parentWindow = parent;
         alivePath = alive;
@@ -95,10 +104,13 @@ public sealed class WorkBankPet : Form
         readyPath = ready;
         controlPath = control;
         noticePath = notice;
+        positionPath = positions;
         eventDirectory = events;
         normalFrame = LoadPreferredFrame(imageDirectory, "whale-character.png");
         blinkFrame = LoadPreferredFrame(imageDirectory, "whale-blink.png");
         tiredFrame = LoadPreferredFrame(imageDirectory, "whale-tired.png");
+        waveFrame = LoadPreferredFrame(imageDirectory, "whale-wave.png");
+        celebrateFrame = LoadPreferredFrame(imageDirectory, "whale-celebrate.png");
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -195,6 +207,7 @@ public sealed class WorkBankPet : Form
         shownFrame = "normal";
         WriteFile(readyPath, "ready|" + parentWindow.ToInt64().ToString(CultureInfo.InvariantCulture));
         WriteHeartbeat();
+        WritePosition(true);
         ShowWindow(parentWindow, SW_MINIMIZE);
         timer.Start();
     }
@@ -242,8 +255,22 @@ public sealed class WorkBankPet : Form
             {
                 string command = File.ReadAllText(controlPath, Encoding.ASCII).Trim();
                 File.Delete(controlPath);
-                if (command == "hide") ShowWindow(parentWindow, SW_MINIMIZE);
-                else if (command == "show") ShowWindow(parentWindow, SW_RESTORE);
+                string[] parts = command.Split('|');
+                if (parts[0] == "hide") ShowWindow(parentWindow, SW_MINIMIZE);
+                else if (parts[0] == "show")
+                {
+                    int x = 0, y = 0;
+                    bool hasPoint = parts.Length >= 3 && Int32.TryParse(parts[1], out x) && Int32.TryParse(parts[2], out y);
+                    ShowWindow(parentWindow, SW_RESTORE);
+                    if (hasPoint) SetWindowPos(parentWindow, IntPtr.Zero, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
+                    SetForegroundWindow(parentWindow);
+                    pendingShow = DateTime.MinValue;
+                }
+            }
+            if (pendingShow != DateTime.MinValue && (DateTime.UtcNow - pendingShow).TotalMilliseconds > 1500)
+            {
+                pendingShow = DateTime.MinValue;
+                ShowWindow(parentWindow, SW_RESTORE);
             }
             if (File.Exists(noticePath))
             {
@@ -252,14 +279,37 @@ public sealed class WorkBankPet : Form
                 string message = notice == "hour" ? "又走过一个整点，活跃工时已记账。" : "请打开工时卡片查看提示。";
                 tooltip.Show(message, this, new Point(Width / 2, 12), 5000);
             }
+            WritePosition(false);
             tickCount++;
-            string wanted = currentState == "overtime" ? "tired" : "normal";
-            if (motion && tickCount % (currentState == "urgent" ? 16 : 25) == 0) wanted = "blink";
+            string wanted;
+            if (currentState == "celebrate") wanted = "celebrate";
+            else if (currentState == "overtime") wanted = "tired";
+            else if (panelVisible) wanted = "wave";
+            else wanted = "normal";
+            if (motion && wanted == "normal" && tickCount % (currentState == "urgent" ? 16 : 25) == 0) wanted = "blink";
             if (wanted != shownFrame)
             {
-                DrawFrame(wanted == "blink" ? blinkFrame : (wanted == "tired" ? tiredFrame : normalFrame));
+                Bitmap frame = wanted == "celebrate" ? celebrateFrame :
+                    (wanted == "tired" ? tiredFrame : (wanted == "wave" ? waveFrame : (wanted == "blink" ? blinkFrame : normalFrame)));
+                DrawFrame(frame);
                 shownFrame = wanted;
             }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private void WritePosition(bool force)
+    {
+        if (String.IsNullOrEmpty(positionPath)) return;
+        Rectangle work = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
+        string value = Left + "|" + Top + "|" + Width + "|" + Height + "|" +
+            work.Left + "|" + work.Top + "|" + work.Right + "|" + work.Bottom;
+        if (!force && value == lastBounds) return;
+        try
+        {
+            File.WriteAllText(positionPath, value, Encoding.ASCII);
+            lastBounds = value;
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
@@ -275,10 +325,12 @@ public sealed class WorkBankPet : Form
     private void ReadState()
     {
         if (!File.Exists(statePath)) return;
-        string[] values = File.ReadAllText(statePath, Encoding.ASCII).Trim().Split('|');
+        string[] values = File.ReadAllText(statePath).Trim().Split('|');
         if (values.Length < 2) return;
         currentState = values[0];
         motion = values[1] != "0";
+        panelVisible = values.Length >= 4 ? values[3] == "1" : true;
+        currentTip = values.Length >= 5 ? String.Join("|", values, 4, values.Length - 4) : "";
         bool active = values.Length >= 3 ? values[2] == "1" :
             currentState == "active" || currentState == "urgent" || currentState == "idle" || currentState == "overtime" || currentState == "waiting";
         trackingItem.Text = currentState == "unconfigured" ? "设置并开始记录" : (active ? "暂停记录" : "开始记录");
@@ -289,8 +341,11 @@ public sealed class WorkBankPet : Form
     {
         string label = currentState == "error" ? "请查看卡片提示" : currentState == "unconfigured" ? "未设置" : currentState == "paused" ? "未开工" :
             currentState == "idle" ? "键鼠空闲" : currentState == "overtime" ? "加班中" :
-            currentState == "urgent" ? "接近计划工时" : currentState == "waiting" ? "采样未就绪" : "上班中";
-        tooltip.SetToolTip(this, "小鲸 · " + label + "\n单击打开或收起 · 拖动移动 · 右键菜单");
+            currentState == "urgent" ? "接近计划工时" : currentState == "celebrate" ? "收工快乐" :
+            currentState == "waiting" ? "采样未就绪" : "上班中";
+        string text = String.IsNullOrEmpty(currentTip) ? "小鲸 · " + label : currentTip;
+        tooltip.SetToolTip(this, text + "\n单击打开或收起 · 拖动移动 · 右键菜单");
+        AccessibleName = text;
     }
 
     private void TogglePanel()
@@ -303,9 +358,9 @@ public sealed class WorkBankPet : Form
         }
         else
         {
+            // 由工时窗口算出贴边位置后再展开，避免先闪在旧位置。
             QueueEvent("show");
-            ShowWindow(parentWindow, SW_RESTORE);
-            SetForegroundWindow(parentWindow);
+            pendingShow = DateTime.UtcNow;
         }
     }
 
@@ -386,6 +441,8 @@ public sealed class WorkBankPet : Form
             normalFrame.Dispose();
             blinkFrame.Dispose();
             tiredFrame.Dispose();
+            waveFrame.Dispose();
+            celebrateFrame.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -401,7 +458,7 @@ public sealed class WorkBankPet : Form
     }
 
     public static void Run(string parentTitle, string imageDirectory, string alive, string state, string beat,
-        string ready, string control, string notice, string events, bool onTop, int initialX, int initialY)
+        string ready, string control, string notice, string events, string positions, bool onTop, int initialX, int initialY)
     {
         IntPtr parent = FindWindow(null, parentTitle);
         if (parent == IntPtr.Zero)
@@ -413,7 +470,7 @@ public sealed class WorkBankPet : Form
         {
             SetProcessDPIAware();
             Application.EnableVisualStyles();
-            using (WorkBankPet pet = new WorkBankPet(parent, imageDirectory, alive, state, beat, ready, control, notice, events, onTop, initialX, initialY))
+            using (WorkBankPet pet = new WorkBankPet(parent, imageDirectory, alive, state, beat, ready, control, notice, events, positions, onTop, initialX, initialY))
                 Application.Run(pet);
         }
         catch (Exception)
@@ -428,6 +485,7 @@ public sealed class WorkBankPet : Form
             DeleteFile(beat);
             DeleteFile(control);
             DeleteFile(notice);
+            DeleteFile(positions);
             try { if (Directory.Exists(events)) Directory.Delete(events, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }

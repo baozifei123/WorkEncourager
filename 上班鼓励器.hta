@@ -21,116 +21,214 @@
   html, body { margin: 0; min-height: 100%; }
   body {
     font-family: "Microsoft YaHei", sans-serif;
-    color: #e9e7df;
-    background: #10151a;
-    background-image: radial-gradient(ellipse at 86% 0%, #293233 0%, transparent 48%),
-      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0, rgba(255,255,255,.012) 1px, transparent 1px, transparent 5px);
+    color: #e7f1ff;
+    background: #0a1424;
+    background-image: radial-gradient(ellipse at 84% -4%, rgba(70,140,210,.22) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 108%, rgba(60,110,170,.18) 0%, transparent 52%),
+      repeating-linear-gradient(0deg, rgba(160,210,255,.02) 0, rgba(160,210,255,.02) 1px, transparent 1px, transparent 6px);
     cursor: default;
   }
   button, input { font-family: "Microsoft YaHei", sans-serif; }
   button { cursor: pointer; }
-  button:focus, input:focus { outline: 2px solid #d5b879; outline-offset: 2px; }
+  button:focus, input:focus { outline: 2px solid #7fc4ff; outline-offset: 2px; }
   .hidden { display: none !important; }
-  .shell { width: auto; max-width: 510px; margin: 0 auto; padding: 18px 16px 22px; }
-  .top { height: 57px; position: relative; }
-  .eyebrow { color: #b99d69; font: bold 9px Consolas, monospace; letter-spacing: 2px; }
-  h1 { margin: 5px 0 0; font-family: SimSun, serif; font-size: 25px; letter-spacing: 4px; }
-  .pin { position: absolute; right: 0; top: 8px; padding: 7px 10px; border: 1px solid #5b6a60; background: #202b27; color: #d6dfd3; font-size: 12px; }
-  .pin:hover, .pin.on { border-color: #d4b77c; color: #f1d9ac; }
-  .pin.on { background: #403a29; }
-  .pin[disabled] { color: #9ba69d; cursor: wait; }
-  .card { position: relative; padding: 19px 20px 16px; background: #1b2226; border: 1px solid #43504c; box-shadow: 0 14px 32px rgba(0,0,0,.3); }
-  .card:before { content: ""; position: absolute; top: -1px; left: 20px; width: 52px; height: 3px; background: #d4b77c; }
+  .shell { width: auto; max-width: 510px; margin: 0 auto; padding: 13px 16px 15px; }
+  .top { height: 58px; position: relative; padding-left: 56px; }
+  .avatar { position: absolute; left: 0; top: 4px; width: 46px; height: 46px; border-radius: 50%; border: 2px solid #5d9fd6; background: #0f2138; box-shadow: 0 0 14px rgba(99,176,255,.35); }
+  .eyebrow { color: #6ea6d8; font: bold 9px Consolas, monospace; letter-spacing: 2px; }
+  h1 { margin: 5px 0 0; font-size: 24px; letter-spacing: 3px; color: #dceeff; text-shadow: 0 0 14px rgba(120,190,255,.35); }
+  .pin, .theme { position: absolute; top: 8px; padding: 7px 10px; border: 1px solid #38618c; background: #102540; color: #cbe4ff; font-size: 12px; border-radius: 8px; }
+  .pin { right: 0; }
+  .theme { right: 84px; }
+  .pin:hover, .pin.on, .theme:hover { border-color: #7fc4ff; color: #eaf6ff; }
+  .pin.on { background: #1d4570; }
+  .pin[disabled] { color: #82a0c2; cursor: wait; }
+  .card { position: relative; padding: 17px 20px 13px; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 16px 34px rgba(0,8,20,.45); }
+  .card:before { content: ""; position: absolute; top: -1px; left: 18px; right: 18px; height: 6px;
+    background: repeating-radial-gradient(circle at 6px 0, rgba(170,220,255,.7) 0, rgba(170,220,255,.7) 3px, transparent 3px, transparent 12px); }
   .card-top { height: 29px; }
-  .status { display: inline-block; padding: 5px 10px; color: #c7d7ca; background: #2b3d37; border: 1px solid #405a4f; font-size: 12px; letter-spacing: 1px; }
-  .status.off { color: #a4adaa; background: #2a3032; border-color: #414849; }
-  .status.overtime { color: #f1c38b; background: #503a27; border-color: #795a39; }
-  .date { margin-left: 8px; color: #9da6a2; font-size: 12px; }
-  .privacy { float: right; padding: 5px 10px; border: 1px solid #68746d; background: transparent; color: #d3d8d1; font-size: 12px; }
-  .privacy:hover, .btn-quiet:hover { border-color: #d4b77c; color: #ead5ab; }
-  .label { margin-top: 16px; color: #a8b2ab; font-size: 12px; letter-spacing: 3px; }
-  .amount { margin: 5px 0 2px; color: #f1debb; font: bold 48px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; }
-  .caption { min-height: 20px; color: #aab4ac; font-size: 12px; }
-  .progress-head { margin-top: 16px; color: #cdd3c9; font-size: 12px; }
-  .progress-head .right { float: right; color: #d4b77c; font-family: Consolas, monospace; font-size: 13px; }
+  .status { display: inline-block; padding: 5px 11px; color: #cfe6ff; background: #17395b; border: 1px solid #2f5f8d; border-radius: 999px; font-size: 12px; letter-spacing: 1px; }
+  .status.off { color: #9fb2c7; background: #16263a; border-color: #2c435e; }
+  .status.overtime { color: #ffd8b8; background: #4a2f22; border-color: #7d4d33; }
+  .date { margin-left: 8px; color: #8aa6c4; font-size: 12px; }
+  .privacy { float: right; padding: 5px 10px; border: 1px solid #3c6288; border-radius: 8px; background: transparent; color: #cfe3f8; font-size: 12px; }
+  .privacy:hover, .btn-quiet:hover { border-color: #7fc4ff; color: #eaf6ff; }
+  .pet-say { margin: 10px 0 0; padding: 8px 11px; color: #a9cdea; background: #0e1f34; border-left: 2px solid #7fc4ff; border-radius: 4px 10px 10px 4px; font-size: 12px; line-height: 1.6; }
+  .label { margin-top: 12px; color: #8fb1d1; font-size: 12px; letter-spacing: 3px; }
+  .amount { margin: 5px 0 2px; color: #d9efff; font: bold 48px Consolas, monospace; letter-spacing: -2px; line-height: 1.1; text-shadow: 0 0 18px rgba(110,190,255,.28); }
+  .caption { min-height: 20px; color: #9fbcd8; font-size: 12px; }
+  .progress-head { margin-top: 13px; color: #c6dcf2; font-size: 12px; }
+  .progress-head .right { float: right; color: #8fd0ff; font-family: Consolas, monospace; font-size: 13px; }
   .energy { position: relative; height: 22px; margin-top: 7px; padding-right: 29px; }
-  .track { position: relative; top: 7px; height: 10px; background: #0d161b; border: 1px solid #334b50; border-radius: 8px; overflow: hidden; }
+  .track { position: relative; top: 7px; height: 10px; background: #0a1626; border: 1px solid #2b4a6e; border-radius: 8px; overflow: hidden; }
   .fill { position: relative; height: 100%; width: 0; border-radius: 8px; transition: width .3s; }
-  .fill:after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) 4px, transparent 4px, transparent 15px); animation: energyFlow 1.1s linear infinite; }
-  .energy.cool .fill { background: linear-gradient(90deg, #247d90, #7addd0); }
-  .energy.warm .fill { background: linear-gradient(90deg, #c57a35, #ffd16c); }
-  .energy.hot .fill, .energy.overtime .fill { background: linear-gradient(90deg, #d64930, #ffad3e); }
+  .fill:after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.28) 0, rgba(255,255,255,.28) 4px, transparent 4px, transparent 15px); animation: energyFlow 1.1s linear infinite; }
+  .energy.cool .fill { background: linear-gradient(90deg, #2f6fa8, #8fd4ff); }
+  .energy.warm .fill { background: linear-gradient(90deg, #3f8fd0, #b5e8ff); }
+  .energy.hot .fill { background: linear-gradient(90deg, #d98a4f, #ffd08a); }
+  .energy.overtime .fill { background: linear-gradient(90deg, #d64930, #ffad3e); }
   .flame-icon { position: absolute; right: 2px; top: 0; width: 18px; height: 22px; transform-origin: 50% 95%; animation: flamePulse 1s ease-in-out infinite alternate; }
-  .flame-outer { fill: #6dcbd1; }
-  .energy.warm .flame-outer { fill: #f4b050; }
-  .energy.hot .flame-outer, .energy.overtime .flame-outer { fill: #ff7037; }
-  .flame-inner { fill: #ffe2a0; }
+  .flame-outer { fill: #4a9ad4; }
+  .energy.warm .flame-outer { fill: #7fd4ff; }
+  .energy.hot .flame-outer { fill: #f0b45c; }
+  .energy.overtime .flame-outer { fill: #ff7037; }
+  .flame-inner { fill: #eaf8ff; }
+  .energy.hot .flame-inner, .energy.overtime .flame-inner { fill: #ffe2a0; }
   .energy.paused .fill, .energy.paused .flame-icon { opacity: .45; }
   .energy.paused .fill:after, .energy.paused .flame-icon, .motion-off .fill:after, .motion-off .flame-icon { animation: none; }
   .motion-off .fill { transition: none; }
   @keyframes energyFlow { from { background-position: 0 0; } to { background-position: 32px 0; } }
   @keyframes flamePulse { from { transform: scale(.92,.92); } to { transform: scale(1.06,1.08); } }
-  .progress-foot { margin-top: 8px; color: #8f9c94; font-size: 11px; }
+  .progress-foot { margin-top: 8px; color: #8aa6c2; font-size: 11px; }
   .progress-foot .right { float: right; }
-  .rule { height: 1px; margin: 17px 0 15px; background: #414a45; }
+  .rule { height: 1px; margin: 13px 0 12px; background: #24405f; }
   .stat { display: inline-block; vertical-align: top; width: 49%; }
-  .stat + .stat { padding-left: 15px; border-left: 1px solid #414a45; }
-  .stat-label { color: #9ca99f; font-size: 12px; letter-spacing: 1px; }
-  .stat-value { margin-top: 7px; color: #f0ebe0; font: 22px Consolas, monospace; }
-  .stat-detail { margin-top: 5px; color: #98a59a; font-size: 11px; }
-  .anchor { margin: 17px -20px -16px; padding: 12px 20px; color: #d8c49e; background: #222a29; border-top: 1px solid #39443d; font-family: SimSun, serif; font-size: 13px; line-height: 1.6; }
-  .anchor-mark { color: #b99d69; margin-right: 8px; }
-  .monitor { margin: 10px 1px 0; color: #a5b1a9; font-size: 11px; line-height: 1.7; }
-  .monitor.error { color: #edb080; }
-  .monitor button { margin-left: 8px; padding: 2px 7px; border: 1px solid #92764d; color: #edc99b; background: transparent; font-size: 11px; }
-  .pet-status { margin: 7px 1px 0; color: #9ccbd3; font-size: 11px; line-height: 1.6; }
-  .pet-status.error { color: #edb080; }
-  .pet-status button { padding: 2px 7px; margin-left: 5px; border: 1px solid #527c87; color: #d2edf0; background: #1b3038; font-size: 11px; }
-  .actions { margin-top: 13px; }
-  .btn { display: inline-block; padding: 9px 12px; border: 1px solid transparent; font-size: 12px; letter-spacing: 1px; }
-  .btn-primary { color: #19221c; background: #c7d5b8; border-color: #c7d5b8; font-weight: bold; }
-  .btn-primary:hover { background: #dce8ce; }
-  .btn-stamp { color: #f4e1cb; background: #753b32; border-color: #a76051; }
-  .btn-stamp:hover { background: #8c493e; }
-  .btn-quiet { color: #c7d0c9; background: transparent; border-color: #52605a; }
+  .stat + .stat { padding-left: 15px; border-left: 1px solid #24405f; }
+  .stat-label { color: #93aec9; font-size: 12px; letter-spacing: 1px; }
+  .stat-value { margin-top: 7px; color: #e4f2ff; font: 22px Consolas, monospace; }
+  .stat-detail { margin-top: 5px; color: #8fa9c2; font-size: 11px; }
+  .anchor { margin: 12px -20px -13px; padding: 10px 20px; color: #a9cdef; background: #0e1b30; border-top: 1px solid #24405f; border-radius: 0 0 18px 18px; font-size: 13px; line-height: 1.6; }
+  .anchor-mark { color: #7fc4ff; margin-right: 8px; }
+  .monitor { margin: 8px 1px 0; color: #93aec9; font-size: 11px; line-height: 1.65; }
+  .monitor.error { color: #f0b080; }
+  .monitor button { margin-left: 8px; padding: 2px 7px; border: 1px solid #3f6d99; color: #d6ecff; background: #102540; font-size: 11px; border-radius: 6px; }
+  .pet-status { margin: 7px 1px 0; color: #8fc8f0; font-size: 11px; line-height: 1.6; }
+  .pet-status.error { color: #f0b080; }
+  .pet-status button { padding: 2px 7px; margin-left: 5px; border: 1px solid #3f6d99; color: #d6ecff; background: #102540; font-size: 11px; border-radius: 6px; }
+  .actions { margin-top: 11px; }
+  .btn { display: inline-block; padding: 9px 12px; border: 1px solid transparent; border-radius: 9px; font-size: 12px; letter-spacing: 1px; }
+  .btn-primary { color: #061826; background: #bfe0ff; border-color: #bfe0ff; font-weight: bold; }
+  .btn-primary:hover { background: #d9edff; }
+  .btn-stamp { color: #eaf4ff; background: #355d86; border-color: #4f7ba6; }
+  .btn-stamp:hover { background: #3f6c99; }
+  .btn-quiet { color: #c4d9ee; background: transparent; border-color: #35547a; }
   .actions .btn { margin: 0 5px 7px 0; }
-  .footnote { margin: 8px 0 0; color: #97a69c; font-size: 11px; line-height: 1.7; }
-  .modal { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; background: rgba(5,9,10,.86); }
-  .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 35px auto; padding: 28px 32px; color: #e8e8de; background: #1c2526; border: 1px solid #58665a; box-shadow: 0 20px 65px rgba(0,0,0,.55); }
-  .modal-kicker { color: #bda372; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
-  .modal h2 { margin: 7px 0 7px; font: bold 25px SimSun, serif; letter-spacing: 2px; }
-  .modal-intro { color: #aab5ad; font-size: 12px; line-height: 1.7; }
+  .footnote { margin: 6px 0 0; color: #8ba3bb; font-size: 11px; line-height: 1.6; }
+  .modal { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; overflow-y: auto; background: rgba(3,9,18,.88); }
+  .modal-box { width: calc(100% - 36px); max-width: 600px; margin: 35px auto; padding: 28px 32px; color: #e7f1ff; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 20px 65px rgba(0,0,0,.6); }
+  .modal-kicker { color: #7fb6e0; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
+  .modal h2 { margin: 7px 0 7px; font-size: 24px; letter-spacing: 2px; }
+  .modal-intro { color: #a5c0d8; font-size: 12px; line-height: 1.7; }
   .fields { margin-top: 20px; }
   .field { display: inline-block; width: 48%; vertical-align: top; margin: 0 1% 16px 0; }
-  .field label { display: block; margin-bottom: 7px; color: #bec9bf; font-size: 12px; }
-  .field input { width: 100%; padding: 9px 10px; color: #f0eee5; background: #111a1b; border: 1px solid #536259; font-size: 16px; }
-  .field .hint { display: block; margin-top: 5px; color: #8e9d92; font-size: 11px; }
-  .check { display: block; margin: 10px 0; color: #d2dad0; font-size: 12px; }
+  .field.theme-field { width: 100%; }
+  .field label { display: block; margin-bottom: 7px; color: #b9d2e8; font-size: 12px; }
+  .field input { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
+  .field .hint { display: block; margin-top: 5px; color: #88a2bb; font-size: 11px; }
+  .seg { float: right; margin-top: -2px; }
+  .seg-btn { display: inline-block; padding: 3px 12px; font-size: 11px; color: #9db8d2; background: #0b1a2d; border: 1px solid #3a5d82; cursor: pointer; letter-spacing: 1px; }
+  .seg-btn.first { border-radius: 7px 0 0 7px; }
+  .seg-btn.last { border-radius: 0 7px 7px 0; border-left: 0; }
+  .seg-btn.on { color: #061826; background-image: linear-gradient(180deg, #cfe9ff, #9fd2ff); border-color: #9fd2ff; font-weight: bold; }
+  .check { display: block; margin: 10px 0; color: #c6daec; font-size: 12px; }
   .check input { margin: 0 7px 0 0; vertical-align: middle; }
   .modal-actions { margin-top: 20px; }
   .modal-actions .btn { margin-right: 8px; }
-  .receipt { position: relative; margin-top: 18px; padding: 22px 24px; color: #333b32; background: #ede8d9; }
-  .receipt-title { color: #6f7668; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
+  .receipt { position: relative; margin-top: 18px; padding: 22px 24px; color: #333b4a; background: #eef4fb; border-radius: 12px; }
+  .receipt-title { color: #6f8298; font: bold 10px Consolas, monospace; letter-spacing: 3px; }
   .receipt h3 { margin: 8px 0 13px; font: bold 23px SimSun, serif; }
   .receipt table { width: 100%; border-collapse: collapse; }
-  .receipt td { padding: 8px 0; border-bottom: 1px solid #c9cabb; font-size: 13px; }
+  .receipt td { padding: 8px 0; border-bottom: 1px solid #cfdae7; font-size: 13px; }
   .receipt td:last-child { text-align: right; font-family: Consolas, "Microsoft YaHei", monospace; }
-  .seal { width: 175px; margin: 22px 0 4px auto; padding: 8px 4px; border: 3px double #a94c3c; color: #a94c3c; font: bold 14px SimSun, serif; letter-spacing: 2px; text-align: center; transform: rotate(-7deg); }
-  .receipt-note { margin: 19px 0 0; color: #6c7669; font-size: 11px; line-height: 1.7; }
-  .history-wrap { max-height: 360px; margin-top: 18px; overflow-y: auto; border: 1px solid #44534b; }
+  .seal { width: 175px; margin: 22px 0 4px auto; padding: 8px 4px; border: 3px double #2f6796; color: #2f6796; font: bold 14px SimSun, serif; letter-spacing: 2px; text-align: center; transform: rotate(-7deg); }
+  .receipt-note { margin: 19px 0 0; color: #6d7b8c; font-size: 11px; line-height: 1.7; }
+  .history-wrap { max-height: 360px; margin-top: 18px; overflow-y: auto; border: 1px solid #2b4a6e; border-radius: 10px; }
   .history { width: 100%; border-collapse: collapse; }
-  .history th, .history td { padding: 9px 10px; border-bottom: 1px solid #39473f; text-align: right; font-size: 12px; }
-  .history th { color: #abb9ad; font-weight: normal; background: #26312d; }
-  .history td { color: #e1e6db; font-family: Consolas, monospace; }
+  .history th, .history td { padding: 9px 10px; border-bottom: 1px solid #24405f; text-align: right; font-size: 12px; }
+  .history th { color: #91aecb; font-weight: normal; background: #16283f; }
+  .history td { color: #dceaf7; font-family: Consolas, monospace; }
   .history th:first-child, .history td:first-child { text-align: left; }
-  .toast { position: fixed; z-index: 20; right: 22px; bottom: 22px; max-width: 300px; padding: 14px 17px; color: #eee8d8; background: #34443b; border-left: 3px solid #d4b77c; box-shadow: 0 8px 24px rgba(0,0,0,.4); font-size: 12px; }
+  .toast { position: fixed; z-index: 20; right: 22px; bottom: 22px; max-width: 300px; padding: 14px 17px; color: #e8f3ff; background: #1b3352; border-left: 3px solid #7fc4ff; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font-size: 12px; }
+
+  /* ---------- 围裙纸主题 ---------- */
+  body.theme-cream {
+    color: #3b3a33;
+    background: #f2ebdd;
+    background-image: radial-gradient(ellipse at 84% -4%, rgba(255,255,255,.9) 0%, transparent 52%),
+      radial-gradient(ellipse at 8% 108%, rgba(224,208,176,.55) 0%, transparent 55%),
+      repeating-linear-gradient(0deg, rgba(120,100,70,.035) 0, rgba(120,100,70,.035) 1px, transparent 1px, transparent 6px);
+  }
+  body.theme-cream button:focus, body.theme-cream input:focus { outline-color: #2c6fa8; }
+  body.theme-cream .avatar { border-color: #7fb0d0; background: #fffdf6; box-shadow: 0 0 12px rgba(80,130,180,.25); }
+  body.theme-cream .eyebrow { color: #8a7a58; }
+  body.theme-cream h1 { color: #2b2a24; text-shadow: none; }
+  body.theme-cream .pin, body.theme-cream .theme { border-color: #c9bca1; background: #fffdf6; color: #4d5f6e; }
+  body.theme-cream .pin:hover, body.theme-cream .pin.on, body.theme-cream .theme:hover { border-color: #2c6fa8; color: #1f4d75; }
+  body.theme-cream .pin.on { background: #e8f1f9; }
+  body.theme-cream .pin[disabled] { color: #a29b8b; }
+  body.theme-cream .card { background: #fffdf6; border-color: #d9c9a8; box-shadow: 0 14px 28px rgba(90,70,40,.14); }
+  body.theme-cream .card:before { background: repeating-radial-gradient(circle at 6px 0, rgba(190,164,116,.85) 0, rgba(190,164,116,.85) 3px, transparent 3px, transparent 12px); }
+  body.theme-cream .status { color: #2f5d46; background: #eaf2e6; border-color: #b7cfae; }
+  body.theme-cream .status.off { color: #857f72; background: #f0ece2; border-color: #d8d0bf; }
+  body.theme-cream .status.overtime { color: #9a5330; background: #fbe9d9; border-color: #e5bfa0; }
+  body.theme-cream .date { color: #8b8474; }
+  body.theme-cream .privacy { border-color: #c9bda4; color: #4d5a63; }
+  body.theme-cream .privacy:hover, body.theme-cream .btn-quiet:hover { border-color: #2c6fa8; color: #1f4d75; }
+  body.theme-cream .pet-say { color: #586b78; background: #f6efdf; border-left-color: #2c6fa8; }
+  body.theme-cream .label { color: #8a8273; }
+  body.theme-cream .amount { color: #204b73; text-shadow: none; }
+  body.theme-cream .caption { color: #7d786b; }
+  body.theme-cream .progress-head { color: #5f5a4e; }
+  body.theme-cream .progress-head .right { color: #2c6fa8; }
+  body.theme-cream .track { background: #e9e1cf; border-color: #d3c5a8; }
+  body.theme-cream .energy.cool .fill { background: linear-gradient(90deg, #2f6fa8, #7fb9e0); }
+  body.theme-cream .energy.warm .fill { background: linear-gradient(90deg, #3f8fd0, #9fd3f0); }
+  body.theme-cream .energy.hot .fill { background: linear-gradient(90deg, #c98a4f, #f0be78); }
+  body.theme-cream .energy.overtime .fill { background: linear-gradient(90deg, #c4613f, #e9a05a); }
+  body.theme-cream .flame-outer { fill: #4a8fc4; }
+  body.theme-cream .energy.warm .flame-outer { fill: #5aa8d8; }
+  body.theme-cream .energy.hot .flame-outer { fill: #d69a52; }
+  body.theme-cream .energy.overtime .flame-outer { fill: #c4613f; }
+  body.theme-cream .flame-inner { fill: #f3faff; }
+  body.theme-cream .energy.hot .flame-inner, body.theme-cream .energy.overtime .flame-inner { fill: #fff0cf; }
+  body.theme-cream .progress-foot { color: #8b8476; }
+  body.theme-cream .rule { background: #e2d7c0; }
+  body.theme-cream .stat + .stat { border-left-color: #e2d7c0; }
+  body.theme-cream .stat-label { color: #8a8273; }
+  body.theme-cream .stat-value { color: #2b2a24; }
+  body.theme-cream .stat-detail { color: #8f887a; }
+  body.theme-cream .anchor { background: #f7f0e0; border-top-color: #e0d5bd; color: #6b5f47; border-radius: 0 0 18px 18px; }
+  body.theme-cream .anchor-mark { color: #b08c4f; }
+  body.theme-cream .monitor { color: #8b8476; }
+  body.theme-cream .monitor.error { color: #a8622f; }
+  body.theme-cream .monitor button { border-color: #b9c9d6; color: #2c5f8c; background: #f2f8fc; }
+  body.theme-cream .pet-status { color: #4a7596; }
+  body.theme-cream .pet-status.error { color: #a8622f; }
+  body.theme-cream .pet-status button { border-color: #b9c9d6; color: #2c5f8c; background: #f2f8fc; }
+  body.theme-cream .btn-primary { color: #fff; background: #2c6fa8; border-color: #2c6fa8; }
+  body.theme-cream .btn-primary:hover { background: #3a82bd; }
+  body.theme-cream .btn-stamp { color: #fff; background: #3f7fae; border-color: #3f7fae; }
+  body.theme-cream .btn-stamp:hover { background: #4c90c0; }
+  body.theme-cream .btn-quiet { color: #5a6b78; border-color: #c6bda9; }
+  body.theme-cream .footnote { color: #8d8577; }
+  body.theme-cream .modal { background: rgba(58,48,32,.72); }
+  body.theme-cream .modal-box { color: #3b3a33; background: #fffdf6; border-color: #d8c9a8; }
+  body.theme-cream .modal-kicker { color: #9a7c45; }
+  body.theme-cream .modal-intro { color: #7d786b; }
+  body.theme-cream .field label { color: #6f685a; }
+  body.theme-cream .field input { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
+  body.theme-cream .field .hint { color: #8f887a; }
+  body.theme-cream .seg-btn { color: #6f685a; background: #fffdf8; border-color: #d3c5a8; }
+  body.theme-cream .seg-btn.on { color: #fff; background-image: linear-gradient(180deg, #4c90c0, #2c6fa8); border-color: #2c6fa8; }
+  body.theme-cream .check { color: #5f5a4e; }
+  body.theme-cream .receipt { background: #f8f1df; color: #3a382f; }
+  body.theme-cream .receipt-title { color: #8a8070; }
+  body.theme-cream .receipt td { border-bottom-color: #ded2ba; }
+  body.theme-cream .seal { border-color: #2f6796; color: #2f6796; }
+  body.theme-cream .receipt-note { color: #7c7464; }
+  body.theme-cream .history-wrap { border-color: #d8ccb2; }
+  body.theme-cream .history th { color: #7d7666; background: #f1e9d8; }
+  body.theme-cream .history td { color: #3b3a33; border-bottom-color: #e6dcc5; }
+  body.theme-cream .toast { color: #3b3a33; background: #fff8e8; border-left-color: #2c6fa8; box-shadow: 0 8px 24px rgba(90,70,40,.2); }
 </style>
 </head>
 <body>
 <div class="shell">
   <div class="top">
+    <img class="avatar" src="assets/whale-face.png" alt="">
     <div class="eyebrow">WORK ENCOURAGER / TIME BANK</div>
     <h1>工时银行</h1>
+    <button class="theme" id="btnTheme" type="button" title="在深海蓝和围裙纸主题之间切换">换肤</button>
     <button class="pin" id="btnPin" type="button" aria-pressed="false" title="将窗口固定在其他普通窗口前面">置顶窗口</button>
   </div>
 
@@ -139,6 +237,7 @@
       <span class="status off" id="status">未设置</span><span class="date" id="dateText"></span>
       <button class="privacy" id="btnPrivacy" type="button">显示金额</button>
     </div>
+    <div class="pet-say" id="petSay">小鲸陪着你。设置好月薪和班表，我们就开始。</div>
     <div class="label">今 日 投 入</div>
     <div class="amount" id="todayAmount">¥ ****</div>
     <div class="caption" id="todayCaption">先设置到手月薪和计划工时</div>
@@ -181,6 +280,11 @@
     <h2>设置月薪与班表</h2>
     <div class="modal-intro">按到手月薪计算。修改设置会重新计算今天的投入；此前日期保留各自的计算口径。</div>
     <div class="fields">
+      <div class="field theme-field"><label>界面风格
+          <span class="seg">
+            <span class="seg-btn first on" id="segDeep">深海蓝</span><span class="seg-btn last" id="segCream">围裙纸</span>
+          </span>
+        </label><span class="hint">深海蓝适合夜间；围裙纸更接近小鲸的浅色女仆装。</span></div>
       <div class="field"><label for="inSalary">到手月薪（元）</label><input id="inSalary" type="password" autocomplete="off"><span class="hint">扣除五险一金和个税后的金额</span></div>
       <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
       <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
@@ -287,6 +391,20 @@ function bankValidSettings(s) {
     typeof s.dayHours === "number" && isFinite(s.dayHours) && s.dayHours > 0 && s.dayHours <= 24 &&
     typeof s.endTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.endTime);
 }
+/* 面板默认贴在桌宠左侧；放不下就换到右侧，并夹在工作区内。 */
+function bankPanelBounds(pet, panelWidth, panelHeight, gap) {
+  var left = pet.x - panelWidth - gap;
+  var top = pet.y + pet.height - panelHeight;
+  if (left < pet.workLeft) {
+    var right = pet.x + pet.width + gap;
+    left = right + panelWidth <= pet.workRight ? right : pet.workLeft;
+  }
+  if (left + panelWidth > pet.workRight) left = pet.workRight - panelWidth;
+  if (left < pet.workLeft) left = pet.workLeft;
+  if (top + panelHeight > pet.workBottom) top = pet.workBottom - panelHeight;
+  if (top < pet.workTop) top = pet.workTop;
+  return { x: Math.round(left), y: Math.round(top) };
+}
 </script>
 
 <script type="text/javascript">
@@ -302,9 +420,12 @@ var alivePath = "", samplePath = "", lastHour = "", toastTimer = null;
 var pinned = false, pinPending = false, pinDesired = false, pinRemember = false;
 var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
 var petStarting = false, petRunning = false, petStarted = 0, petLastHeartbeat = 0, petLastState = "";
-var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", petControlPath = "", petNoticePath = "", petEventsPath = "";
+var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", petControlPath = "", petNoticePath = "", petEventsPath = "", petPosPath = "";
 var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
-var petTopMost = true, petPositionX = null, petPositionY = null;
+var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = null, panelAnchor = null;
+var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
+var theme = "deep", pendingTheme = "deep";
+var PANEL_WIDTH = 530, PANEL_HEIGHT = 720, PANEL_GAP = 12;
 
 function $id(id) { return document.getElementById(id); }
 function text(id, value) { $id(id).innerText = value; }
@@ -313,6 +434,23 @@ function money(n, precision) { return masked ? "¥ ****" : "¥ " + Math.max(0, n
 function duration(seconds) {
   seconds = Math.floor(Math.max(0, seconds));
   return pad(Math.floor(seconds / 3600)) + ":" + pad(Math.floor(seconds % 3600 / 60)) + ":" + pad(seconds % 60);
+}
+function applyTheme() {
+  var classes = "theme-" + theme;
+  if (bank.settings && bank.settings.motion === false) classes += " motion-off";
+  document.body.className = classes;
+}
+function setTheme(value, remember) {
+  theme = value === "cream" ? "cream" : "deep";
+  pendingTheme = theme;
+  $id("segDeep").className = "seg-btn first" + (theme === "deep" ? " on" : "");
+  $id("segCream").className = "seg-btn last" + (theme === "cream" ? " on" : "");
+  applyTheme();
+  if (remember && bank.settings) {
+    bank.settings.theme = theme;
+    dirty = true;
+    if (!saveBank()) showToast("主题已切换，但偏好保存失败；请检查目录权限。");
+  }
 }
 function appPath(name) {
   var p;
@@ -382,6 +520,8 @@ function loadBank() {
     }
     bank = data;
     masked = !bank.settings || bank.settings.maskByDefault !== false;
+    theme = bank.settings && bank.settings.theme === "cream" ? "cream" : "deep";
+    pendingTheme = theme;
     if (bank.settings) {
       petTopMost = bank.settings.petOnTop !== false;
       petPositionX = typeof bank.settings.petX === "number" && isFinite(bank.settings.petX) && Math.abs(bank.settings.petX) <= 100000 ? Math.round(bank.settings.petX) : null;
@@ -492,7 +632,8 @@ function requestPin(desired, remember) {
 /* 桌宠与主窗口仅交换状态、位置和操作，不交换金额或薪资。 */
 function petLaunchCommand(title, x, y) {
   var args = [psQuote(title), psQuote(appPath("assets")), psQuote(petAlivePath), psQuote(petStatePath),
-    psQuote(petBeatPath), psQuote(petReadyPath), psQuote(petControlPath), psQuote(petNoticePath), psQuote(petEventsPath)];
+    psQuote(petBeatPath), psQuote(petReadyPath), psQuote(petControlPath), psQuote(petNoticePath),
+    psQuote(petEventsPath), psQuote(petPosPath)];
   return "$ErrorActionPreference='Stop';try { Add-Type -Path " + psQuote(appPath("DesktopPet.cs")) +
     " -ReferencedAssemblies @('System.Windows.Forms','System.Drawing');[WorkBankPet]::Run(" + args.join(",") +
     "," + (petTopMost ? "$true" : "$false") + "," + x + "," + y + ") }" +
@@ -513,9 +654,21 @@ function recoverPetPanel(handle) {
     shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
   } catch (e) {}
 }
+function petStatusLabel() {
+  if (fatalStorage || storageProblem) return "请查看提示";
+  if (!bank.settings) return "未设置";
+  if (!tracking) return signedOff ? "已收工" : "未开工";
+  if (!monitorReady) return "采样未就绪";
+  if (monitorIdle) return "键鼠空闲";
+  var d = new Date(), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  var day = currentDay(d.getTime());
+  if (time >= bank.settings.endTime || bankOvertime(day) > 0) return "加班中";
+  return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "接近计划工时" : "上班中";
+}
 function petState() {
   if (fatalStorage || storageProblem) return "error";
   if (!bank.settings) return "unconfigured";
+  if (new Date().getTime() < celebrateUntil) return "celebrate";
   if (!tracking) return "paused";
   if (!monitorReady) return "waiting";
   if (monitorIdle) return "idle";
@@ -524,10 +677,46 @@ function petState() {
   if (time >= bank.settings.endTime || bankOvertime(day) > 0) return "overtime";
   return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "urgent" : "active";
 }
+function petTip() {
+  if (!bank.settings) return "小鲸 · 还没设置班表";
+  var day = currentDay(new Date().getTime());
+  return "小鲸 · " + petStatusLabel() + "\n活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
+}
 function writePetState() {
   if (!petStatePath || (!petStarting && !petRunning)) return;
-  var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" + (tracking ? "1" : "0");
-  if (state !== petLastState && writePath(petStatePath, state, false)) petLastState = state;
+  var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" +
+    (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + petTip();
+  if (state !== petLastState && writePath(petStatePath, state, true)) petLastState = state;
+}
+function readPetBounds() {
+  if (!petPosPath) return null;
+  var parts = readPath(petPosPath, false).split("|");
+  if (parts.length !== 8) return null;
+  var values = [];
+  for (var i = 0; i < 8; i++) {
+    var n = Number(parts[i]);
+    if (!isFinite(n) || Math.abs(n) > 100000) return null;
+    values.push(Math.round(n));
+  }
+  return { x: values[0], y: values[1], width: values[2], height: values[3],
+    workLeft: values[4], workTop: values[5], workRight: values[6], workBottom: values[7] };
+}
+function showPanelNearPet() {
+  petBounds = readPetBounds() || petBounds;
+  if (!petBounds) { writePath(petControlPath, "show", false); return; }
+  var target = bankPanelBounds(petBounds, PANEL_WIDTH, PANEL_HEIGHT, PANEL_GAP);
+  panelAnchor = target;
+  writePath(petControlPath, "show|" + target.x + "|" + target.y, false);
+}
+function followPet() {
+  if (!petRunning || !petPanelVisible) return;
+  var bounds = readPetBounds();
+  if (bounds) petBounds = bounds;
+  if (!petBounds) return;
+  var target = bankPanelBounds(petBounds, PANEL_WIDTH, PANEL_HEIGHT, PANEL_GAP);
+  if (panelAnchor && panelAnchor.x === target.x && panelAnchor.y === target.y) return;
+  panelAnchor = target;
+  try { window.moveTo(target.x, target.y); } catch (e) {}
 }
 function showPetStatus(message) {
   text("petStatusText", message);
@@ -540,6 +729,7 @@ function cleanupPetFiles() {
   deletePath(petReadyPath);
   deletePath(petControlPath);
   deletePath(petNoticePath);
+  deletePath(petPosPath);
   if (petEventsPath) {
     try {
       var fso = new ActiveXObject("Scripting.FileSystemObject");
@@ -551,6 +741,8 @@ function stopPet() {
   petStarting = false;
   petRunning = false;
   petStarted = 0;
+  petBounds = null;
+  panelAnchor = null;
   cleanupPetFiles();
 }
 function failPet(message) {
@@ -578,6 +770,7 @@ function startPet() {
     petControlPath = base + ".control";
     petNoticePath = base + ".notice";
     petEventsPath = base + ".events";
+    petPosPath = base + ".pos";
     fso.CreateFolder(petEventsPath);
     if (!writePath(petAlivePath, "alive", false)) throw new Error("heartbeat failed");
     petPreviousTitle = document.title;
@@ -587,6 +780,8 @@ function startPet() {
     petRunning = false;
     petPanelVisible = true;
     petParentHandle = "";
+    petBounds = null;
+    panelAnchor = null;
     petStarted = new Date().getTime();
     petLastHeartbeat = petStarted;
     petLastState = "";
@@ -605,9 +800,15 @@ function startPet() {
   }
 }
 function handlePetEvent(value) {
-  if (value === "hide" || value === "show") {
-    petPanelVisible = value === "show";
-    if (!petPanelVisible) $id("toast").className = "toast hidden";
+  if (value === "hide") {
+    petPanelVisible = false;
+    /* 桌宠点击后已先自行最小化；再回写一次，避免迟到的展开指令把窗口重新拉起。 */
+    writePath(petControlPath, "hide", false);
+    $id("toast").className = "toast hidden";
+  } else if (value === "show") {
+    petPanelVisible = true;
+    showPanelNearPet();
+    render(new Date().getTime());
   } else if (value === "toggle") {
     if (tracking) pauseTracking(); else startTracking();
   } else if (value === "pin|1" || value === "pin|0") {
@@ -660,8 +861,10 @@ function petTick() {
       petStarted = now;
       renderPin();
       showPetStatus("");
-      petPanelVisible = !!fatalStorage;
-      writePath(petControlPath, fatalStorage ? "show" : "hide", false);
+      var keepVisible = !!fatalStorage || !bank.settings;
+      petPanelVisible = keepVisible;
+      if (keepVisible) showPanelNearPet();
+      else writePath(petControlPath, "hide", false);
     } else if (ready === "error" || now - petStarted > 20000) {
       failPet("小鲸桌宠未能启动，请检查 PowerShell 或组件文件。");
       return;
@@ -673,6 +876,7 @@ function petTick() {
       return;
     }
     readPetEvents();
+    followPet();
   }
   writePetState();
 }
@@ -785,6 +989,26 @@ function endDescription(now) {
   if (now < end) return "距计划下班 " + duration((end - now) / 1000);
   return "已过计划下班时间 " + duration((now - end) / 1000);
 }
+function petSayText(day) {
+  if (!bank.settings) return "小鲸陪着你。设置好月薪和班表，我们就开始。";
+  if (fatalStorage || storageProblem) return "账本有点问题，先看看下面的提示。";
+  if (!tracking) return signedOff ? "今天收工啦。剩下的时间，留给自己。" : "小鲸在旁边等你。点开始记录，我们就出发。";
+  if (!monitorReady) return "小鲸正在准备计时的东西，等一下下。";
+  if (monitorIdle) return "好像两分钟没动了。小鲸先不记账，等你回来。";
+  var mins = Math.floor(day.activeSeconds / 60);
+  var time = mins >= 60 ? Math.floor(mins / 60) + " 小时" + (mins % 60 ? " " + (mins % 60) + " 分" : "") : mins + " 分钟";
+  return "小鲸陪着你，今天已经投入 " + time + "。";
+}
+function checkMilestone(now, pct) {
+  if (!tracking || !bank.settings) { milestoneStage = 0; milestoneDay = ""; return; }
+  var key = bankDate(now);
+  if (key !== milestoneDay) { milestoneDay = key; milestoneStage = 0; }
+  var stage = pct >= 100 ? 3 : (pct >= 90 ? 2 : (pct >= 50 ? 1 : 0));
+  if (stage <= milestoneStage) return;
+  milestoneStage = stage;
+  showToast(stage === 3 ? "计划工时已满；超出的时间记在加班。" :
+    (stage === 2 ? "接近计划工时了，再坚持一下。" : "今天已经走过一半，稳。"));
+}
 function render(now) {
   var day = currentDay(now), month = bankMonth(bank.days, bankDate(now).substring(0, 7));
   var pct = day.activeSeconds / (day.dayHours * 3600) * 100;
@@ -808,7 +1032,9 @@ function render(now) {
   $id("progressFill").style.width = Math.min(100, Math.max(0, pct)) + "%";
   var stage = pct >= 100 ? "overtime" : (pct >= 90 ? "hot" : (pct >= 60 ? "warm" : "cool"));
   $id("energyMeter").className = "energy " + stage + ((!tracking || !monitorReady || monitorIdle) ? " paused" : "");
-  document.body.className = bank.settings && bank.settings.motion === false ? "motion-off" : "";
+  applyTheme();
+  text("petSay", petSayText(day));
+  checkMilestone(now, pct);
   text("activeText", "已记录 " + duration(day.activeSeconds));
   text("endText", endDescription(now));
   text("monthAmount", money(month.amount));
@@ -898,6 +1124,7 @@ function openSettings() {
   $id("inMask").checked = !s || s.maskByDefault !== false;
   $id("inAnnounce").checked = !s || s.announce !== false;
   $id("inMotion").checked = !s || s.motion !== false;
+  setTheme(s && s.theme === "cream" ? "cream" : "deep", false);
   $id("showSalary").checked = false;
   $id("inSalary").type = "password";
   $id("settingsModal").className = "modal";
@@ -907,6 +1134,7 @@ function saveSettings() {
     salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
     dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
     maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
+    theme: pendingTheme || "deep",
     alwaysOnTop: pinPending ? !!(bank.settings && bank.settings.alwaysOnTop) : pinned,
     petOnTop: petTopMost,
     petX: petPositionX,
@@ -936,11 +1164,13 @@ function saveSettings() {
   $id("settingsModal").className = "modal hidden";
   if (!previousSettings) startTracking();
   else render(new Date().getTime());
+  applyTheme();
 }
 function signOff() {
   if (!bank.settings) { openSettings(); return; }
   if (tracking) pauseTracking();
   signedOff = true;
+  celebrateUntil = new Date().getTime() + 6000;
   var now = new Date().getTime(), day = currentDay(now), month = bankMonth(bank.days, bankDate(now).substring(0, 7));
   text("receiptDate", bankDate(now));
   text("receiptActive", duration(day.activeSeconds));
@@ -964,6 +1194,9 @@ function showHistory() {
 }
 
 $id("btnPetRetry").onclick = function () { startPet(); };
+$id("btnTheme").onclick = function () { setTheme(theme === "cream" ? "deep" : "cream", true); };
+$id("segDeep").onclick = function () { setTheme("deep", false); };
+$id("segCream").onclick = function () { setTheme("cream", false); };
 $id("btnPin").onclick = function () { requestPin(!pinned, true); };
 $id("btnPrivacy").onclick = function () {
   masked = !masked;
@@ -973,7 +1206,11 @@ $id("btnPrivacy").onclick = function () {
 $id("btnTrack").onclick = function () { if (tracking) pauseTracking(); else startTracking(); };
 $id("btnSettings").onclick = openSettings;
 $id("btnSaveSettings").onclick = saveSettings;
-$id("btnCancelSettings").onclick = function () { $id("settingsModal").className = "modal hidden"; };
+$id("btnCancelSettings").onclick = function () {
+  theme = bank.settings && bank.settings.theme === "cream" ? "cream" : "deep";
+  setTheme(theme, false);
+  $id("settingsModal").className = "modal hidden";
+};
 $id("showSalary").onclick = function () { $id("inSalary").type = this.checked ? "text" : "password"; };
 $id("btnSign").onclick = signOff;
 $id("btnCloseReceipt").onclick = function () { $id("receiptModal").className = "modal hidden"; };
@@ -986,9 +1223,10 @@ window.onload = function () {
     window.moveTo(Math.max(0, screen.availWidth - width - 16), Math.max(0, Math.min(40, screen.availHeight - height)));
   } catch (e) {}
   loadBank();
+  setTheme(theme, false);
   render(new Date().getTime());
   renderPin();
-  setInterval(tick, 1000);
+  setInterval(tick, 250);
   if (bank.settings && bank.settings.alwaysOnTop === true) requestPin(true, false);
   if (!bank.settings && !fatalStorage) openSettings();
   startPet();

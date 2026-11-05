@@ -46,9 +46,10 @@ function runtime(files = Object.create(null)) {
     };
     return elements[id];
   } };
+  const moves = [];
   const context = vm.createContext({
     document,
-    window: { resizeTo() {}, moveTo() {} },
+    window: { resizeTo() {}, moveTo(x, y) { moves.push({ x, y }); } },
     screen: { availWidth: 1200, availHeight: 900 },
     location: { pathname: '/C:/Projects/%E5%B7%A5%E6%97%B6/app.hta' },
     Enumerator: function (items) {
@@ -65,7 +66,7 @@ function runtime(files = Object.create(null)) {
     alert(message) { alerts.push(message); }, setInterval() {}, setTimeout() { return 1; }, clearTimeout() {}
   });
   scripts.forEach(script => vm.runInContext(script, context));
-  return { context, files, fso, elements, alerts, commands };
+  return { context, files, fso, elements, alerts, commands, moves };
 }
 
 const settings = { salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', maskByDefault: true, announce: true };
@@ -454,4 +455,128 @@ test('settings updates revalue today but leave earlier days unchanged', () => {
   assert.equal(app.bank.days[today].dayHours, 6);
   assert.equal(app.bank.days['2020-01-01'].hourlyRate, 8000 / 174);
   assert.equal(app.bank.days['2020-01-01'].dayHours, 8);
+});
+
+test('panel anchors beside the pet and stays within the work area', () => {
+  const { context: app } = runtime();
+  const pet = { x: 1800, y: 900, width: 180, height: 240, workLeft: 0, workTop: 0, workRight: 1920, workBottom: 1080 };
+  const primary = app.bankPanelBounds(pet, 530, 720, 12);
+  assert.equal(primary.x, 1258);
+  assert.equal(primary.y, 360);
+  assert.equal(app.bankPanelBounds({ ...pet, x: 100 }, 530, 720, 12).x, 292);
+  assert.equal(app.bankPanelBounds({ ...pet, y: 700, workBottom: 900 }, 530, 720, 12).y, 180);
+  assert.equal(app.bankPanelBounds({ ...pet, x: 10, workRight: 400 }, 530, 720, 12).x, 0);
+});
+
+test('opening the panel places it beside the pet and follows the pet', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.petRunning = true;
+  app.petControlPath = 'C:\\Temp\\control';
+  app.petPosPath = 'C:\\Temp\\pos';
+  env.files[app.petPosPath] = '1600|800|180|240|0|0|1920|1080';
+  app.handlePetEvent('show');
+  assert.equal(app.petPanelVisible, true);
+  assert.equal(env.files[app.petControlPath], 'show|1058|320');
+  env.files[app.petPosPath] = '1200|700|180|240|0|0|1920|1080';
+  const movesSoFar = env.moves.length;
+  app.followPet();
+  assert.equal(env.moves.length, movesSoFar + 1, 'moves once for the new pet position');
+  assert.equal(env.moves[env.moves.length - 1].x, 658);
+  assert.equal(env.moves[env.moves.length - 1].y, 220);
+  const afterMove = env.moves.length;
+  app.followPet();
+  assert.equal(env.moves.length, afterMove, 'no redundant moves while the pet stays put');
+  app.handlePetEvent('hide');
+  assert.equal(app.petPanelVisible, false);
+  assert.equal(env.files[app.petControlPath], 'hide', 'a late expand command cannot leave the window open');
+});
+
+test('theme switches between deep sea and apron paper and persists', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.setTheme('cream', true);
+  assert.equal(app.bank.settings.theme, 'cream');
+  assert.match(app.document.body.className, /theme-cream/);
+  assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'cream');
+  app.openSettings();
+  assert.match(env.elements.segCream.className, /on/);
+  env.elements.inSalary.value = '8000';
+  env.elements.inMonthHours.value = '174';
+  env.elements.inDayHours.value = '8';
+  env.elements.inEndTime.value = '18:00';
+  env.elements.inMask.checked = true;
+  app.saveSettings();
+  assert.equal(app.bank.settings.theme, 'cream');
+  app.setTheme('deep', true);
+  assert.match(app.document.body.className, /theme-deep/);
+});
+
+test('pet state carries panel visibility and a masked tooltip', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.monitorIdle = false;
+  app.masked = true;
+  app.petStatePath = 'C:\\Temp\\state';
+  app.petRunning = true;
+  app.petPanelVisible = true;
+  app.bank.days[app.bankDate(Date.now())] = sampleDay(3600);
+  app.petLastState = '';
+  app.writePetState();
+  const parts = env.files[app.petStatePath].split('|');
+  assert.ok(['active', 'overtime', 'urgent'].includes(parts[0]));
+  assert.equal(parts[3], '1');
+  assert.match(parts.slice(4).join('|'), /¥ \*\*\*\*/);
+  app.masked = false;
+  app.petLastState = '';
+  app.writePetState();
+  assert.match(env.files[app.petStatePath], /¥ 45\.9770/);
+});
+
+test('milestones announce once at half, near-full and full', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.monitorReady = true;
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = sampleDay(3.9 * 3600);
+  app.render(Date.now());
+  assert.notEqual(app.$id('toast').className, 'toast');
+  app.bank.days[today].activeSeconds = 4.1 * 3600;
+  app.render(Date.now());
+  assert.match(app.$id('toast').innerText, /一半/);
+  app.bank.days[today].activeSeconds = 7.3 * 3600;
+  app.render(Date.now());
+  assert.match(app.$id('toast').innerText, /接近计划工时/);
+  app.bank.days[today].activeSeconds = 8.1 * 3600;
+  app.render(Date.now());
+  assert.match(app.$id('toast').innerText, /计划工时已满/);
+});
+
+test('signing off celebrates on the pet before settling to paused', () => {
+  const { context: app } = runtime();
+  app.bank.settings = { ...settings };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.signOff();
+  assert.equal(app.petState(), 'celebrate');
+  app.celebrateUntil = Date.now() - 1;
+  assert.equal(app.petState(), 'paused');
+});
+
+test('first run keeps the settings panel visible after the pet starts', () => {
+  const env = runtime(), app = env.context;
+  app.petStarting = true;
+  app.petStarted = Date.now();
+  app.petLastHeartbeat = Date.now();
+  app.petAlivePath = 'C:\\Temp\\alive';
+  app.petReadyPath = 'C:\\Temp\\ready';
+  app.petControlPath = 'C:\\Temp\\control';
+  env.files[app.petAlivePath] = 'alive';
+  env.files[app.petReadyPath] = 'ready|123';
+  app.petTick();
+  assert.equal(app.petPanelVisible, true);
+  assert.equal(app.petRunning, true);
+  assert.equal(env.files[app.petControlPath], 'show');
 });
