@@ -125,7 +125,7 @@
   .fields { margin-top: 16px; }
   .fields:after { content: ""; display: block; clear: both; }
   .field { float: left; width: 47%; vertical-align: top; margin: 0 2% 12px 0; }
-  .field.theme-field, .field.goal-field { clear: both; float: none; width: 100%; margin-right: 0; }
+  .field.goal-field { clear: both; float: none; width: 100%; margin-right: 0; }
   .field label { display: block; margin-bottom: 7px; color: #b9d2e8; font-size: 12px; }
   .field input, .field select { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
   .field textarea { width: 100%; height: 62px; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 13px; font-family: "Microsoft YaHei", sans-serif; }
@@ -147,12 +147,6 @@
   #opacityValue { float: right; color: #8fd0ff; font-family: Consolas, monospace; }
   .shortcut-hint { margin: 8px 0 0; color: #88a2bb; font-size: 11px; line-height: 1.6; }
   .shortcut-hint span { white-space: nowrap; }
-  .seg { float: right; margin-top: -2px; }
-  .seg-btn { display: inline-block; padding: 3px 12px; font-size: 11px; color: #9db8d2; background: #0b1a2d; border: 1px solid #3a5d82; cursor: pointer; letter-spacing: 1px; }
-  .seg-btn.first { border-radius: 7px 0 0 7px; }
-  .seg-btn.middle, .seg-btn.last { border-left: 0; }
-  .seg-btn.last { border-radius: 0 7px 7px 0; }
-  .seg-btn.on { color: #061826; background-image: linear-gradient(180deg, #cfe9ff, #9fd2ff); border-color: #9fd2ff; font-weight: bold; }
   .check { display: block; margin: 6px 0; color: #c6daec; font-size: 12px; }
   .check input { margin: 0 7px 0 0; vertical-align: middle; }
   .modal-actions { margin-top: 14px; }
@@ -268,8 +262,6 @@
   body.theme-cream .field input, body.theme-cream .field select { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .field textarea { color: #2f2d27; background: #fffdf8; border-color: #d3c5a8; }
   body.theme-cream .field .hint { color: #8f887a; }
-  body.theme-cream .seg-btn { color: #6f685a; background: #fffdf8; border-color: #d3c5a8; }
-  body.theme-cream .seg-btn.on { color: #fff; background-image: linear-gradient(180deg, #4c90c0, #2c6fa8); border-color: #2c6fa8; }
   body.theme-cream .check { color: #5f5a4e; }
   body.theme-cream .receipt { background: #f8f1df; color: #3a382f; }
   body.theme-cream .receipt-title { color: #8a8070; }
@@ -382,12 +374,7 @@
     <h2>设置月薪与班表</h2>
     <div class="modal-intro">修改设置只重算今天，此前日期保留各自口径。</div>
     <div class="fields">
-      <div class="field theme-field"><label>界面风格
-          <span class="seg">
-            <button type="button" class="seg-btn first on" id="segDeep">深海蓝</button><button type="button" class="seg-btn middle" id="segCream">围裙纸</button><button type="button" class="seg-btn last" id="segGlass">海雾玻璃</button>
-          </span>
-        </label><span class="hint">选择配色；三款主题都可在下方单独调整窗口透明度。</span></div>
-      <div class="field goal-field"><label for="inOpacity">窗口透明度 <span id="opacityValue">100%</span></label><input id="inOpacity" type="range" min="60" max="100" step="1" value="100"><span class="hint">60% 更透，100% 不透明；三款主题分别记住自己的透明度。</span></div>
+      <div class="field goal-field"><label for="inOpacity">窗口透明度 <span id="opacityValue">100%</span></label><input id="inOpacity" type="range" min="60" max="100" step="1" value="100"><span class="hint">调整当前主题；60% 更透，100% 不透明；三款主题分别记住自己的透明度。</span></div>
       <div class="field"><label for="inSalary">到手月薪（元）</label><input id="inSalary" type="password" autocomplete="off"><span class="hint">扣除五险一金和个税后的金额</span></div>
       <div class="field"><label for="inCalculationMode">核算方式</label><select id="inCalculationMode"><option value="hours">月薪 ÷ 月计划工时</option><option value="days">月薪 ÷ 本月计薪天数</option></select><span class="hint">切换会重算当天；历史日期保持原口径。</span></div>
       <div class="field" id="monthHoursField"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
@@ -738,12 +725,6 @@ function setTheme(value, remember) {
   pendingTheme = theme;
   activeAlpha = (settingsEditing ? draftThemeAlpha : savedThemeAlpha)[theme];
   pendingAlpha = activeAlpha;
-  $id("segDeep").className = "seg-btn first" + (theme === "deep" ? " on" : "");
-  $id("segCream").className = "seg-btn middle" + (theme === "cream" ? " on" : "");
-  $id("segGlass").className = "seg-btn last" + (theme === "glass" ? " on" : "");
-  $id("segDeep").setAttribute("aria-pressed", theme === "deep" ? "true" : "false");
-  $id("segCream").setAttribute("aria-pressed", theme === "cream" ? "true" : "false");
-  $id("segGlass").setAttribute("aria-pressed", theme === "glass" ? "true" : "false");
   syncThemeMenu();
   applyTheme();
   applyWindowChrome();
@@ -2302,9 +2283,6 @@ document.onclick = function (event) {
   if (target === $id("btnTheme") || target === menu || (target && target.parentNode === menu)) return;
   showThemeMenu(false);
 };
-$id("segDeep").onclick = function () { setTheme("deep", false); };
-$id("segCream").onclick = function () { setTheme("cream", false); };
-$id("segGlass").onclick = function () { setTheme("glass", false); };
 $id("btnPin").onclick = function () { requestPin(!pinned, true); };
 function refreshPrivacyViews() {
   var now = new Date().getTime();

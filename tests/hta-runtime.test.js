@@ -1013,7 +1013,7 @@ test('theme switches between deep sea and apron paper and persists', () => {
   assert.match(app.document.body.className, /theme-cream/);
   assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'cream');
   app.openSettings();
-  assert.match(env.elements.segCream.className, /on/);
+  assert.equal(app.pendingTheme, 'cream');
   env.elements.inSalary.value = '8000';
   env.elements.inMonthHours.value = '174';
   env.elements.inDayHours.value = '8';
@@ -1040,9 +1040,7 @@ test('theme menu selects glass directly, persists, restores after reload, and ca
   next.loadBank();
   assert.equal(next.theme, 'glass');
   next.openSettings();
-  assert.match(restored.elements.segGlass.className, /on/);
-  restored.elements.segDeep.onclick();
-  assert.equal(next.theme, 'deep');
+  assert.equal(next.pendingTheme, 'glass');
   restored.elements.btnCancelSettings.onclick();
   assert.equal(next.theme, 'glass');
   restored.elements.btnTheme.onclick({ cancelBubble: false });
@@ -1069,7 +1067,7 @@ test('theme menu marks the current theme, toggles, and closes on outside click o
   assert.equal(env.elements.themeMenu.className, 'theme-menu hidden', 'Escape closes the menu');
 });
 
-test('three themes remember their own opacity, preview it, and persist it', () => {
+test('each theme remembers the opacity edited in settings', () => {
   const first = runtime(), seeded = first.context;
   seeded.bank.settings = { ...settings, theme: 'glass', themeAlpha: { deep: 100, cream: 90, glass: 70 } };
   assert.equal(seeded.saveBank(), true);
@@ -1082,23 +1080,19 @@ test('three themes remember their own opacity, preview it, and persist it', () =
   app.openSettings();
   assert.equal(elements.inOpacity.value, '70');
   assert.equal(elements.opacityValue.innerText, '70%');
-  elements.segCream.onclick();
-  assert.equal(app.activeAlpha, 90, 'another theme uses its own saved opacity');
   elements.inOpacity.value = '63';
   elements.inOpacity.oninput();
   assert.equal(app.activeAlpha, 63);
-  assert.equal(app.draftThemeAlpha.cream, 63);
-  elements.segGlass.onclick();
-  assert.equal(app.activeAlpha, 70);
-  elements.segCream.onclick();
-  assert.equal(app.activeAlpha, 63, 'an edited theme keeps its draft while the dialog is open');
+  assert.equal(app.draftThemeAlpha.glass, 63);
   elements.btnCancelSettings.onclick();
   assert.equal(app.theme, 'glass');
   assert.equal(app.activeAlpha, 70);
-  assert.equal(app.draftThemeAlpha.cream, 90);
+  assert.equal(app.draftThemeAlpha.glass, 70);
 
+  app.setTheme('cream', true);
+  assert.equal(app.activeAlpha, 90, 'another theme uses its own saved opacity');
   app.openSettings();
-  elements.segCream.onclick();
+  assert.equal(elements.inOpacity.value, '90');
   elements.inOpacity.value = '64';
   elements.inOpacity.oninput();
   elements.inSalary.value = '8000';
@@ -1142,7 +1136,8 @@ test('keyboard shortcuts close dialogs, mask amounts, toggle tracking, and hide 
   app.savedThemeAlpha = app.bankThemeAlpha(app.bank.settings);
   app.setTheme('glass', false);
   app.openSettings();
-  elements.segDeep.onclick();
+  elements.inOpacity.value = '100';
+  elements.inOpacity.oninput();
   assert.equal(app.activeAlpha, 100);
   const esc = { keyCode: 27, altKey: false, target: { tagName: 'INPUT' }, preventDefault() { this.prevented = true; } };
   assert.equal(app.handleShortcut(esc), false);
