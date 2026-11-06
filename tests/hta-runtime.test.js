@@ -1025,13 +1025,16 @@ test('theme switches between deep sea and apron paper and persists', () => {
   assert.match(app.document.body.className, /theme-deep/);
 });
 
-test('glass theme cycles, persists, restores after reload, and cancels preview', () => {
+test('theme menu selects glass directly, persists, restores after reload, and cancels preview', () => {
   const env = runtime(), app = env.context;
   app.bank.settings = { ...settings, theme: 'cream' };
   app.setTheme('cream', false);
-  env.elements.btnTheme.onclick();
+  env.elements.btnTheme.onclick({ cancelBubble: false });
+  assert.equal(env.elements.themeMenu.className, 'theme-menu');
+  env.elements.themePickGlass.onclick();
   assert.equal(app.theme, 'glass');
   assert.match(app.document.body.className, /theme-glass/);
+  assert.equal(env.elements.themeMenu.className, 'theme-menu hidden');
   assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'glass');
   const restored = runtime(env.files), next = restored.context;
   next.loadBank();
@@ -1042,9 +1045,28 @@ test('glass theme cycles, persists, restores after reload, and cancels preview',
   assert.equal(next.theme, 'deep');
   restored.elements.btnCancelSettings.onclick();
   assert.equal(next.theme, 'glass');
-  restored.elements.btnTheme.onclick();
+  restored.elements.btnTheme.onclick({ cancelBubble: false });
+  restored.elements.themePickDeep.onclick();
   assert.equal(next.theme, 'deep');
   assert.equal(JSON.parse(env.files[app.appPath('workbank.json')]).settings.theme, 'deep');
+});
+
+test('theme menu marks the current theme, toggles, and closes on outside click or Escape', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings, theme: 'cream' };
+  app.setTheme('cream', false);
+  env.elements.btnTheme.onclick({ cancelBubble: false });
+  assert.equal(env.elements.themeMenu.className, 'theme-menu');
+  assert.match(env.elements.themePickCream.className, /on/);
+  assert.doesNotMatch(env.elements.themePickDeep.className, /on/);
+  env.elements.btnTheme.onclick({ cancelBubble: false });
+  assert.equal(env.elements.themeMenu.className, 'theme-menu hidden', 'second click closes the menu');
+  env.elements.btnTheme.onclick({ cancelBubble: false });
+  app.document.onclick({ target: env.elements.bankCard });
+  assert.equal(env.elements.themeMenu.className, 'theme-menu hidden', 'outside click closes the menu');
+  env.elements.btnTheme.onclick({ cancelBubble: false });
+  app.handleShortcut({ keyCode: 27, preventDefault() {}, returnValue: true });
+  assert.equal(env.elements.themeMenu.className, 'theme-menu hidden', 'Escape closes the menu');
 });
 
 test('three themes remember their own opacity, preview it, and persist it', () => {

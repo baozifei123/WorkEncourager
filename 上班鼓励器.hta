@@ -43,6 +43,16 @@
   .pin:hover, .pin.on, .theme:hover { border-color: #7fc4ff; color: #eaf6ff; }
   .pin.on { background: #1d4570; }
   .pin[disabled] { color: #82a0c2; cursor: wait; }
+  .theme-menu { position: absolute; z-index: 20; top: 42px; right: 84px; min-width: 132px; padding: 6px; border: 1px solid #38618c; background: #102540; border-radius: 10px; box-shadow: 0 12px 28px rgba(0,8,20,.5); }
+  .theme-item { display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: #cbe4ff; font-size: 12px; text-align: left; }
+  .theme-item:hover, .theme-item.on { background: #1d4570; color: #eaf6ff; }
+  .theme-item.on:after { content: " ✓"; }
+  body.theme-cream .theme-menu { background: #fffdf6; border-color: #d9c9a8; box-shadow: 0 12px 28px rgba(90,70,40,.2); }
+  body.theme-cream .theme-item { color: #4d5f6e; }
+  body.theme-cream .theme-item:hover, body.theme-cream .theme-item.on { background: #e8f1f9; color: #1f4d75; }
+  body.theme-glass .theme-menu { background: #254852; border-color: #7aa4a9; }
+  body.theme-glass .theme-item { color: #f0ffff; }
+  body.theme-glass .theme-item:hover, body.theme-glass .theme-item.on { background: #315f69; color: #fff; }
   .card { position: relative; padding: 17px 20px 13px; background: #12233c; border: 1px solid #2b4a6e; border-radius: 18px; box-shadow: 0 16px 34px rgba(0,8,20,.45); }
   .card:before { content: ""; position: absolute; top: -1px; left: 18px; right: 18px; height: 6px;
     background: repeating-radial-gradient(circle at 6px 0, rgba(170,220,255,.7) 0, rgba(170,220,255,.7) 3px, transparent 3px, transparent 12px); }
@@ -314,8 +324,13 @@
     <img class="avatar" src="assets/whale-face.png" alt="">
     <div class="eyebrow">WORK ENCOURAGER / TIME BANK</div>
     <h1>工时银行</h1>
-    <button class="theme" id="btnTheme" type="button" title="依次切换深海蓝、围裙纸和海雾玻璃">换肤</button>
+    <button class="theme" id="btnTheme" type="button" title="选择界面风格" aria-haspopup="true" aria-expanded="false">换肤</button>
     <button class="pin" id="btnPin" type="button" aria-pressed="false" title="将窗口固定在其他普通窗口前面">置顶窗口</button>
+    <div class="theme-menu hidden" id="themeMenu" role="menu">
+      <button type="button" class="theme-item" id="themePickDeep" role="menuitemradio">深海蓝</button>
+      <button type="button" class="theme-item" id="themePickCream" role="menuitemradio">围裙纸</button>
+      <button type="button" class="theme-item" id="themePickGlass" role="menuitemradio">海雾玻璃</button>
+    </div>
   </div>
 
   <div class="card" id="bankCard">
@@ -729,6 +744,7 @@ function setTheme(value, remember) {
   $id("segDeep").setAttribute("aria-pressed", theme === "deep" ? "true" : "false");
   $id("segCream").setAttribute("aria-pressed", theme === "cream" ? "true" : "false");
   $id("segGlass").setAttribute("aria-pressed", theme === "glass" ? "true" : "false");
+  syncThemeMenu();
   applyTheme();
   applyWindowChrome();
   if (settingsEditing) syncOpacityControl();
@@ -737,6 +753,25 @@ function setTheme(value, remember) {
     dirty = true;
     if (!saveBank()) showToast("主题已切换，但偏好保存失败；请检查目录权限。");
   }
+}
+/* 顶栏「换肤」改为弹出菜单，三款主题都能一次点击直达。 */
+function syncThemeMenu() {
+  var items = { deep: "themePickDeep", cream: "themePickCream", glass: "themePickGlass" };
+  for (var key in items) {
+    if (!Object.prototype.hasOwnProperty.call(items, key)) continue;
+    var item = $id(items[key]);
+    item.className = "theme-item" + (theme === key ? " on" : "");
+    item.setAttribute("aria-checked", theme === key ? "true" : "false");
+  }
+}
+function showThemeMenu(show) {
+  $id("themeMenu").className = "theme-menu" + (show ? "" : " hidden");
+  $id("btnTheme").setAttribute("aria-expanded", show ? "true" : "false");
+  if (show) syncThemeMenu();
+}
+function pickTheme(value) {
+  setTheme(value, true);
+  showThemeMenu(false);
 }
 function previewOpacity(value) {
   if (!settingsEditing) return;
@@ -1844,6 +1879,7 @@ function changeDayOverride(remove) {
 }
 function openSettings() {
   if (fatalStorage) { alert(storageProblem); return; }
+  showThemeMenu(false);
   if (petRunning && !petPanelVisible) {
     petPanelVisible = true;
     showPanelNearPet();
@@ -2249,7 +2285,23 @@ function deleteManual(date, index) {
 }
 
 $id("btnPetRetry").onclick = function () { startPet(); };
-$id("btnTheme").onclick = function () { setTheme(theme === "deep" ? "cream" : (theme === "cream" ? "glass" : "deep"), true); };
+$id("btnTheme").onclick = function (event) {
+  event = event || window.event;
+  showThemeMenu($id("themeMenu").className !== "theme-menu");
+  if (event) {
+    event.cancelBubble = true;
+    if (event.stopPropagation) event.stopPropagation();
+  }
+};
+$id("themePickDeep").onclick = function () { pickTheme("deep"); };
+$id("themePickCream").onclick = function () { pickTheme("cream"); };
+$id("themePickGlass").onclick = function () { pickTheme("glass"); };
+document.onclick = function (event) {
+  event = event || window.event;
+  var target = event && (event.target || event.srcElement), menu = $id("themeMenu");
+  if (target === $id("btnTheme") || target === menu || (target && target.parentNode === menu)) return;
+  showThemeMenu(false);
+};
 $id("segDeep").onclick = function () { setTheme("deep", false); };
 $id("segCream").onclick = function () { setTheme("cream", false); };
 $id("segGlass").onclick = function () { setTheme("glass", false); };
@@ -2327,6 +2379,12 @@ function handleShortcut(event) {
   event = event || window.event;
   var keyCode = event.keyCode || event.which || 0, target = event.target || event.srcElement;
   if (keyCode === 27) {
+    if ($id("themeMenu").className === "theme-menu") {
+      showThemeMenu(false);
+      if (event.preventDefault) event.preventDefault();
+      event.returnValue = false;
+      return false;
+    }
     if (!modalVisible()) return true;
     closeTopModal();
     if (event.preventDefault) event.preventDefault();
