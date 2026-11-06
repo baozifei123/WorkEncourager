@@ -761,7 +761,7 @@ public sealed class WorkBankPet : Form
     }
 }
 
-// 桌宠旁的小卡片：只显示今日投入和进度，点击可展开完整工时卡片。
+// 桌宠旁的小卡片：只显示今日赚到和进度，点击可展开完整工时卡片。
 public sealed class MiniInfoForm : Form
 {
     private const int GWL_EXSTYLE = -20;
@@ -989,7 +989,7 @@ public sealed class MiniInfoForm : Form
             }
             using (SolidBrush brush = new SolidBrush(label))
             {
-                graphics.DrawString("今日投入", labelFont, brush, 12, 7);
+                graphics.DrawString("今日赚到", labelFont, brush, 12, 7);
             }
             DrawActionButton(graphics, ModeButtonBounds, miniMode == 2 ? "悬停" : "常显", accent);
             DrawActionButton(graphics, TrackingButtonBounds, tracking ? "暂停" : "开始", accent);

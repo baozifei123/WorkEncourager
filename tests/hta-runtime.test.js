@@ -560,6 +560,33 @@ test('editing settings preserves the pet position and pin preference', () => {
   assert.equal(next.bank.settings.motion, false);
 });
 
+test('earnings labels describe estimates while CSV keeps its existing column name', () => {
+  assert.ok(source.includes('<div class="label">今 日 赚 到</div>'), 'daily amount label');
+  assert.ok(source.includes('<div class="stat-label">本月赚到</div>'), 'monthly amount label');
+  assert.ok(source.includes('<h3>今日赚到记录</h3>'), 'receipt title');
+  assert.ok(source.includes('<tr><td>今日赚到</td><td id="receiptAmount">'), 'receipt daily label');
+  assert.ok(source.includes('<tr><td>本月赚到</td><td id="receiptMonth">'), 'receipt monthly label');
+  assert.ok(source.includes('<th>赚到</th>'), 'history column');
+  assert.ok(source.includes('赚到金额按活跃工时估算，仅供参考，不代表实际工资或加班费'), 'estimate disclaimer');
+  assert.ok(source.includes('每一次认真投入，都值得被看见'), 'non-monetary wording stays unchanged');
+
+  const { context: app, elements } = runtime();
+  app.bank.settings = { ...settings };
+  app.bank.days[app.bankDate(Date.now())] = sampleDay();
+  app.masked = false;
+  app.render(Date.now());
+  assert.match(elements.todayAmount.attributes['aria-label'], /^今日赚到 ¥ 45\.9770/);
+  assert.match(elements.monthAmount.attributes['aria-label'], /^本月赚到 ¥ 45\.98/);
+  assert.match(elements.bankCard.title, /今日赚到 ¥ 45\.9770/);
+  assert.match(app.petTip(), /今日赚到 ¥ 45\.9770/);
+  assert.match(app.bankCsvText(app.bank), /"当日投入（元）"/);
+
+  app.masked = true;
+  app.render(Date.now());
+  assert.match(elements.todayAmount.attributes['aria-label'], /^今日赚到 ¥ \*\*\*\*/);
+  assert.match(app.petTip(), /今日赚到 ¥ \*\*\*\*/);
+});
+
 test('today uses four decimal places while monthly and receipt totals use two', () => {
   const { context: app, elements } = runtime();
   app.bank.settings = { ...settings };

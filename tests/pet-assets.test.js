@@ -17,6 +17,11 @@ test('all pet frames are matching transparent PNG images', () => {
   }
 });
 
+test('mini card labels the estimated amount as today’s earnings', () => {
+  const pet = fs.readFileSync(path.join(root, 'DesktopPet.cs'), 'utf8');
+  assert.ok(pet.includes('graphics.DrawString("今日赚到", labelFont'), 'mini card amount label');
+});
+
 test('the desktop pet is launched without overriding the execution policy', () => {
   const hta = fs.readFileSync(path.join(root, '上班鼓励器.hta'), 'utf8');
   assert.match(hta, /DesktopPet\.cs/);
