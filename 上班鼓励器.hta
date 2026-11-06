@@ -331,8 +331,8 @@
       <button class="privacy" id="btnPrivacy" type="button">显示金额</button>
     </div>
     <div class="pet-say" id="petSay">小鲸陪着你。设置好月薪和班表，我们就开始。</div>
-    <div class="label">今 日 投 入</div>
-    <button class="amount" id="todayAmount" type="button" aria-pressed="true" aria-label="今日投入已隐藏，点击显示金额">¥ ****</button>
+    <div class="label">今 日 赚 到</div>
+    <button class="amount" id="todayAmount" type="button" aria-pressed="true" aria-label="今日赚到已隐藏，点击显示金额">¥ ****</button>
     <div class="caption" id="todayCaption">先设置到手月薪和计划工时</div>
 
     <div class="progress-head"><span>今日活跃工时</span><span class="right" id="progressText">0.00 / 8.00 小时 · 0%</span></div>
@@ -344,8 +344,8 @@
 
     <div class="rule"></div>
     <div class="stat">
-      <div class="stat-label">本月累计投入</div>
-      <button class="stat-value month-amount" id="monthAmount" type="button" aria-pressed="true" aria-label="本月累计投入已隐藏，点击显示金额">¥ ****</button>
+      <div class="stat-label">本月赚到</div>
+      <button class="stat-value month-amount" id="monthAmount" type="button" aria-pressed="true" aria-label="本月赚到已隐藏，点击显示金额">¥ ****</button>
       <div class="stat-detail" id="monthDetail">仅计算实际记录的日期</div>
     </div>
     <div class="stat">
@@ -365,7 +365,7 @@
     <button class="btn btn-quiet" id="btnHistory" type="button">查看记录</button>
     <button class="btn btn-quiet" id="btnManual" type="button">手动补记</button>
   </div>
-  <p class="footnote">活跃时长不等于在岗时长；开会、看纸质资料等无键鼠操作的时间可能不计入。<br>加班只记录时长，不增加金额；调休天数仅为折算，实际安排以单位制度为准。</p>
+  <p class="footnote">赚到金额按活跃工时估算，仅供参考，不代表实际工资或加班费。<br>活跃不等于在岗，会议、阅读等可能漏记；加班只记时长，调休仅为折算，以单位制度为准。</p>
 </div>
 
 <div class="modal hidden" id="settingsModal">
@@ -388,7 +388,7 @@
         <div class="week-plan">
           <span class="week-cell"><label for="week1">周一</label><input id="week1" type="text"></span><span class="week-cell"><label for="week2">周二</label><input id="week2" type="text"></span><span class="week-cell"><label for="week3">周三</label><input id="week3" type="text"></span><span class="week-cell"><label for="week4">周四</label><input id="week4" type="text"></span><span class="week-cell"><label for="week5">周五</label><input id="week5" type="text"></span><span class="week-cell"><label for="week6">周六</label><input id="week6" type="text"></span><span class="week-cell"><label for="week0">周日</label><input id="week0" type="text"></span>
         </div>
-        <span class="hint">0 为休息日：当日投入为 0，记录的活跃时间全记加班；补班可单独调整。</span>
+        <span class="hint">0 为休息日：当日赚到金额为 0，记录的活跃时间全记加班；补班可单独调整。</span>
         <div class="fields">
           <div class="field"><label for="inOverrideDate">单日例外日期</label><input id="inOverrideDate" type="text" placeholder="YYYY-MM-DD"></div>
           <div class="field"><label for="inOverrideHours">该日计划工时</label><input id="inOverrideHours" type="text" placeholder="0–24 小时"></div>
@@ -422,13 +422,13 @@
     <div class="modal-intro">已暂停记录。需要继续工作时，可随时再次开始。</div>
     <div class="receipt">
       <div class="receipt-title">TIME BANK / DAILY SLIP</div>
-      <h3>今日投入记录</h3>
+      <h3>今日赚到记录</h3>
       <table>
         <tr><td>日期</td><td id="receiptDate">--</td></tr>
         <tr><td>活跃工时</td><td id="receiptActive">--</td></tr>
         <tr><td>其中加班</td><td id="receiptOvertime">--</td></tr>
-        <tr><td>折合投入</td><td id="receiptAmount">--</td></tr>
-        <tr><td>本月累计</td><td id="receiptMonth">--</td></tr>
+        <tr><td>今日赚到</td><td id="receiptAmount">--</td></tr>
+        <tr><td>本月赚到</td><td id="receiptMonth">--</td></tr>
       </table>
       <div class="seal">已复核 · 准予下班</div>
       <p class="receipt-note" id="receiptNote">人已下班，未完的事明天再说。记录只保存在本机。</p>
@@ -441,11 +441,11 @@
   <div class="modal-box">
     <div class="modal-kicker">LOCAL RECORDS / 本机记录</div>
     <h2>每天都算数</h2>
-    <div class="modal-intro">柱条只显示键鼠活跃工时；补记单独列示，不计入投入和加班。</div>
+    <div class="modal-intro">柱条只显示键鼠活跃工时；补记单独列示，不计入赚到金额和加班。</div>
     <div class="history-controls"><button class="btn btn-quiet" id="btnPrevMonth" type="button">上月</button><span class="history-month" id="historyMonth"></span><button class="btn btn-quiet" id="btnNextMonth" type="button">下月</button></div>
     <div class="manual-help" id="historyScale">每日活跃工时（小时） · 悬停或聚焦柱条可查看详情</div>
     <div class="month-chart" id="monthChart" role="group" aria-label="每日活跃工时"></div>
-    <div class="history-wrap"><table class="history"><thead><tr><th>日期</th><th>活跃工时</th><th>补记</th><th>加班</th><th>投入</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    <div class="history-wrap"><table class="history"><thead><tr><th>日期</th><th>活跃工时</th><th>补记</th><th>加班</th><th>赚到</th></tr></thead><tbody id="historyBody"></tbody></table></div>
     <div class="history-export"><button class="btn btn-quiet" id="btnBackup" type="button">备份完整 JSON</button><button class="btn btn-quiet" id="btnExportCsv" type="button">导出本机 CSV</button></div>
     <div class="modal-actions"><button class="btn btn-primary" id="btnCloseHistory" type="button">关闭</button></div>
   </div>
@@ -1141,7 +1141,7 @@ function petState() {
 function petTip() {
   if (!bank.settings) return "小鲸 · 还没设置班表";
   var day = currentDay(new Date().getTime());
-  return "小鲸 · " + petStatusLabel() + "\n活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
+  return "小鲸 · " + petStatusLabel() + "\n活跃 " + duration(day.activeSeconds) + " · 今日赚到 " + money(bankDayAmount(day), 4);
 }
 function bankMiniMode(settings) {
   if (!settings) return "off";
@@ -1606,7 +1606,7 @@ function goalText(day) {
     var atCap = day.activeSeconds >= day.dayHours * 3600 - 0.5;
     if (capped) return atCap ? "今天的计额已到上限；再往后的时间记在加班里。" : "今天的计额快到头了；再往后的时间记在加班里。";
     if (salary > 0 && earned >= salary / 30 - 0.000001) return "今天投进去的，已折合 " + (earned / (salary / 30)).toFixed(1) + " 天房租。";
-    return "今天的投入已经超过了当前设定的目标。";
+    return "今天赚到的金额已经超过了当前设定的目标。";
   }
   var minutes = Math.max(1, Math.ceil((next.value - earned) / rate * 60));
   var time = minutes >= 60 ? Math.floor(minutes / 60) + " 小时 " + (minutes % 60) + " 分钟" : minutes + " 分钟";
@@ -1661,7 +1661,7 @@ function render(now) {
   text("dateText", bankDate(now));
   text("todayAmount", money(bankDayAmount(day), 4));
   $id("todayAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
-  $id("todayAmount").setAttribute("aria-label", "今日投入 " + money(bankDayAmount(day), 4) + "，" + $id("todayAmount").title);
+  $id("todayAmount").setAttribute("aria-label", "今日赚到 " + money(bankDayAmount(day), 4) + "，" + $id("todayAmount").title);
   $id("todayAmount").setAttribute("aria-pressed", masked ? "true" : "false");
   text("todayCaption", !bank.settings ? "先设置到手月薪和计划工时" : (day.unconfigured ? "先设置本月计薪天数" :
     (restDay ? "按天核算 · 休息日只记录加班，不增加金额" :
@@ -1678,7 +1678,7 @@ function render(now) {
   text("endText", day.unconfigured ? "待设置当月天数" : (restDay ? "计划休息日" : endDescription(now)));
   text("monthAmount", money(month.amount));
   $id("monthAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
-  $id("monthAmount").setAttribute("aria-label", "本月累计投入 " + money(month.amount) + "，" + $id("monthAmount").title);
+  $id("monthAmount").setAttribute("aria-label", "本月赚到 " + money(month.amount) + "，" + $id("monthAmount").title);
   $id("monthAmount").setAttribute("aria-pressed", masked ? "true" : "false");
   text("monthDetail", "已记录 " + month.days + " 天 · 活跃 " + duration(month.activeSeconds));
   text("monthOvertime", duration(month.overtimeSeconds));
@@ -1686,7 +1686,7 @@ function render(now) {
   text("anchorText", goalText(day));
   text("btnPrivacy", masked ? "显示金额" : "隐藏金额");
   text("btnTrack", tracking ? "暂停记录" : "开始记录");
-  $id("bankCard").title = stateText + " · 活跃 " + duration(day.activeSeconds) + " · 今日投入 " + money(bankDayAmount(day), 4);
+  $id("bankCard").title = stateText + " · 活跃 " + duration(day.activeSeconds) + " · 今日赚到 " + money(bankDayAmount(day), 4);
   var monitor = $id("monitorText");
   monitor.className = "monitor" + (storageProblem || (tracking && !monitorReady && now - monitorStarted > 8000) ? " error" : "");
   if (storageProblem) text("monitorText", storageProblem);
@@ -2160,7 +2160,7 @@ function chooseDataExport(kind) {
   if (kind !== "json" && kind !== "csv") return;
   var warning = kind === "json" ?
     "完整 JSON 备份包含月薪设置和每日记录，只保存到你选定的本机文件；请妥善保管。继续选择位置吗？" :
-    "CSV 包含每日投入、加班和计算用时薪等敏感信息，但不含原始键鼠内容。文件只写入你选定的位置，且不会覆盖已有文件。继续吗？";
+    "CSV 包含每日赚到金额、加班和计算用时薪等敏感信息，但不含原始键鼠内容。文件只写入你选定的位置，且不会覆盖已有文件。继续吗？";
   if (!confirm(warning)) return;
   try {
     var fso = new ActiveXObject("Scripting.FileSystemObject"), shell = new ActiveXObject("WScript.Shell");
@@ -2204,7 +2204,7 @@ function renderManual() {
     html += "<div class='manual-item'>" + entries[i].kind + " · " + entries[i].minutes +
       " 分钟<button type='button' class='btn btn-quiet' data-manual-index='" + i + "'>删除</button></div>";
   }
-  text("manualSummary", bankValidDate(date) ? "该日补记 " + bankManualMinutes(day) + " 分钟；不计入活跃、投入或加班。" : "请输入有效日期，例如 2026-01-31。");
+  text("manualSummary", bankValidDate(date) ? "该日补记 " + bankManualMinutes(day) + " 分钟；不计入活跃工时、赚到金额或加班。" : "请输入有效日期，例如 2026-01-31。");
   $id("manualList").innerHTML = html || "<div>该日暂无补记。</div>";
 }
 function openManual() {
