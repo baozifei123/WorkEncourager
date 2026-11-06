@@ -5,3 +5,6 @@ workbank.json
 workbank.json.bak
 workbank.json.tmp
 assets/custom-character.png
+
+# EXE 启动器构建输出
+dist/
