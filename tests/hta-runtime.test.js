@@ -15,7 +15,7 @@ function runtime(files = Object.create(null)) {
   const commands = [];
   const execProcesses = [];
   const timers = Object.create(null);
-  let nextTimer = 0;
+  let nextTimer = 0, confirmResult = true;
   const fso = {
     FileExists(name) { return Object.hasOwn(files, name); },
     FolderExists(name) { return Object.hasOwn(files, name + '\\__folder'); },
@@ -85,13 +85,14 @@ function runtime(files = Object.create(null)) {
       };
       throw new Error('unexpected ActiveX: ' + name);
     },
-    alert(message) { alerts.push(message); }, confirm(message) { confirms.push(message); return true; }, setInterval() {},
+    alert(message) { alerts.push(message); }, confirm(message) { confirms.push(message); return confirmResult; }, setInterval() {},
     setTimeout(callback, delay) { const id = ++nextTimer; timers[id] = { callback, delay }; return id; },
     clearTimeout(id) { delete timers[id]; }
   });
   scripts.forEach(script => vm.runInContext(script, context));
   return {
     context, files, fso, elements, alerts, confirms, commands, moves, timers, execProcesses,
+    setConfirmResult(value) { confirmResult = value; },
     fireTimer(id) { const timer = timers[id]; if (!timer) return false; delete timers[id]; timer.callback(); return true; }
   };
 }
@@ -745,6 +746,216 @@ test('settings updates revalue today but leave earlier days unchanged', () => {
   assert.equal(app.bank.days['2020-01-01'].dayHours, 8);
 });
 
+test('switching to daily pay revalues only today and keeps monthly and schedule choices', () => {
+  const env = runtime(), app = env.context, e = env.elements;
+  const today = app.bankDate(Date.now());
+  const d = new Date(), previousDate = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  const yesterday = app.bankDate(previousDate.getTime());
+  app.bank.settings = { ...settings };
+  app.bank.days[today] = sampleDay(4 * 3600);
+  app.bank.days[yesterday] = sampleDay(8 * 3600);
+  const history = JSON.stringify(app.bank.days[yesterday]);
+  app.openSettings();
+  e.inCalculationMode.value = 'days';
+  e.inCalculationMode.onchange();
+  assert.doesNotMatch(e.dayModeFields.className, /hidden/);
+  assert.match(e.monthHoursField.className, /hidden/);
+  e.inPaidDays.value = '20';
+  e.inNextPaidDays.value = '21.75';
+  e.inOverrideDate.value = today;
+  e.inOverrideHours.value = '6';
+  e.btnSetOverride.onclick();
+  assert.equal(app.draftDayOverrides[today], 6);
+  assert.match(e.overrideSummary.innerText, /今天：6 小时/, 'newly added exceptions must be visible before saving');
+  app.saveSettings();
+  assert.match(env.confirms[0], /重新计算今天/);
+  assert.equal(app.bank.settings.calculationMode, 'days');
+  assert.equal(app.bank.settings.paidDaysByMonth[today.substring(0, 7)], 20);
+  assert.equal(app.bank.settings.paidDaysByMonth[app.bankNextMonthKey(today.substring(0, 7))], 21.75);
+  assert.equal(app.bank.settings.dayOverrides[today], 6);
+  assert.equal(app.bank.days[today].dayHours, 6);
+  assert.ok(Math.abs(app.bank.days[today].hourlyRate - 400 / 6) < 1e-10);
+  assert.ok(Math.abs(app.bankDayAmount(app.bank.days[today]) - 400 * 4 / 6) < 1e-10);
+  assert.equal(JSON.stringify(app.bank.days[yesterday]), history, 'earlier records remain byte-for-byte unchanged');
+  const saved = JSON.parse(env.files[app.appPath('workbank.json')]);
+  assert.equal(saved.days[today].calculationMode, 'days');
+  assert.equal(saved.days[today].paidDays, 20);
+  assert.equal(saved.days[today].dailyAmount, 400);
+  const reloaded = runtime(env.files).context;
+  reloaded.loadBank();
+  assert.equal(reloaded.fatalStorage, false);
+  assert.equal(reloaded.bank.days[today].dayHours, 6);
+  reloaded.openSettings();
+  assert.equal(reloaded.$id('inCalculationMode').value, 'days');
+  assert.equal(reloaded.$id('inPaidDays').value, '20');
+  assert.equal(reloaded.$id('inOverrideHours').value, '6');
+  reloaded.$id('inCalculationMode').value = 'hours';
+  reloaded.saveSettings();
+  assert.equal(reloaded.bank.settings.calculationMode, 'hours');
+  assert.equal(reloaded.bank.days[today].dayHours, 8);
+  assert.ok(Math.abs(reloaded.bank.days[today].hourlyRate - 8000 / 174) < 1e-10);
+  assert.equal(reloaded.bank.settings.dayOverrides[today], 6, 'day-mode choices are retained for a future switch back');
+  assert.equal(JSON.stringify(reloaded.bank.days[yesterday]), history);
+});
+
+test('cancelled mode changes and failed saves leave settings and today snapshot intact', () => {
+  const env = runtime(), app = env.context, e = env.elements;
+  const today = app.bankDate(Date.now());
+  app.bank.settings = { ...settings };
+  app.bank.days[today] = sampleDay(3600);
+  const originalSettings = JSON.stringify(app.bank.settings), originalDay = JSON.stringify(app.bank.days[today]);
+  app.openSettings();
+  e.inCalculationMode.value = 'days';
+  e.inPaidDays.value = '20';
+  env.setConfirmResult(false);
+  app.saveSettings();
+  assert.equal(JSON.stringify(app.bank.settings), originalSettings);
+  assert.equal(JSON.stringify(app.bank.days[today]), originalDay);
+  assert.equal(e.settingsModal.className, 'modal', 'a declined confirmation leaves the draft open');
+  env.setConfirmResult(true);
+  env.fso.failWrites = true;
+  app.saveSettings();
+  assert.equal(JSON.stringify(app.bank.settings), originalSettings);
+  assert.equal(JSON.stringify(app.bank.days[today]), originalDay, 'all calculation metadata rolls back after a failed save');
+});
+
+test('rest days show zero investment and count active time as overtime without NaN', () => {
+  const env = runtime(), app = env.context, e = env.elements;
+  const today = app.bankDate(Date.now()), month = today.substring(0, 7);
+  app.bank.settings = { ...settings, calculationMode: 'days', paidDaysByMonth: { [month]: 20 },
+    weekHours: [0, 8, 8, 8, 8, 8, 0], dayOverrides: { [today]: 0 } };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.monitorIdle = false;
+  app.petRunning = true;
+  app.petStatePath = 'C:\\Temp\\rest-state';
+  app.render(Date.now());
+  assert.match(e.progressText.innerText, /休息日/);
+  assert.doesNotMatch(e.progressText.innerText, /NaN|Infinity/);
+  assert.equal(app.bankDayAmount(app.currentDay(Date.now())), 0);
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[0], 'rest');
+  assert.doesNotMatch(env.files[app.petStatePath], /NaN|Infinity/);
+  const date = new Date();
+  const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12).getTime();
+  app.addActivity(noon, noon + 3600000);
+  const day = app.bank.days[today];
+  assert.equal(day.dayHours, 0);
+  assert.equal(day.hourlyRate, 0);
+  assert.equal(app.bankDayAmount(day), 0);
+  assert.equal(app.bankOvertime(day), 3600);
+  assert.ok(app.parseBank(JSON.stringify(app.bank)), 'rest-day snapshots are accepted by the loader');
+  app.render(Date.now());
+  assert.equal(env.elements.progressFill.style.width, '100%', 'all rest-day activity is overtime, so the bar is full');
+  app.petLastState = '';
+  app.writePetState();
+  const restFields = env.files[app.petStatePath].split('|');
+  assert.equal(restFields[0], 'overtime');
+  assert.equal(restFields[6], '100');
+});
+
+test('missing paid days pause recording without fabricating hours or discarding earlier days', () => {
+  const env = runtime(), app = env.context;
+  const today = app.bankDate(Date.now()), earlier = '2020-01-01';
+  app.bank.settings = { ...settings, calculationMode: 'days', paidDaysByMonth: {},
+    weekHours: [0, 8, 8, 8, 8, 8, 0], dayOverrides: {} };
+  app.bank.days[earlier] = sampleDay();
+  const before = JSON.stringify(app.bank.days[earlier]);
+  app.tracking = true;
+  app.monitorReady = true;
+  app.stopMonitor = () => { app.monitorReady = false; };
+  app.tick(true);
+  assert.equal(app.tracking, false);
+  assert.equal(app.bank.days[today], undefined);
+  assert.equal(JSON.stringify(app.bank.days[earlier]), before);
+  assert.match(env.elements.monitorText.innerText, /本月计薪天数未设置/);
+  app.tracking = true;
+  app.monitorReady = true;
+  assert.equal(app.petState(), 'unconfigured');
+  app.tracking = false;
+  app.petRunning = true;
+  app.petPanelVisible = false;
+  app.petControlPath = 'C:\\Temp\\control';
+  app.startTracking();
+  assert.equal(app.tracking, false);
+  assert.equal(app.petPanelVisible, true, 'settings must restore a collapsed panel before showing');
+  assert.equal(env.files[app.petControlPath], 'show');
+  assert.equal(env.elements.settingsModal.className, 'modal');
+});
+
+test('a month rollover into an unconfigured month keeps only the pre-midnight activity', () => {
+  const env = runtime(), app = env.context;
+  const boundary = new Date(2026, 11, 1, 0, 0, 0, 0).getTime();
+  const now = boundary + 1000, lastTick = boundary - 1500;
+  app.bank.settings = { ...settings, calculationMode: 'days', paidDaysByMonth: { '2026-11': 20 },
+    weekHours: [0, 8, 8, 8, 8, 8, 0], dayOverrides: {} };
+  app.tracking = true;
+  app.monitorReady = true;
+  app.sessionLocked = false;
+  app.lastTick = lastTick;
+  app.previousInput = lastTick - 1000;
+  app.samplePath = 'C:\\Temp\\rollover.sample';
+  env.files[app.samplePath] = now + '|0';
+  app.stopMonitor = () => { app.monitorReady = false; };
+  assert.equal(app.pauseForMissingPaidMonth(now), true);
+  assert.equal(app.tracking, false);
+  assert.equal(app.bank.days['2026-12-01'], undefined, 'no rate is invented for the new month');
+  const kept = app.bank.days['2026-11-30'];
+  assert.ok(kept, 'activity before midnight is kept under the old month');
+  assert.equal(kept.activeSeconds, 1.5);
+  assert.equal(kept.calculationMode, 'days');
+  assert.equal(kept.dayHours, 8);
+  const saved = JSON.parse(env.files[app.appPath('workbank.json')]);
+  assert.equal(saved.days['2026-11-30'].activeSeconds, 1.5);
+  assert.match(env.elements.toast.innerText, /本月计薪天数尚未设置/);
+  assert.equal(app.currentDay(now).unconfigured, true);
+});
+
+test('date overrides reject the past and remain draft-only until settings are saved', () => {
+  const env = runtime(), app = env.context, e = env.elements;
+  const now = new Date(), today = app.bankDate(now.getTime());
+  const yesterday = app.bankDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime());
+  app.bank.settings = { ...settings };
+  app.openSettings();
+  e.inCalculationMode.value = 'days';
+  e.inOverrideDate.value = yesterday;
+  e.inOverrideHours.value = '6';
+  e.btnSetOverride.onclick();
+  assert.equal(app.draftDayOverrides[yesterday], undefined);
+  assert.match(env.alerts[0], /今天或之后/);
+  e.inOverrideDate.value = today;
+  e.inOverrideHours.value = '';
+  e.btnSetOverride.onclick();
+  assert.equal(app.draftDayOverrides[today], undefined, 'blank is not silently interpreted as a rest day');
+  e.inOverrideHours.value = '0';
+  e.btnSetOverride.onclick();
+  assert.equal(app.draftDayOverrides[today], 0);
+  assert.equal(app.bank.settings.dayOverrides, undefined);
+  e.btnClearOverride.onclick();
+  assert.equal(app.draftDayOverrides[today], undefined);
+});
+
+test('a manual-only day is safely revalued when the day-based plan becomes available', () => {
+  const env = runtime(), app = env.context, e = env.elements;
+  const today = app.bankDate(Date.now()), month = today.substring(0, 7);
+  app.bank.settings = { ...settings, calculationMode: 'days', paidDaysByMonth: {},
+    weekHours: [8, 8, 8, 8, 8, 8, 8], dayOverrides: {} };
+  app.openManual();
+  e.manualMinutes.value = '30';
+  e.manualKind.value = '会议';
+  assert.equal(app.saveManual(), true);
+  assert.equal(app.bank.days[today].manualOnly, true);
+  assert.equal(app.bank.days[today].hourlyRate, 0);
+  assert.ok(app.parseBank(JSON.stringify(app.bank)));
+  app.bank.settings.paidDaysByMonth[month] = 20;
+  const now = Date.now();
+  app.addActivity(now - 1000, now);
+  assert.equal(app.bank.days[today].manualOnly, undefined);
+  assert.equal(app.bank.days[today].dayHours, 8);
+  assert.equal(app.bank.days[today].hourlyRate, 50);
+  assert.equal(app.bank.days[today].manualEntries[0].minutes, 30);
+});
+
 test('panel anchors beside the pet and stays within the work area', () => {
   const { context: app } = runtime();
   const pet = { x: 1800, y: 900, width: 180, height: 240, workLeft: 0, workTop: 0, workRight: 1920, workBottom: 1080 };
@@ -962,6 +1173,11 @@ test('mini card buttons and pet menu keep the persisted always, hover, and off m
   assert.equal(fields[9], 'hover', 'the preferred mode stays available to the mini-card controls and pet menu');
   assert.equal(fields[10], 'off', 'lock monitoring stays opt-in');
   app.petPanelVisible = false;
+  app.petLastState = '';
+  app.$id('settingsModal').className = 'modal';
+  app.writePetState();
+  assert.equal(env.files[app.petStatePath].split('|')[4], '0', 'an open dialog takes over from the mini card');
+  app.$id('settingsModal').className = 'modal hidden';
   app.petLastState = '';
   app.writePetState();
   fields = env.files[app.petStatePath].split('|');

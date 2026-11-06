@@ -17,6 +17,50 @@ function close(actual, expected) {
   assert.ok(Math.abs(actual - expected) < 0.000001, `${actual} != ${expected}`);
 }
 
+test('day-based mode uses month-specific paid days and weekly or date-specific hours', () => {
+  const s = { salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00', calculationMode: 'days',
+    paidDaysByMonth: { '2026-11': 20, '2026-12': 21.75 },
+    weekHours: [0, 8, 8, 6, 8, 8, 0], dayOverrides: { '2026-11-08': 6, '2026-11-09': 0 } };
+  const mondayOff = core.bankSnapshotForDate(s, '2026-11-09');
+  assert.equal(mondayOff.dayHours, 0);
+  assert.equal(mondayOff.hourlyRate, 0);
+  assert.equal(core.bankDayAmount({ ...mondayOff, activeSeconds: 3600 }), 0);
+  assert.equal(core.bankOvertime({ ...mondayOff, activeSeconds: 3600 }), 3600);
+  const sundayShift = core.bankSnapshotForDate(s, '2026-11-08');
+  assert.equal(sundayShift.dayHours, 6);
+  close(sundayShift.hourlyRate, 400 / 6);
+  close(core.bankDayAmount({ ...sundayShift, activeSeconds: 6 * 3600 }), 400);
+  close(core.bankDayAmount({ ...sundayShift, activeSeconds: 7 * 3600 }), 400);
+  const wed = core.bankSnapshotForDate(s, '2026-11-11');
+  assert.equal(wed.dayHours, 6);
+  close(wed.hourlyRate, 400 / 6);
+  const december = core.bankSnapshotForDate(s, '2026-12-01');
+  assert.equal(december.dayHours, 8);
+  close(december.hourlyRate, 8000 / 21.75 / 8);
+  assert.equal(core.bankSnapshotForDate(s, '2027-01-01'), null, 'an unconfigured month must never invent a rate');
+});
+
+test('legacy hour mode keeps existing daily snapshots and ignores day mode templates', () => {
+  const s = { salary: 8000, monthHours: 174, dayHours: 8, endTime: '18:00',
+    weekHours: [0, 6, 6, 6, 6, 6, 0], dayOverrides: { '2026-11-08': 0 } };
+  const snapshot = core.bankSnapshotForDate(s, '2026-11-08');
+  assert.equal(snapshot.dayHours, 8);
+  close(snapshot.hourlyRate, 8000 / 174);
+  assert.equal(core.bankIsRestDay(snapshot), false);
+  assert.equal(core.bankCalcMode(s), 'hours');
+});
+
+test('daily plan and monthly day inputs are strictly validated', () => {
+  assert.equal(core.bankValidMonth('2026-11'), true);
+  assert.equal(core.bankValidMonth('2026-13'), false);
+  assert.equal(core.bankValidPaidDays(21.75), true);
+  assert.equal(core.bankValidPaidDays(0), false);
+  assert.equal(core.bankValidPaidDays(32), false);
+  assert.equal(core.bankValidPlanHours(0), true);
+  assert.equal(core.bankValidPlanHours(24), true);
+  assert.equal(core.bankValidPlanHours(24.01), false);
+});
+
 test('daily investment is capped while overtime only records hours', () => {
   const rate = 8000 / 174;
   close(core.bankDayAmount(day(8, rate, 8)), 367.816091954023);

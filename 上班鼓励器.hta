@@ -115,11 +115,19 @@
   .fields { margin-top: 16px; }
   .fields:after { content: ""; display: block; clear: both; }
   .field { float: left; width: 47%; vertical-align: top; margin: 0 2% 12px 0; }
-  .field.theme-field, .field.goal-field { float: none; width: 100%; margin-right: 0; }
+  .field.theme-field, .field.goal-field { clear: both; float: none; width: 100%; margin-right: 0; }
   .field label { display: block; margin-bottom: 7px; color: #b9d2e8; font-size: 12px; }
   .field input, .field select { width: 100%; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 16px; }
   .field textarea { width: 100%; height: 62px; padding: 9px 10px; color: #e9f4ff; background: #0b1a2d; border: 1px solid #3a5d82; border-radius: 8px; font-size: 13px; font-family: "Microsoft YaHei", sans-serif; }
   .field .hint { display: block; margin-top: 5px; color: #88a2bb; font-size: 11px; }
+  .week-plan { display: table; table-layout: fixed; width: 100%; margin-top: 6px; }
+  .week-plan .week-cell { display: table-cell; padding-right: 4px; text-align: center; }
+  .week-plan .week-cell:last-child { padding-right: 0; }
+  .week-plan .week-cell label { margin-bottom: 5px; font-size: 11px; }
+  .week-plan .week-cell input { padding: 7px 1px; text-align: center; font-size: 13px; }
+  .plan-actions { clear: both; margin: 4px 0 8px; }
+  .plan-actions .btn { margin: 0 6px 5px 0; padding: 6px 9px; letter-spacing: 0; }
+  .plan-summary { line-height: 1.7; word-wrap: break-word; }
   .field input[type=range] { height: 22px; padding: 0; border: 0; background: transparent; }
   .field input[type=range]::-ms-ticks-before, .field input[type=range]::-ms-ticks-after { display: none; }
   .field input[type=range]::-ms-track { height: 4px; border-color: transparent; background: #24405f; color: transparent; }
@@ -154,6 +162,7 @@
   .history th, .history td { padding: 9px 10px; border-bottom: 1px solid #24405f; text-align: right; font-size: 12px; }
   .history th { color: #91aecb; font-weight: normal; background: #16283f; }
   .history td { color: #dceaf7; font-family: Consolas, monospace; }
+  .history-mode { display: block; margin-top: 2px; color: #9fbcd8; font: 10px "Microsoft YaHei", sans-serif; }
   .history th:first-child, .history td:first-child { text-align: left; }
   .history-controls { margin: 15px 0 8px; }
   .history-controls .btn { padding: 5px 10px; }
@@ -260,6 +269,7 @@
   body.theme-cream .history-wrap { border-color: #d8ccb2; }
   body.theme-cream .history th { color: #7d7666; background: #f1e9d8; }
   body.theme-cream .history td { color: #3b3a33; border-bottom-color: #e6dcc5; }
+  body.theme-cream .history-mode { color: #777063; }
   body.theme-cream .month-chart { border-bottom-color: #d8ccb2; }
   body.theme-cream .month-bar-fill { background: #2c6fa8; }
   body.theme-cream .month-bar-day, body.theme-cream .manual-help { color: #665f53; }
@@ -364,9 +374,28 @@
         </label><span class="hint">选择配色；三款主题都可在下方单独调整窗口透明度。</span></div>
       <div class="field goal-field"><label for="inOpacity">窗口透明度 <span id="opacityValue">100%</span></label><input id="inOpacity" type="range" min="60" max="100" step="1" value="100"><span class="hint">60% 更透，100% 不透明；三款主题分别记住自己的透明度。</span></div>
       <div class="field"><label for="inSalary">到手月薪（元）</label><input id="inSalary" type="password" autocomplete="off"><span class="hint">扣除五险一金和个税后的金额</span></div>
-      <div class="field"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
-      <div class="field"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
-      <div class="field"><label for="inEndTime">计划下班时间</label><input id="inEndTime" type="text" value="18:00"><span class="hint">例如 18:00；只影响状态和倒计时</span></div>
+      <div class="field"><label for="inCalculationMode">核算方式</label><select id="inCalculationMode"><option value="hours">月薪 ÷ 月计划工时</option><option value="days">月薪 ÷ 本月计薪天数</option></select><span class="hint">切换会重算当天；历史日期保持原口径。</span></div>
+      <div class="field" id="monthHoursField"><label for="inMonthHours">月计划工时（小时）</label><input id="inMonthHours" type="text" value="174"><span class="hint">默认 174，可按实际班表调整</span></div>
+      <div class="field" id="dayHoursField"><label for="inDayHours">日计划工时（小时）</label><input id="inDayHours" type="text" value="8"><span class="hint">超过这一时长才记为加班</span></div>
+      <div class="field goal-field hidden" id="dayModeFields">
+        <div class="fields">
+          <div class="field"><label for="inPaidDays"><span id="paidMonthLabel">本月</span>计薪天数</label><input id="inPaidDays" type="text" autocomplete="off"><span class="hint">可填小数，例如 21.75；当月必填。</span></div>
+          <div class="field"><label for="inNextPaidDays"><span id="nextPaidMonthLabel">下月</span>计薪天数</label><input id="inNextPaidDays" type="text" autocomplete="off"><span class="hint">可提前填写；留空则下月提示设置。</span></div>
+        </div>
+        <label>每周计划工时（小时）</label>
+        <div class="week-plan">
+          <span class="week-cell"><label for="week1">周一</label><input id="week1" type="text"></span><span class="week-cell"><label for="week2">周二</label><input id="week2" type="text"></span><span class="week-cell"><label for="week3">周三</label><input id="week3" type="text"></span><span class="week-cell"><label for="week4">周四</label><input id="week4" type="text"></span><span class="week-cell"><label for="week5">周五</label><input id="week5" type="text"></span><span class="week-cell"><label for="week6">周六</label><input id="week6" type="text"></span><span class="week-cell"><label for="week0">周日</label><input id="week0" type="text"></span>
+        </div>
+        <span class="hint">0 为休息日：当日投入为 0，记录的活跃时间全记加班；补班可单独调整。</span>
+        <div class="fields">
+          <div class="field"><label for="inOverrideDate">单日例外日期</label><input id="inOverrideDate" type="text" placeholder="YYYY-MM-DD"></div>
+          <div class="field"><label for="inOverrideHours">该日计划工时</label><input id="inOverrideHours" type="text" placeholder="0–24 小时"></div>
+        </div>
+        <div class="plan-actions"><button class="btn btn-quiet" type="button" id="btnSetOverride">添加 / 更新例外</button><button class="btn btn-quiet" type="button" id="btnClearOverride">恢复周模板</button></div>
+        <span class="hint plan-summary" id="overrideSummary">暂无单日例外。</span>
+        <span class="hint">短班仍按完整日参考金额封顶；修改当天计划会重算今天，历史不变。</span>
+      </div>
+      <div class="field goal-field"><label for="inEndTime">计划下班时间</label><input id="inEndTime" type="text" value="18:00"><span class="hint">例如 18:00；只影响状态和倒计时</span></div>
       <div class="field goal-field"><label for="inGoals">自定义目标（可选）</label><textarea id="inGoals" rows="4" placeholder="一杯冰美式=19&#10;一份正经午饭=45&#10;一天房租=266.67"></textarea><span class="hint">每行「名称=金额」（名称≤12字），至少 3 项生效；留空用内置。</span><span class="hint" id="goalValidation" aria-live="polite"></span></div>
       <div class="field goal-field"><label for="inMiniMode">桌宠简要信息卡</label><select id="inMiniMode"><option value="always">收起卡片时常显</option><option value="hover">仅悬停桌宠时显示</option><option value="off">关闭</option></select><span class="hint">小卡上可一键切换常显/悬停；关闭时从小鲸右键菜单恢复。</span></div>
       <div class="field"><label for="inLockMode">Windows 锁屏时</label><select id="inLockMode"><option value="off">不自动暂停</option><option value="manual">暂停，解锁后手动继续</option><option value="auto">暂停，解锁后自动继续</option></select><span class="hint">需要小鲸的系统会话监测保持连接；监测不可用时停止记录。</span></div>
@@ -510,11 +539,71 @@ function bankValidDate(value) {
   var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return bankDate(date.getTime()) === value;
 }
+function bankValidMonth(value) {
+  return /^(?:19\d{2}|[2-9]\d{3})-(?:0[1-9]|1[0-2])$/.test(value);
+}
+function bankValidPaidDays(value) {
+  return typeof value === "number" && isFinite(value) && value >= 0.01 && value <= 31;
+}
+function bankValidPlanHours(value) {
+  return typeof value === "number" && isFinite(value) && value >= 0 && value <= 24 && (value === 0 || value >= 0.01);
+}
+function bankCalcMode(settings) {
+  return settings && settings.calculationMode === "days" ? "days" : "hours";
+}
+function bankPaidDays(settings, month) {
+  var days = settings && settings.paidDaysByMonth;
+  return days && Object.prototype.hasOwnProperty.call(days, month) && bankValidPaidDays(days[month]) ? days[month] : null;
+}
+function bankWeekHours(settings) {
+  if (settings && Object.prototype.toString.call(settings.weekHours) === "[object Array]" && settings.weekHours.length === 7)
+    return settings.weekHours.slice(0);
+  var hours = settings && bankValidPlanHours(settings.dayHours) && settings.dayHours > 0 ? settings.dayHours : 8;
+  return [0, hours, hours, hours, hours, hours, 0];
+}
+function bankPlanHours(settings, date) {
+  if (bankCalcMode(settings) !== "days") return settings.dayHours;
+  var overrides = settings.dayOverrides || {};
+  if (Object.prototype.hasOwnProperty.call(overrides, date)) return overrides[date];
+  var parts = date.split("-");
+  return bankWeekHours(settings)[new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getDay()];
+}
+function bankSnapshotForDate(settings, date) {
+  if (!settings || !bankValidDate(date)) return null;
+  if (bankCalcMode(settings) !== "days") return { calculationMode: "hours", dayHours: settings.dayHours, hourlyRate: settings.salary / settings.monthHours };
+  var paid = bankPaidDays(settings, date.substring(0, 7));
+  if (paid === null) return null;
+  var hours = bankPlanHours(settings, date), daily = settings.salary / paid;
+  return { calculationMode: "days", dayHours: hours, hourlyRate: hours > 0 ? daily / hours : 0, paidDays: paid, dailyAmount: daily };
+}
+function bankIsRestDay(day) { return !!day && day.calculationMode === "days" && day.dayHours === 0; }
+function bankProgressPercent(day) { return day && day.dayHours > 0 ? day.activeSeconds / (day.dayHours * 3600) * 100 : 0; }
+function bankValidPlanFields(s) {
+  if (typeof s.calculationMode !== "undefined" && s.calculationMode !== "hours" && s.calculationMode !== "days") return false;
+  if (typeof s.weekHours !== "undefined") {
+    if (Object.prototype.toString.call(s.weekHours) !== "[object Array]" || s.weekHours.length !== 7) return false;
+    for (var i = 0; i < 7; i++) if (!bankValidPlanHours(s.weekHours[i])) return false;
+  } else if (bankCalcMode(s) === "days") return false;
+  var maps = [s.paidDaysByMonth, s.dayOverrides];
+  for (var n = 0; n < maps.length; n++) {
+    var map = maps[n];
+    if (typeof map === "undefined") { if (n === 0 && bankCalcMode(s) === "days") return false; continue; }
+    if (!map || Object.prototype.toString.call(map) !== "[object Object]") return false;
+    var count = 0;
+    for (var key in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
+      count++;
+      if (count > 10000 || (n === 0 ? !bankValidMonth(key) || !bankValidPaidDays(map[key]) :
+          !bankValidDate(key) || !bankValidPlanHours(map[key]))) return false;
+    }
+  }
+  return true;
+}
 function bankValidSettings(s) {
   return !!s && typeof s.salary === "number" && isFinite(s.salary) && s.salary > 0 && s.salary <= 1000000000 &&
     typeof s.monthHours === "number" && isFinite(s.monthHours) && s.monthHours > 0 && s.monthHours <= 744 &&
     typeof s.dayHours === "number" && isFinite(s.dayHours) && s.dayHours > 0 && s.dayHours <= 24 &&
-    typeof s.endTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.endTime) &&
+    typeof s.endTime === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.endTime) && bankValidPlanFields(s) &&
     (typeof s.autoLaunch === "undefined" || typeof s.autoLaunch === "boolean") &&
     (typeof s.lockMode === "undefined" || s.lockMode === "off" || s.lockMode === "manual" || s.lockMode === "auto") &&
     (typeof s.maskTimeoutSeconds === "undefined" || s.maskTimeoutSeconds === 0 || s.maskTimeoutSeconds === 30 || s.maskTimeoutSeconds === 60) &&
@@ -571,6 +660,7 @@ var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = nul
 var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
 var receiptDayAmount = 0, receiptMonthAmount = 0;
 var theme = "deep", pendingTheme = "deep", historySelectedMonth = "";
+var draftDayOverrides = {}, settingsMonthKey = "", settingsNextMonthKey = "";
 /* 三款主题分别记忆窗口透明度（60–100%）；玻璃默认 82%，其余默认不透明。 */
 var THEME_DEFAULT_ALPHA = { deep: 100, cream: 100, glass: 82 };
 var savedThemeAlpha = { deep: 100, cream: 100, glass: 82 };
@@ -821,8 +911,12 @@ function parseBank(raw) {
       var d = data.days[key];
       if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !d ||
           typeof d.activeSeconds !== "number" || !isFinite(d.activeSeconds) || d.activeSeconds < 0 ||
-          typeof d.hourlyRate !== "number" || !isFinite(d.hourlyRate) || d.hourlyRate <= 0 ||
-          typeof d.dayHours !== "number" || !isFinite(d.dayHours) || d.dayHours <= 0 || d.dayHours > 24) return null;
+          typeof d.hourlyRate !== "number" || !isFinite(d.hourlyRate) || d.hourlyRate < 0 ||
+          typeof d.dayHours !== "number" || !isFinite(d.dayHours) || d.dayHours < 0 || d.dayHours > 24 ||
+          (d.dayHours === 0 ? d.calculationMode !== "days" || d.hourlyRate !== 0 : d.hourlyRate <= 0) ||
+          (typeof d.calculationMode !== "undefined" && d.calculationMode !== "days" && d.calculationMode !== "hours") ||
+          (typeof d.paidDays !== "undefined" && !bankValidPaidDays(d.paidDays)) ||
+          (typeof d.dailyAmount !== "undefined" && (typeof d.dailyAmount !== "number" || !isFinite(d.dailyAmount) || d.dailyAmount <= 0))) return null;
       if (typeof d.manualEntries !== "undefined") {
         if (Object.prototype.toString.call(d.manualEntries) !== "[object Array]" || d.manualEntries.length > 1440) return null;
         var manualTotal = 0;
@@ -1009,6 +1103,8 @@ function petStatusLabel() {
   if (monitorIdle) return "键鼠空闲";
   var d = new Date(), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
   var day = currentDay(d.getTime());
+  if (day.unconfigured) return "需设置计薪天数";
+  if (bankIsRestDay(day) && day.activeSeconds === 0) return "休息日";
   if (time >= bank.settings.endTime || bankOvertime(day) > 0) return "加班中";
   return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "接近计划工时" : "上班中";
 }
@@ -1021,6 +1117,8 @@ function petState() {
   if (monitorIdle) return "idle";
   var d = new Date(), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
   var day = currentDay(d.getTime()), overtime = bankOvertime(day);
+  if (day.unconfigured) return "unconfigured";
+  if (bankIsRestDay(day) && day.activeSeconds === 0) return "rest";
   if (time >= bank.settings.endTime || overtime > 0) return overtime >= FIGHT_OVERTIME_SECONDS ? "overtime-steady" : "overtime";
   return day.activeSeconds >= day.dayHours * 3600 * 0.9 ? "urgent" : "active";
 }
@@ -1035,15 +1133,17 @@ function bankMiniMode(settings) {
   return settings.miniInfo === false ? "off" : "always";
 }
 function miniVisible() {
-  return !!(bank.settings && bankMiniMode(bank.settings) !== "off" && !petPanelVisible);
+  return !!(bank.settings && bankMiniMode(bank.settings) !== "off" && !petPanelVisible && !modalVisible());
 }
 function writePetState() {
   if (!petStatePath || (!petStarting && !petRunning)) return;
   var now = new Date().getTime(), day = currentDay(now);
-  var percent = bank.settings ? Math.floor(day.activeSeconds / (day.dayHours * 3600) * 100) : 0;
+  var percent = bank.settings ? Math.floor(bankProgressPercent(day)) : 0;
+  if (bankIsRestDay(day) && day.activeSeconds > 0) percent = 100;
   percent = Math.max(0, Math.min(100, percent));
   var amount = bank.settings ? money(bankDayAmount(day), 4) : "¥ ****";
-  var detail = bank.settings ? (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时" : "";
+  var detail = day.unconfigured ? "请先设置本月计薪天数" : (bankIsRestDay(day) ? "活跃 " + (day.activeSeconds / 3600).toFixed(2) + " 小时" :
+    (bank.settings ? (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时" : ""));
   var selectedMiniMode = bankMiniMode(bank.settings || {});
   var state = petState() + "|" + (bank.settings && bank.settings.motion === false ? "0" : "1") + "|" +
     (tracking ? "1" : "0") + "|" + (petPanelVisible ? "1" : "0") + "|" + (miniVisible() ? (selectedMiniMode === "hover" ? "2" : "1") : "0") + "|" +
@@ -1375,24 +1475,52 @@ function readSample(now) {
   if (age < -1000 || age > SAMPLE_MAX_AGE || idle >= 4294967295) return null;
   return { input: stamp - idle, idle: idle + Math.max(0, age) };
 }
+function applyDaySnapshot(day, snapshot) {
+  day.calculationMode = snapshot.calculationMode;
+  day.hourlyRate = snapshot.hourlyRate;
+  day.dayHours = snapshot.dayHours;
+  if (snapshot.calculationMode === "days") {
+    if (typeof snapshot.paidDays === "number") day.paidDays = snapshot.paidDays; else delete day.paidDays;
+    if (typeof snapshot.dailyAmount === "number") day.dailyAmount = snapshot.dailyAmount; else delete day.dailyAmount;
+  } else {
+    delete day.paidDays;
+    delete day.dailyAmount;
+  }
+}
 function addActivity(start, end) {
-  var parts = bankSplitByDay(start, end);
+  var parts = bankSplitByDay(start, end), addedSeconds = 0;
   for (var i = 0; i < parts.length; i++) {
     var part = parts[i], day = bank.days[part.date];
-    if (!day) {
-      day = { activeSeconds: 0, hourlyRate: bank.settings.salary / bank.settings.monthHours, dayHours: bank.settings.dayHours };
+    if (!day || day.manualOnly === true) {
+      var snapshot = bankSnapshotForDate(bank.settings, part.date);
+      if (!snapshot) continue;
+      if (!day) day = { activeSeconds: 0 };
+      applyDaySnapshot(day, snapshot);
       bank.days[part.date] = day;
     }
-    day.activeSeconds += (part.end - part.start) / 1000;
+    var seconds = (part.end - part.start) / 1000;
+    day.activeSeconds += seconds;
+    addedSeconds += seconds;
     if (day.manualOnly) delete day.manualOnly;
     dirty = true;
   }
+  return addedSeconds;
 }
 function currentDay(now) {
-  var day = bank.days[bankDate(now)];
-  if (day) return day;
-  return { activeSeconds: 0, hourlyRate: bank.settings ? bank.settings.salary / bank.settings.monthHours : 0,
-    dayHours: bank.settings ? bank.settings.dayHours : 8 };
+  var date = bankDate(now), day = bank.days[date];
+  if (day) {
+    if (day.manualOnly === true && bankCalcMode(bank.settings) === "days" && bankPaidDays(bank.settings, date.substring(0, 7)) === null) {
+      var pending = JSON.parse(JSON.stringify(day));
+      pending.unconfigured = true;
+      return pending;
+    }
+    return day;
+  }
+  if (!bank.settings) return { activeSeconds: 0, hourlyRate: 0, dayHours: 8 };
+  var snapshot = bankSnapshotForDate(bank.settings, date);
+  if (!snapshot) return { activeSeconds: 0, hourlyRate: 0, dayHours: 0, calculationMode: "days", unconfigured: true };
+  snapshot.activeSeconds = 0;
+  return snapshot;
 }
 function bankParseGoals(text) {
   var lines = String(text || "").split(/\r\n|\r|\n/), goals = [], used = {}, ignored = 0, count = 0;
@@ -1447,6 +1575,8 @@ function bankGoalList() {
 }
 function goalText(day) {
   if (!bank.settings) return "每一次认真投入，都值得被看见。";
+  if (day.unconfigured) return "先设置本月计薪天数，再开始记录。";
+  if (bankIsRestDay(day)) return "今天是休息日；记录的活跃时间只计加班，不增加金额。";
   var earned = bankDayAmount(day), rate = day.hourlyRate, salary = bank.settings.salary;
   var maxValue = day.dayHours * rate, goals = bankGoalList(), next = null, capped = null;
   for (var i = 0; i < goals.length; i++) {
@@ -1495,7 +1625,8 @@ function checkMilestone(now, pct) {
 }
 function render(now) {
   var day = currentDay(now), month = bankMonth(bank.days, bankDate(now).substring(0, 7));
-  var pct = day.activeSeconds / (day.dayHours * 3600) * 100;
+  var restDay = bankIsRestDay(day), pct = bankProgressPercent(day);
+  var barPct = restDay && day.activeSeconds > 0 ? 100 : pct;
   var status = $id("status"), stateText = "未设置", statusClass = "status off";
   if (bank.settings) {
     if (sessionLocked && bankLockMode(bank.settings) !== "off") stateText = "锁屏暂停";
@@ -1504,7 +1635,8 @@ function render(now) {
     else if (monitorIdle) stateText = "键鼠空闲";
     else {
       var d = new Date(now), time = pad(d.getHours()) + ":" + pad(d.getMinutes());
-      if (time >= bank.settings.endTime || pct >= 100) { stateText = "加班中"; statusClass = "status overtime"; }
+      if (restDay && day.activeSeconds === 0) { stateText = "休息日"; statusClass = "status off"; }
+      else if (time >= bank.settings.endTime || (restDay ? day.activeSeconds > 0 : pct >= 100)) { stateText = "加班中"; statusClass = "status overtime"; }
       else { stateText = "上班中"; statusClass = "status"; }
     }
   }
@@ -1515,16 +1647,19 @@ function render(now) {
   $id("todayAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
   $id("todayAmount").setAttribute("aria-label", "今日投入 " + money(bankDayAmount(day), 4) + "，" + $id("todayAmount").title);
   $id("todayAmount").setAttribute("aria-pressed", masked ? "true" : "false");
-  text("todayCaption", bank.settings ? "折合 " + (day.activeSeconds / 28800).toFixed(2) + " 个标准日（8小时） · 时薪 " + money(day.hourlyRate) : "先设置到手月薪和计划工时");
-  text("progressText", (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时 · " + Math.floor(pct) + "%");
-  $id("progressFill").style.width = Math.min(100, Math.max(0, pct)) + "%";
-  var stage = pct >= 100 ? "overtime" : (pct >= 90 ? "hot" : (pct >= 60 ? "warm" : "cool"));
+  text("todayCaption", !bank.settings ? "先设置到手月薪和计划工时" : (day.unconfigured ? "先设置本月计薪天数" :
+    (restDay ? "按天核算 · 休息日只记录加班，不增加金额" :
+      (day.calculationMode === "days" ? "按天核算" : "按时核算") + " · 时薪 " + money(day.hourlyRate) + " · " + (day.activeSeconds / 28800).toFixed(2) + " 个标准日")));
+  text("progressText", day.unconfigured ? "待设置本月计薪天数" : (restDay ? "休息日 · 活跃 " + (day.activeSeconds / 3600).toFixed(2) + " 小时" :
+    (day.activeSeconds / 3600).toFixed(2) + " / " + day.dayHours.toFixed(2) + " 小时 · " + Math.floor(pct) + "%"));
+  $id("progressFill").style.width = Math.min(100, Math.max(0, barPct)) + "%";
+  var stage = (restDay && day.activeSeconds > 0) || pct >= 100 ? "overtime" : (pct >= 90 ? "hot" : (pct >= 60 ? "warm" : "cool"));
   $id("energyMeter").className = "energy " + stage + ((!tracking || !monitorReady || monitorIdle) ? " paused" : "");
   applyTheme();
   text("petSay", petSayText(day));
-  checkMilestone(now, pct);
+  if (!restDay && !day.unconfigured) checkMilestone(now, pct);
   text("activeText", "已记录 " + duration(day.activeSeconds) + (bankManualMinutes(day) ? " · 补记 " + bankManualMinutes(day) + " 分" : ""));
-  text("endText", endDescription(now));
+  text("endText", day.unconfigured ? "待设置当月天数" : (restDay ? "计划休息日" : endDescription(now)));
   text("monthAmount", money(month.amount));
   $id("monthAmount").title = masked ? "点击显示金额" : "点击隐藏金额";
   $id("monthAmount").setAttribute("aria-label", "本月累计投入 " + money(month.amount) + "，" + $id("monthAmount").title);
@@ -1539,6 +1674,8 @@ function render(now) {
   var monitor = $id("monitorText");
   monitor.className = "monitor" + (storageProblem || (tracking && !monitorReady && now - monitorStarted > 8000) ? " error" : "");
   if (storageProblem) text("monitorText", storageProblem);
+  else if (bank.settings && bankCalcMode(bank.settings) === "days" && bankPaidDays(bank.settings, bankDate(now).substring(0, 7)) === null)
+    text("monitorText", "本月计薪天数未设置，记录已暂停。请在设置中填写并保存。");
   else if (sessionLocked && bankLockMode(bank.settings) !== "off") text("monitorText", "Windows 已锁屏，记录已暂停；解锁后按设置决定是否自动继续。");
   else if (sessionMonitorFailed && bankLockMode(bank.settings) !== "off") text("monitorText", "锁屏监测不可用，记录已暂停。重试小鲸，或关闭锁屏暂停设置后再开始。");
   else if (bankLockMode(bank.settings) !== "off" && !sessionMonitorReady) text("monitorText", "正在连接锁屏监测；连接成功前不会开始计时。");
@@ -1568,8 +1705,25 @@ function snoozeRestReminder() {
   showToast("已稍后提醒；再记录 15 分钟活跃时间后提醒。暂停和键鼠空闲时不计时。");
   return true;
 }
+function pauseForMissingPaidMonth(now) {
+  if (!tracking || !bank.settings || bankCalcMode(bank.settings) !== "days" ||
+      bankPaidDays(bank.settings, bankDate(now).substring(0, 7)) !== null) return false;
+  /* Preserve the valid part just before midnight; never guess the new month's rate. */
+  var date = new Date(now), boundary = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+  var elapsed = now - lastTick, sample = readSample(now);
+  if (!sessionLocked && lastTick < boundary && previousInput !== null && sample && elapsed > 0 && elapsed <= MAX_TICK_GAP) {
+    var ranges = bankActiveRanges(lastTick, boundary, previousInput, sample.input, IDLE_LIMIT);
+    for (var i = 0; i < ranges.length; i++) addActivity(ranges[i].start, ranges[i].end);
+  }
+  tracking = false;
+  stopMonitor();
+  if (dirty) saveBank();
+  showToast("本月计薪天数尚未设置，记录已暂停；请打开设置填写后继续。");
+  return true;
+}
 function tick(skipPet) {
   var now = new Date().getTime();
+  pauseForMissingPaidMonth(now);
   if (tracking && bank.settings) {
     if (alivePath && now - lastHeartbeat >= 5000) {
       if (!writePath(alivePath, "alive", false)) stopMonitor();
@@ -1581,8 +1735,7 @@ function tick(skipPet) {
     if (sample && previousInput !== null && elapsed > 0 && elapsed <= MAX_TICK_GAP && !sessionLocked) {
       var ranges = bankActiveRanges(lastTick, now, previousInput, sample.input, IDLE_LIMIT), addedSeconds = 0;
       for (var i = 0; i < ranges.length; i++) {
-        addActivity(ranges[i].start, ranges[i].end);
-        addedSeconds += (ranges[i].end - ranges[i].start) / 1000;
+        addedSeconds += addActivity(ranges[i].start, ranges[i].end);
       }
       var reminderMinutes = bankRestReminder(bank.settings);
       var reminder = bankReminderProgress(restReminderActiveSeconds, addedSeconds, reminderMinutes);
@@ -1602,7 +1755,8 @@ function tick(skipPet) {
     var d = new Date(now), key = hourKey(d);
     if (key !== lastHour) {
       if (d.getMinutes() === 0 && monitorReady && bank.settings.announce) {
-        showToast(masked ? "又走过一个整点，活跃工时已记账。" : "时薪参考 " + money(bank.settings.salary / bank.settings.monthHours) + "；仅活跃时间计入。");
+        showToast(masked ? "又走过一个整点，活跃工时已记账。" :
+          (bankIsRestDay(currentDay(now)) ? "今天是休息日，活跃时间仅记录加班。" : "时薪参考 " + money(currentDay(now).hourlyRate) + "；仅活跃时间计入。"));
       }
       lastHour = key;
     }
@@ -1613,6 +1767,11 @@ function tick(skipPet) {
 function startTracking() {
   if (fatalStorage) { alert(storageProblem); return; }
   if (!bank.settings) { openSettings(); return; }
+  if (bankCalcMode(bank.settings) === "days" && bankPaidDays(bank.settings, bankDate(new Date().getTime()).substring(0, 7)) === null) {
+    openSettings();
+    showToast("请先填写本月计薪天数，保存后再开始记录。");
+    return;
+  }
   if (sessionLocked && bankLockMode(bank.settings) !== "off") { showToast("Windows 仍处于锁屏状态，解锁后再开始记录。"); return; }
   if (bankLockMode(bank.settings) !== "off" && (!sessionMonitorReady || sessionMonitorFailed)) {
     if (sessionMonitorFailed) { showToast("锁屏监测不可用；请重试小鲸，或在设置里关闭锁屏暂停后再记录。"); return; }
@@ -1638,12 +1797,77 @@ function pauseTracking() {
   if (dirty) saveBank();
   render(new Date().getTime());
 }
+function copyPlanMap(source) {
+  var result = {};
+  if (!source) return result;
+  for (var key in source) if (Object.prototype.hasOwnProperty.call(source, key)) result[key] = source[key];
+  return result;
+}
+function bankNextMonthKey(month) {
+  var parts = month.split("-"), date = new Date(Number(parts[0]), Number(parts[1]), 1);
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1);
+}
+function planInputNumber(value) {
+  var raw = String(value).replace(/^\s+|\s+$/g, "");
+  return /^\d+(?:\.\d{1,2})?$/.test(raw) ? Number(raw) : NaN;
+}
+function syncCalculationFields() {
+  var dayMode = $id("inCalculationMode").value === "days";
+  $id("monthHoursField").className = "field" + (dayMode ? " hidden" : "");
+  $id("dayHoursField").className = "field" + (dayMode ? " hidden" : "");
+  $id("dayModeFields").className = "field goal-field" + (dayMode ? "" : " hidden");
+}
+function renderDayOverrides() {
+  var today = bankDate(new Date().getTime()), dates = [], labels = [];
+  for (var key in draftDayOverrides) {
+    if (Object.prototype.hasOwnProperty.call(draftDayOverrides, key) && key >= today) dates.push(key);
+  }
+  dates.sort();
+  for (var i = 0; i < dates.length && i < 10; i++) {
+    var hours = draftDayOverrides[dates[i]];
+    labels.push((dates[i] === today ? "今天" : dates[i]) + "：" + (hours === 0 ? "休息日" : hours + " 小时"));
+  }
+  if (dates.length > 10) labels.push("另有 " + (dates.length - 10) + " 项未列出");
+  text("overrideSummary", labels.length ? "已设置：" + labels.join("；") : "暂无今天或未来的单日例外。");
+}
+function changeDayOverride(remove) {
+  var date = String($id("inOverrideDate").value).replace(/^\s+|\s+$/g, "");
+  var today = bankDate(new Date().getTime());
+  if (!bankValidDate(date) || date < today) { alert("请选择今天或之后的有效日期（YYYY-MM-DD）；历史日期保持原口径。"); return; }
+  if (remove) delete draftDayOverrides[date];
+  else {
+    var hours = planInputNumber($id("inOverrideHours").value);
+    if (!bankValidPlanHours(hours)) { alert("请输入 0–24 小时，最多两位小数；0 表示休息日。"); return; }
+    draftDayOverrides[date] = hours;
+  }
+  renderDayOverrides();
+}
 function openSettings() {
   if (fatalStorage) { alert(storageProblem); return; }
+  if (petRunning && !petPanelVisible) {
+    petPanelVisible = true;
+    showPanelNearPet();
+  }
   var s = bank.settings;
   $id("inSalary").value = s ? s.salary : "";
   $id("inMonthHours").value = s ? s.monthHours : "174";
   $id("inDayHours").value = s ? s.dayHours : "8";
+  $id("inCalculationMode").value = bankCalcMode(s);
+  settingsMonthKey = bankDate(new Date().getTime()).substring(0, 7);
+  settingsNextMonthKey = bankNextMonthKey(settingsMonthKey);
+  text("paidMonthLabel", settingsMonthKey + " ");
+  text("nextPaidMonthLabel", settingsNextMonthKey + " ");
+  var paid = bankPaidDays(s, settingsMonthKey), nextPaid = bankPaidDays(s, settingsNextMonthKey);
+  $id("inPaidDays").value = paid === null ? "" : String(paid);
+  $id("inNextPaidDays").value = nextPaid === null ? "" : String(nextPaid);
+  var week = bankWeekHours(s);
+  for (var i = 0; i < 7; i++) $id("week" + i).value = String(week[i]);
+  draftDayOverrides = copyPlanMap(s && s.dayOverrides);
+  $id("inOverrideDate").value = bankDate(new Date().getTime());
+  var todayPlan = draftDayOverrides[$id("inOverrideDate").value];
+  $id("inOverrideHours").value = typeof todayPlan === "number" ? String(todayPlan) : "";
+  syncCalculationFields();
+  renderDayOverrides();
   $id("inEndTime").value = s ? s.endTime : "18:00";
   $id("inMask").checked = !s || s.maskByDefault !== false;
   $id("inAnnounce").checked = !s || s.announce !== false;
@@ -1669,9 +1893,11 @@ function saveSettings() {
   var chosenTheme = pendingTheme || "deep";
   var alphaDraft = copyThemeAlpha(draftThemeAlpha);
   alphaDraft[chosenTheme] = pendingAlpha;
+  var priorPlan = bank.settings, chosenMode = $id("inCalculationMode").value === "days" ? "days" : "hours";
   var settings = {
-    salary: Number($id("inSalary").value), monthHours: Number($id("inMonthHours").value),
-    dayHours: Number($id("inDayHours").value), endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
+    salary: Number($id("inSalary").value), monthHours: chosenMode === "days" ? (priorPlan ? priorPlan.monthHours : 174) : Number($id("inMonthHours").value),
+    dayHours: chosenMode === "days" ? (priorPlan ? priorPlan.dayHours : 8) : Number($id("inDayHours").value),
+    calculationMode: chosenMode, endTime: $id("inEndTime").value.replace(/^\s+|\s+$/g, ""),
     maskByDefault: $id("inMask").checked, announce: $id("inAnnounce").checked, motion: $id("inMotion").checked,
     miniMode: /^(always|hover|off)$/.test($id("inMiniMode").value) ? $id("inMiniMode").value : "always",
     miniInfo: $id("inMiniMode").value !== "off",
@@ -1688,12 +1914,42 @@ function saveSettings() {
     petX: petPositionX,
     petY: petPositionY
   };
+  if (priorPlan && priorPlan.weekHours) settings.weekHours = priorPlan.weekHours.slice(0);
+  if (priorPlan && priorPlan.paidDaysByMonth) settings.paidDaysByMonth = copyPlanMap(priorPlan.paidDaysByMonth);
+  if (priorPlan && priorPlan.dayOverrides) settings.dayOverrides = copyPlanMap(priorPlan.dayOverrides);
+  if (chosenMode === "days") {
+    var currentMonth = bankDate(new Date().getTime()).substring(0, 7);
+    if (currentMonth !== settingsMonthKey) { alert("月份已变化，请关闭设置并重新打开后填写本月计薪天数。"); return; }
+    var currentPaid = planInputNumber($id("inPaidDays").value);
+    var nextText = String($id("inNextPaidDays").value).replace(/^\s+|\s+$/g, "");
+    var nextPaid = nextText ? planInputNumber(nextText) : null;
+    if (!bankValidPaidDays(currentPaid) || (nextText && !bankValidPaidDays(nextPaid))) {
+      alert("请填写有效的本月计薪天数（0.01–31，最多两位小数）；下月可以留空。"); return;
+    }
+    settings.paidDaysByMonth = copyPlanMap(priorPlan && priorPlan.paidDaysByMonth);
+    settings.paidDaysByMonth[settingsMonthKey] = currentPaid;
+    if (nextText) settings.paidDaysByMonth[settingsNextMonthKey] = nextPaid;
+    else delete settings.paidDaysByMonth[settingsNextMonthKey];
+    settings.weekHours = [];
+    for (var i = 0; i < 7; i++) {
+      var hours = planInputNumber($id("week" + i).value);
+      if (!bankValidPlanHours(hours)) { alert("请逐一填写周一至周日的计划工时（0–24，最多两位小数）；0 为休息日。"); return; }
+      settings.weekHours.push(hours);
+    }
+    settings.dayOverrides = copyPlanMap(draftDayOverrides);
+  }
   if (!bankValidSettings(settings)) {
     alert("请填写有效的到手月薪、月计划工时（不超过 744）、日计划工时（不超过 24）、班次、锁屏策略和提醒间隔。");
     return;
   }
   if (tracking) tick();
   var previousSettings = bank.settings, previousMask = masked, previousDirty = dirty;
+  var todayKey = bankDate(new Date().getTime()), day = bank.days[todayKey];
+  var snapshot = bankSnapshotForDate(settings, todayKey);
+  if (!snapshot) { alert("本月计薪天数未设置；请填写后再保存。"); return; }
+  var revaluesToday = !!day && (day.dayHours !== snapshot.dayHours || Math.abs(day.hourlyRate - snapshot.hourlyRate) > 0.00000001);
+  if (previousSettings && (bankCalcMode(previousSettings) !== chosenMode || revaluesToday) &&
+      !confirm("更改核算方式或今日计划会按新口径重新计算今天的金额和加班；此前日期保持原口径。确定继续吗？")) return;
   var previousAutoLaunch = !!(previousSettings && previousSettings.autoLaunch === true);
   var autoLaunchChanged = settings.autoLaunch !== previousAutoLaunch;
   if (autoLaunchChanged && !setWindowsAutostart(settings.autoLaunch)) {
@@ -1702,15 +1958,14 @@ function saveSettings() {
   }
   var oldLockMode = bankLockMode(previousSettings);
   var resumeAfterLockRegistration = !!(tracking && oldLockMode === "off" && bankLockMode(settings) !== "off");
-  var day = bank.days[bankDate(new Date().getTime())];
-  var previousRate = day ? day.hourlyRate : 0, previousHours = day ? day.dayHours : 0;
+  var previousDay = day ? JSON.parse(JSON.stringify(day)) : null;
   bank.settings = settings;
-  if (day) { day.hourlyRate = settings.salary / settings.monthHours; day.dayHours = settings.dayHours; }
+  if (day) applyDaySnapshot(day, snapshot);
   masked = settings.maskByDefault;
   dirty = true;
   if (!saveBank()) {
     bank.settings = previousSettings;
-    if (day) { day.hourlyRate = previousRate; day.dayHours = previousHours; }
+    if (day) bank.days[todayKey] = previousDay;
     masked = previousMask;
     dirty = previousDirty;
     if (autoLaunchChanged && !setWindowsAutostart(previousAutoLaunch)) showToast("记录保存失败，登录启动快捷方式也未能恢复；请检查 Windows 启动文件夹。");
@@ -1803,7 +2058,9 @@ function renderHistory() {
   keys.sort(); keys.reverse();
   for (var i = 0; i < keys.length; i++) {
     var day = bank.days[keys[i]];
-    rows += "<tr><td>" + keys[i] + "</td><td>" + duration(day.activeSeconds) + "</td><td>" + duration(bankManualMinutes(day) * 60) +
+    var modeLabel = day.calculationMode === "days" ?
+      (day.manualOnly && typeof day.paidDays === "undefined" ? "按天 · 未设班次" : (bankIsRestDay(day) ? "按天 · 休息日" : "按天")) : "按时";
+    rows += "<tr><td>" + keys[i] + "<span class='history-mode'>" + modeLabel + "</span></td><td>" + duration(day.activeSeconds) + "</td><td>" + duration(bankManualMinutes(day) * 60) +
       "</td><td>" + duration(bankOvertime(day)) + "</td><td>" + money(bankDayAmount(day)) + "</td></tr>";
   }
   text("historyMonth", month);
@@ -1816,7 +2073,7 @@ function csvCell(value) {
   return '"' + textValue.replace(/"/g, '""') + '"';
 }
 function bankCsvText(data) {
-  var rows = [["日期", "活跃秒数", "活跃工时", "补记分钟", "补记明细", "加班秒数", "当日投入（元）", "时薪", "计划日工时"]];
+  var rows = [["日期", "活跃秒数", "活跃工时", "补记分钟", "补记明细", "加班秒数", "当日投入（元）", "时薪", "计划日工时", "核算方式", "本月计薪天数", "计薪日参考金额（元）"]];
   var keys = [];
   for (var key in data.days) if (Object.prototype.hasOwnProperty.call(data.days, key)) keys.push(key);
   keys.sort();
@@ -1824,7 +2081,9 @@ function bankCsvText(data) {
     var day = data.days[keys[i]], entries = day.manualEntries || [], details = [];
     for (var j = 0; j < entries.length; j++) details.push(entries[j].kind + ":" + entries[j].minutes + "分钟");
     rows.push([keys[i], day.activeSeconds.toFixed(2), (day.activeSeconds / 3600).toFixed(4), bankManualMinutes(day),
-      details.join("；"), bankOvertime(day).toFixed(2), bankDayAmount(day).toFixed(2), day.hourlyRate.toFixed(6), day.dayHours]);
+      details.join("；"), bankOvertime(day).toFixed(2), bankDayAmount(day).toFixed(2), day.hourlyRate.toFixed(6), day.dayHours,
+      day.calculationMode === "days" ? "按天" : "按时", typeof day.paidDays === "number" ? day.paidDays : "",
+      typeof day.dailyAmount === "number" ? day.dailyAmount.toFixed(2) : ""]);
   }
   var output = [];
   for (var r = 0; r < rows.length; r++) {
@@ -1950,7 +2209,12 @@ function saveManual() {
   }
   var previous = bank.days[date], previousDirty = dirty;
   if (bankManualMinutes(previous) + minutes > 1440) { alert("同一天的补记不能超过 1440 分钟。"); return false; }
-  var day = previous || { activeSeconds: 0, hourlyRate: bank.settings.salary / bank.settings.monthHours, dayHours: bank.settings.dayHours, manualOnly: true };
+  var day = previous || { activeSeconds: 0, manualOnly: true };
+  if (!previous) {
+    var snapshot = bankSnapshotForDate(bank.settings, date);
+    if (!snapshot) snapshot = { calculationMode: "days", hourlyRate: 0, dayHours: 0 };
+    applyDaySnapshot(day, snapshot);
+  }
   var oldEntries = day.manualEntries;
   day.manualEntries = oldEntries ? oldEntries.slice(0) : [];
   day.manualEntries.push({ minutes: minutes, kind: kind });
@@ -2026,6 +2290,13 @@ $id("btnTrack").onclick = function () { if (tracking) pauseTracking(); else star
 $id("btnSettings").onclick = openSettings;
 $id("btnSaveSettings").onclick = saveSettings;
 $id("btnCancelSettings").onclick = cancelSettings;
+$id("inCalculationMode").onchange = syncCalculationFields;
+$id("btnSetOverride").onclick = function () { changeDayOverride(false); };
+$id("btnClearOverride").onclick = function () { changeDayOverride(true); };
+$id("inOverrideDate").onchange = function () {
+  var date = String(this.value).replace(/^\s+|\s+$/g, "");
+  $id("inOverrideHours").value = Object.prototype.hasOwnProperty.call(draftDayOverrides, date) ? String(draftDayOverrides[date]) : "";
+};
 $id("inOpacity").oninput = function () { previewOpacity(this.value); };
 $id("inOpacity").onchange = function () { previewOpacity(this.value); };
 function modalVisible() {

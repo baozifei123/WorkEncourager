@@ -595,7 +595,7 @@ public sealed class WorkBankPet : Form
     private string StateLabel()
     {
         return currentState == "error" ? "请查看卡片提示" : currentState == "unconfigured" ? "未设置" : currentState == "paused" ? "未开工" :
-            currentState == "idle" ? "键鼠空闲" : (currentState == "overtime" || currentState == "overtime-steady") ? "加班中" :
+            currentState == "rest" ? "休息日" : currentState == "idle" ? "键鼠空闲" : (currentState == "overtime" || currentState == "overtime-steady") ? "加班中" :
             currentState == "urgent" ? "接近计划工时" : currentState == "celebrate" ? "收工快乐" :
             currentState == "waiting" ? "采样未就绪" : "上班中";
     }
