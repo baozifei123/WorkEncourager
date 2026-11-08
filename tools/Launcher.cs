@@ -275,19 +275,22 @@ internal static class Launcher
 
     private static bool ActivateExisting()
     {
-        IntPtr found = IntPtr.Zero;
+        IntPtr found = IntPtr.Zero, hidden = IntPtr.Zero;
         EnumWindows(delegate(IntPtr window, IntPtr extra)
         {
-            if (!IsWindowVisible(window)) return true;
             StringBuilder title = new StringBuilder(512);
             GetWindowText(window, title, title.Capacity);
-            if (title.ToString().IndexOf("上班鼓励器", StringComparison.Ordinal) >= 0)
+            if (!title.ToString().StartsWith("上班鼓励器 · 工时银行", StringComparison.Ordinal)) return true;
+            if (IsWindowVisible(window))
             {
                 found = window;
                 return false;
             }
+            // 卡片可能已收进系统托盘；记住隐藏窗口，供再次双击 EXE 时找回。
+            if (hidden == IntPtr.Zero) hidden = window;
             return true;
         }, IntPtr.Zero);
+        if (found == IntPtr.Zero) found = hidden;
         if (found == IntPtr.Zero) return false;
         ShowWindow(found, SW_RESTORE);
         SetForegroundWindow(found);

@@ -3,10 +3,18 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 public static class PetNativeTests
 {
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr window, int command);
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -106,7 +114,103 @@ public static class PetNativeTests
         if (WorkBankPet.SessionChangeCommand(7) != "session|locked" || WorkBankPet.SessionChangeCommand(8) != "session|unlocked" ||
             WorkBankPet.SessionChangeCommand(5) != null)
             throw new Exception("Only current-session lock and unlock events should be forwarded");
+        TestTray(directory, Path.GetDirectoryName(args[1]));
         Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card controls, session events and click routing passed.");
+        Console.WriteLine("Tray visibility, restore, external window changes and exit routing passed.");
         return 0;
+    }
+
+    private static void AssertEvent(string directory, string expected)
+    {
+        string[] events = Directory.GetFiles(directory, "*.evt");
+        if (events.Length != 1 || File.ReadAllText(events[0]).Trim() != expected)
+            throw new Exception("Expected exactly one pet event: " + expected);
+        File.Delete(events[0]);
+    }
+
+    private static void Invoke(WorkBankPet pet, string method, params object[] arguments)
+    {
+        MethodInfo found = typeof(WorkBankPet).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic);
+        if (found == null) throw new Exception("Missing pet method: " + method);
+        found.Invoke(pet, arguments);
+    }
+
+    private static void TestTray(string directory, string assets)
+    {
+        string images = Path.Combine(directory, "tray-images");
+        string events = Path.Combine(directory, "events");
+        Directory.CreateDirectory(images);
+        Directory.CreateDirectory(events);
+        string[] names = { "whale-character.png", "whale-blink.png", "whale-wave.png", "whale-celebrate.png",
+            "whale-working.png", "whale-sprint.png", "whale-fight.png", "whale-face.png" };
+        foreach (string name in names) File.Copy(Path.Combine(assets, name), Path.Combine(images, name));
+        string alive = Path.Combine(directory, "tray.alive"), state = Path.Combine(directory, "tray.state");
+        string beat = Path.Combine(directory, "tray.beat"), ready = Path.Combine(directory, "tray.ready");
+        string control = Path.Combine(directory, "tray.control"), notice = Path.Combine(directory, "tray.notice");
+        string position = Path.Combine(directory, "tray.pos");
+        File.WriteAllText(alive, "alive");
+        using (Form parent = new Form())
+        {
+            parent.StartPosition = FormStartPosition.Manual;
+            parent.Location = new Point(-10000, -10000);
+            parent.ShowInTaskbar = false;
+            parent.Show();
+            object[] arguments = { parent.Handle, images, alive, state, beat, ready, control, notice, events, position, false, 0, 0 };
+            using (WorkBankPet pet = (WorkBankPet)Activator.CreateInstance(typeof(WorkBankPet),
+                BindingFlags.Instance | BindingFlags.NonPublic, null, arguments, null))
+            {
+                pet.Location = new Point(-10000, -10000);
+                pet.Show();
+                Application.DoEvents();
+                NotifyIcon tray = (NotifyIcon)typeof(WorkBankPet).GetField("trayIcon", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(pet);
+                ContextMenuStrip menu = tray.ContextMenuStrip;
+                if (!tray.Visible || tray.Icon == null || menu.Items.Count != 2) throw new Exception("The pet must provide a tray icon and menu");
+                if (!IsWindowVisible(parent.Handle)) throw new Exception("The panel must stay visible until the pet is ready to receive commands");
+
+                Invoke(pet, "TogglePanel");
+                AssertEvent(events, "hide");
+                if (IsWindowVisible(parent.Handle) || !pet.Visible || !tray.Visible)
+                    throw new Exception("Hiding the panel must leave the pet and tray visible");
+
+                MethodInfo doubleClick = typeof(NotifyIcon).GetMethod("OnDoubleClick", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (doubleClick == null) throw new Exception("Missing tray double-click handler");
+                doubleClick.Invoke(tray, new object[] { EventArgs.Empty });
+                AssertEvent(events, "show");
+                menu.Items[0].PerformClick();
+                AssertEvent(events, "show");
+                File.WriteAllText(control, "show|-10000|-10000");
+                Invoke(pet, "OnTick", null, EventArgs.Empty);
+                if (!IsWindowVisible(parent.Handle) || IsIconic(parent.Handle) || !pet.Visible)
+                    throw new Exception("The tray show request must restore the panel without hiding the pet");
+
+                ShowWindow(parent.Handle, 6);
+                Invoke(pet, "OnTick", null, EventArgs.Empty);
+                AssertEvent(events, "hide");
+                if (IsWindowVisible(parent.Handle) || !pet.Visible)
+                    throw new Exception("An external minimize must hide only the panel");
+                ShowWindow(parent.Handle, 9);
+                Invoke(pet, "OnTick", null, EventArgs.Empty);
+                AssertEvent(events, "show");
+                if (!IsWindowVisible(parent.Handle) || !pet.Visible)
+                    throw new Exception("An externally restored panel must synchronize with the pet");
+
+                Invoke(pet, "TogglePanel");
+                AssertEvent(events, "hide");
+                menu.Items[0].PerformClick();
+                AssertEvent(events, "show");
+                File.WriteAllText(control, "hide");
+                Invoke(pet, "OnTick", null, EventArgs.Empty);
+                DateTime pending = (DateTime)typeof(WorkBankPet).GetField("pendingShow", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(pet);
+                if (pending != DateTime.MinValue) throw new Exception("A later hide must cancel a pending restore");
+
+                bool exitRequested = false;
+                FormClosingEventHandler closing = delegate(object sender, FormClosingEventArgs e) { exitRequested = true; e.Cancel = true; };
+                parent.FormClosing += closing;
+                menu.Items[1].PerformClick();
+                Application.DoEvents();
+                parent.FormClosing -= closing;
+                if (!exitRequested) throw new Exception("The tray exit item must request the normal application close");
+            }
+        }
     }
 }

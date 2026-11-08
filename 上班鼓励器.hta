@@ -1099,13 +1099,14 @@ function recoverPetPanel(handle) {
     var nativeCode = "using System;using System.Runtime.InteropServices;public static class WorkBankRecovery {" +
       "[DllImport(@user32.dll@)]static extern bool IsWindow(IntPtr h);" +
       "[DllImport(@user32.dll@)]static extern bool IsIconic(IntPtr h);" +
+      "[DllImport(@user32.dll@)]static extern bool IsWindowVisible(IntPtr h);" +
       "[DllImport(@user32.dll@)]static extern bool ShowWindowAsync(IntPtr h,int command);" +
       "[DllImport(@user32.dll@,EntryPoint=@GetWindowLongW@)]static extern int GetWindowLong(IntPtr h,int index);" +
       "[DllImport(@user32.dll@,EntryPoint=@SetWindowLongW@)]static extern int SetWindowLong(IntPtr h,int index,int value);" +
       "[DllImport(@user32.dll@)]static extern bool SetWindowPos(IntPtr h,IntPtr after,int x,int y,int w,int height,uint flags);" +
       "public static void Restore(long value){IntPtr h=new IntPtr(value);if(!IsWindow(h))return;" +
       "SetWindowLong(h,-16,GetWindowLong(h,-16)|0xA0000);SetWindowPos(h,IntPtr.Zero,0,0,0,0,0x37);" +
-      "if(IsIconic(h))ShowWindowAsync(h,9);}}";
+      "if(!IsWindowVisible(h)||IsIconic(h))ShowWindowAsync(h,9);}}";
     var script = "$ErrorActionPreference='Stop';try {$src=" + psQuote(nativeCode) + ".Replace('@',[string][char]34);" +
       "Add-Type -TypeDefinition $src;[WorkBankRecovery]::Restore(" + handle + ")} catch {}";
     shell.Run('"' + exe + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -Command "' + script + '"', 0, false);
@@ -1341,7 +1342,7 @@ function startPet() {
 function handlePetEvent(value) {
   if (value === "hide") {
     petPanelVisible = false;
-    /* 桌宠点击后已先自行最小化；再回写一次，避免迟到的展开指令把窗口重新拉起。 */
+    /* 桌宠点击后已先自行隐藏；再回写一次，避免迟到的展开指令把窗口重新拉起。 */
     writePath(petControlPath, "hide", false);
     $id("toast").className = "toast hidden";
   } else if (value === "show") {

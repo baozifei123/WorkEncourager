@@ -15,7 +15,7 @@ public sealed class WorkBankPet : Form
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_LAYERED = 0x00080000;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
-    private const int SW_MINIMIZE = 6;
+    private const int SW_HIDE = 0;
     private const int SW_RESTORE = 9;
     private const int WM_CLOSE = 0x0010;
     private const int WM_WTSSESSION_CHANGE = 0x02B1;
@@ -60,6 +60,8 @@ public sealed class WorkBankPet : Form
     private static extern bool BringWindowToTop(IntPtr window);
     [DllImport("user32.dll")]
     private static extern bool FlashWindow(IntPtr window, bool invert);
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr icon);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern int GetWindowLong(IntPtr window, int index);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
@@ -108,6 +110,9 @@ public sealed class WorkBankPet : Form
     private readonly Timer timer;
     private readonly ToolTip tooltip;
     private readonly ContextMenuStrip menu;
+    private readonly ContextMenuStrip trayMenu;
+    private readonly NotifyIcon trayIcon;
+    private readonly Icon trayImage;
     private readonly ToolStripMenuItem trackingItem;
     private readonly ToolStripMenuItem pinItem;
     private readonly ToolStripMenuItem miniModeItem;
@@ -127,6 +132,7 @@ public sealed class WorkBankPet : Form
     private bool isTracking;
     private bool restReminderPending;
     private bool panelVisible = true;
+    private bool parentVisible;
     private int miniMode;
     private DateTime lastMiniHover = DateTime.MinValue;
     private int parentOriginalStyle;
@@ -204,12 +210,7 @@ public sealed class WorkBankPet : Form
         tooltip.ShowAlways = true;
         UpdateTooltip();
         mini = new MiniInfoForm(onTop);
-        mini.OpenRequested += delegate
-        {
-            mini.HideCard();
-            QueueEvent("show");
-            pendingShow = DateTime.UtcNow;
-        };
+        mini.OpenRequested += delegate { RequestShowPanel(); };
         mini.AmountRequested += delegate { QueueEvent("privacy"); };
         mini.ModeRequested += delegate { QueueEvent("mini-mode|" + (MiniInfoForm.NextVisibleMode(miniMode) == 2 ? "hover" : "always")); };
         mini.TrackingRequested += delegate { ToggleTracking(); };
@@ -217,6 +218,17 @@ public sealed class WorkBankPet : Form
         timer = new Timer();
         timer.Interval = 200;
         timer.Tick += OnTick;
+
+        trayMenu = new ContextMenuStrip();
+        trayMenu.Items.Add("显示工时银行", null, delegate { RequestShowPanel(); });
+        trayMenu.Items.Add("退出工时银行", null, delegate { PostMessage(parentWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero); });
+        trayImage = LoadTrayIcon(imageDirectory);
+        trayIcon = new NotifyIcon();
+        trayIcon.Icon = trayImage;
+        trayIcon.Text = "上班鼓励器 · 工时银行";
+        trayIcon.ContextMenuStrip = trayMenu;
+        trayIcon.DoubleClick += delegate { RequestShowPanel(); };
+        trayIcon.Visible = true;
     }
 
     protected override CreateParams CreateParams
@@ -227,6 +239,25 @@ public sealed class WorkBankPet : Form
             parameters.ExStyle |= WS_EX_LAYERED | WS_EX_TOOLWINDOW;
             return parameters;
         }
+    }
+
+    private static Icon LoadTrayIcon(string imageDirectory)
+    {
+        try
+        {
+            using (Bitmap image = new Bitmap(Path.Combine(imageDirectory, "whale-face.png")))
+            using (Bitmap small = new Bitmap(image, 32, 32))
+            {
+                IntPtr handle = small.GetHicon();
+                try { return (Icon)Icon.FromHandle(handle).Clone(); }
+                finally { DestroyIcon(handle); }
+            }
+        }
+        catch (ArgumentException) { }
+        catch (OutOfMemoryException) { }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return (Icon)SystemIcons.Application.Clone();
     }
 
     private static Bitmap LoadPreferredFrame(string imageDirectory, string fallback)
@@ -299,7 +330,7 @@ public sealed class WorkBankPet : Form
         WriteHeartbeat();
         WritePosition(true);
         SetParentControls(false);
-        ShowWindow(parentWindow, SW_MINIMIZE);
+        parentVisible = IsWindowVisible(parentWindow) && !IsIconic(parentWindow);
         timer.Start();
     }
 
@@ -382,17 +413,19 @@ public sealed class WorkBankPet : Form
             if ((DateTime.UtcNow - File.GetLastWriteTimeUtc(alivePath)).TotalSeconds > 30) { Close(); return; }
             if ((DateTime.UtcNow - lastHeartbeat).TotalMilliseconds >= 1000) WriteHeartbeat();
             ReadState();
+            SynchronizeParentVisibility();
             if (File.Exists(controlPath))
             {
                 string command = File.ReadAllText(controlPath, Encoding.ASCII).Trim();
                 File.Delete(controlPath);
                 string[] parts = command.Split('|');
-                if (parts[0] == "hide") ShowWindow(parentWindow, SW_MINIMIZE);
+                if (parts[0] == "hide") HideParent();
                 else if (parts[0] == "show")
                 {
                     int x = 0, y = 0;
                     bool hasPoint = parts.Length >= 3 && Int32.TryParse(parts[1], out x) && Int32.TryParse(parts[2], out y);
                     ShowWindow(parentWindow, SW_RESTORE);
+                    parentVisible = IsWindowVisible(parentWindow) && !IsIconic(parentWindow);
                     if (hasPoint) SetWindowPos(parentWindow, IntPtr.Zero, x, y, 0, 0, 0x0001 | 0x0004 | 0x0010);
                     FocusParent(parentWindow);
                     pendingShow = DateTime.MinValue;
@@ -402,6 +435,7 @@ public sealed class WorkBankPet : Form
             {
                 pendingShow = DateTime.MinValue;
                 ShowWindow(parentWindow, SW_RESTORE);
+                parentVisible = IsWindowVisible(parentWindow) && !IsIconic(parentWindow);
                 FocusParent(parentWindow);
             }
             if (File.Exists(noticePath))
@@ -610,29 +644,49 @@ public sealed class WorkBankPet : Form
         AccessibleName = text;
     }
 
+    private void HideParent()
+    {
+        pendingShow = DateTime.MinValue;
+        ShowWindow(parentWindow, SW_HIDE);
+        parentVisible = IsWindowVisible(parentWindow) && !IsIconic(parentWindow);
+    }
+
+    private void SynchronizeParentVisibility()
+    {
+        bool visible = IsWindowVisible(parentWindow) && !IsIconic(parentWindow);
+        if (visible == parentVisible) return;
+        parentVisible = visible;
+        if (visible) QueueEvent("show");
+        else
+        {
+            HideParent();
+            QueueEvent("hide");
+        }
+    }
+
+    private void RequestShowPanel()
+    {
+        if (!IsWindow(parentWindow)) return;
+        mini.HideCard();
+        // 由工时窗口算出贴边位置后再展开，避免先闪在旧位置。
+        QueueEvent("show");
+        pendingShow = DateTime.UtcNow;
+    }
+
     private void TogglePanel()
     {
         if (!IsWindow(parentWindow)) return;
         if (IsWindowVisible(parentWindow) && !IsIconic(parentWindow))
         {
             QueueEvent("hide");
-            ShowWindow(parentWindow, SW_MINIMIZE);
+            HideParent();
         }
-        else
-        {
-            // 由工时窗口算出贴边位置后再展开，避免先闪在旧位置。
-            QueueEvent("show");
-            pendingShow = DateTime.UtcNow;
-        }
+        else RequestShowPanel();
     }
 
     private void ToggleTracking()
     {
-        if (currentState == "unconfigured")
-        {
-            ShowWindow(parentWindow, SW_RESTORE);
-            SetForegroundWindow(parentWindow);
-        }
+        if (currentState == "unconfigured") RequestShowPanel();
         QueueEvent("toggle");
     }
 
@@ -702,6 +756,9 @@ public sealed class WorkBankPet : Form
             SetParentControls(true);
             timer.Stop();
             timer.Dispose();
+            trayIcon.Dispose();
+            trayMenu.Dispose();
+            trayImage.Dispose();
             tooltip.Dispose();
             menu.Dispose();
             normalFrame.Dispose();
@@ -749,7 +806,7 @@ public sealed class WorkBankPet : Form
         }
         finally
         {
-            if (IsWindow(parent) && IsIconic(parent)) ShowWindow(parent, SW_RESTORE);
+            if (IsWindow(parent) && (!IsWindowVisible(parent) || IsIconic(parent))) ShowWindow(parent, SW_RESTORE);
             DeleteFile(alive);
             DeleteFile(state);
             DeleteFile(beat);

@@ -464,6 +464,28 @@ test('desktop pet receives only status and pauses recording from its menu', () =
   assert.equal(app.tracking, false);
 });
 
+test('hiding and restoring the panel leaves recording and the pet running', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.petRunning = true;
+  app.petControlPath = 'C:\\Temp\\control';
+  app.tracking = true;
+  app.handlePetEvent('hide');
+  assert.equal(app.petPanelVisible, false);
+  assert.equal(env.files[app.petControlPath], 'hide');
+  assert.equal(app.tracking, true);
+  assert.equal(app.petRunning, true);
+  app.handlePetEvent('show');
+  assert.equal(app.petPanelVisible, true);
+  assert.equal(env.files[app.petControlPath], 'show');
+  assert.equal(app.tracking, true);
+  assert.equal(app.petRunning, true);
+  app.tracking = false;
+  app.handlePetEvent('hide');
+  app.handlePetEvent('show');
+  assert.equal(app.tracking, false, 'restoring the panel must not start a paused timer');
+});
+
 test('storage corruption keeps the panel visible so the warning is not hidden by the pet', () => {
   const env = runtime(), app = env.context;
   app.fatalStorage = true;
@@ -513,7 +535,7 @@ test('a lost pet heartbeat does not stop active work tracking', () => {
   assert.equal(app.petRunning, false);
   assert.equal(app.tracking, true);
   assert.match(env.elements.petStatusText.innerText, /连接中断/);
-  assert.ok(env.commands.some(command => /WorkBankRecovery/.test(command) && /ShowWindow/.test(command)), 'restore the minimized panel after the pet dies');
+  assert.ok(env.commands.some(command => /WorkBankRecovery/.test(command) && /!IsWindowVisible\(h\)\|\|IsIconic\(h\)/.test(command)), 'restore a hidden or minimized panel after the pet dies');
 });
 
 test('pet position and topmost preference are validated and persisted', () => {
