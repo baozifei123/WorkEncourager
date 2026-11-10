@@ -62,6 +62,21 @@ public static class PetNativeTests
             throw new Exception("The mini mode shortcut should toggle always and hover without making a hidden card unreachable");
         if (MiniInfoForm.CompactStatus("接近计划工时") != "近目标" || MiniInfoForm.CompactStatus("加班中") != "加班中")
             throw new Exception("Compact mini status labels should fit beside the quick controls");
+        if (MiniInfoForm.HeatStage("active", 40, true) != MiniInfoForm.HeatCool ||
+            MiniInfoForm.HeatStage("active", 65, true) != MiniInfoForm.HeatWarm ||
+            MiniInfoForm.HeatStage("urgent", 92, true) != MiniInfoForm.HeatHot ||
+            MiniInfoForm.HeatStage("overtime", 100, true) != MiniInfoForm.HeatBurn ||
+            MiniInfoForm.HeatStage("overtime-steady", 100, true) != MiniInfoForm.HeatBurn ||
+            MiniInfoForm.HeatStage("overtime", 75, true) != MiniInfoForm.HeatWarm ||
+            MiniInfoForm.HeatStage("active", 100, true) != MiniInfoForm.HeatBurn ||
+            MiniInfoForm.HeatStage("paused", 100, false) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("idle", 100, true) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("waiting", 30, true) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("active", 55, false) != MiniInfoForm.HeatFrozen)
+            throw new Exception("Mini card heat should burn at the target, freeze while paused or idle, and warm by progress");
+        if (!MiniInfoForm.Animates(MiniInfoForm.HeatBurn, true) || MiniInfoForm.Animates(MiniInfoForm.HeatBurn, false) ||
+            !MiniInfoForm.Animates(MiniInfoForm.HeatFrozen, true) || MiniInfoForm.Animates(MiniInfoForm.HeatHot, true))
+            throw new Exception("Only burning and frozen bars should animate, and only when motion is enabled");
         if (!MiniInfoForm.IsModeArea(new Point(150, 10)) || !MiniInfoForm.IsTrackingArea(new Point(190, 10)))
             throw new Exception("The mini card mode and tracking controls should have separate click areas");
         if (MiniInfoForm.IsAmountArea(new Point(150, 10)) || MiniInfoForm.IsTrackingArea(new Point(150, 10)) ||
@@ -114,10 +129,45 @@ public static class PetNativeTests
         if (WorkBankPet.SessionChangeCommand(7) != "session|locked" || WorkBankPet.SessionChangeCommand(8) != "session|unlocked" ||
             WorkBankPet.SessionChangeCommand(5) != null)
             throw new Exception("Only current-session lock and unlock events should be forwarded");
+        TestProgressEffects();
         TestTray(directory, Path.GetDirectoryName(args[1]));
         Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card controls, session events and click routing passed.");
         Console.WriteLine("Tray visibility, restore, external window changes and exit routing passed.");
         return 0;
+    }
+
+    private static void TestProgressEffects()
+    {
+        MethodInfo flames = typeof(MiniInfoForm).GetMethod("DrawHeatLicks", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo facets = typeof(MiniInfoForm).GetMethod("DrawIceFacets", BindingFlags.Static | BindingFlags.NonPublic);
+        if (flames == null || facets == null) throw new Exception("Missing mini card heat or ice rendering");
+        Rectangle fill = new Rectangle(12, 56, 198, 7);
+        using (Bitmap first = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap second = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap ice = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        {
+            using (Graphics graphics = Graphics.FromImage(first)) flames.Invoke(null, new object[] { graphics, fill, 0.0, "deep" });
+            using (Graphics graphics = Graphics.FromImage(second)) flames.Invoke(null, new object[] { graphics, fill, 0.45, "deep" });
+            using (Graphics graphics = Graphics.FromImage(ice))
+            {
+                graphics.SetClip(fill);
+                facets.Invoke(null, new object[] { graphics, fill });
+            }
+            int flamePixels = 0, differentPixels = 0, icePixels = 0;
+            for (int y = 0; y < first.Height; y++)
+                for (int x = 0; x < first.Width; x++)
+                {
+                    if (first.GetPixel(x, y).A > 0) flamePixels++;
+                    if (first.GetPixel(x, y).ToArgb() != second.GetPixel(x, y).ToArgb()) differentPixels++;
+                    if (ice.GetPixel(x, y).A > 0)
+                    {
+                        if (!fill.Contains(x, y)) throw new Exception("Ice facets must stay inside the filled bar");
+                        icePixels++;
+                    }
+                }
+            if (flamePixels == 0 || differentPixels == 0 || icePixels == 0)
+                throw new Exception("Heat flames should animate and ice facets should be visible");
+        }
     }
 
     private static void AssertEvent(string directory, string expected)

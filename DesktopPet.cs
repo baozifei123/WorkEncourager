@@ -500,7 +500,8 @@ public sealed class WorkBankPet : Form
             show = lastMiniHover != DateTime.MinValue && (DateTime.UtcNow - lastMiniHover).TotalMilliseconds < 700;
         }
         Rectangle work = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
-        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, miniMode, isTracking, show,
+        mini.Present(miniTheme, miniAmount, miniDetail, StateLabel(), miniPercent, miniMode, isTracking, motion,
+            MiniInfoForm.HeatStage(currentState, miniPercent, isTracking), show,
             new Rectangle(Left, Top, Width, Height), work);
     }
 
@@ -829,6 +830,11 @@ public sealed class MiniInfoForm : Form
     private const byte AC_SRC_ALPHA = 1;
     public const int CardWidth = 224;
     public const int CardHeight = 88;
+    public const int HeatCool = 0;
+    public const int HeatWarm = 1;
+    public const int HeatHot = 2;
+    public const int HeatBurn = 3;
+    public const int HeatFrozen = 4;
     private const int Gap = 8;
     private static readonly Rectangle ModeButtonBounds = new Rectangle(132, 4, 40, 17);
     private static readonly Rectangle TrackingButtonBounds = new Rectangle(176, 4, 38, 17);
@@ -867,6 +873,8 @@ public sealed class MiniInfoForm : Form
     private int percent;
     private int miniMode;
     private bool tracking;
+    private bool motion = true;
+    private int heatStage;
     private bool painted;
 
     public event EventHandler OpenRequested;
@@ -884,6 +892,18 @@ public sealed class MiniInfoForm : Form
         if (value == "请查看卡片提示") return "需注意";
         if (value == "收工快乐") return "已收工";
         return value;
+    }
+    public static int HeatStage(string state, int value, bool isTracking)
+    {
+        if (!isTracking || state == "paused" || state == "waiting" || state == "idle") return HeatFrozen;
+        if (value >= 100) return HeatBurn;
+        if (value >= 90) return HeatHot;
+        if (value >= 60) return HeatWarm;
+        return HeatCool;
+    }
+    public static bool Animates(int heat, bool motionEnabled)
+    {
+        return motionEnabled && (heat == HeatBurn || heat == HeatFrozen);
     }
     public static bool IsModeArea(Point point) { return ModeButtonBounds.Contains(point); }
     public static bool IsTrackingArea(Point point) { return TrackingButtonBounds.Contains(point); }
@@ -933,20 +953,24 @@ public sealed class MiniInfoForm : Form
     }
 
     public void Present(string newTheme, string newAmount, string newDetail, string newStatus, int newPercent,
-        int newMiniMode, bool isTracking, bool show, Rectangle pet, Rectangle work)
+        int newMiniMode, bool isTracking, bool motionEnabled, int newHeatStage, bool show, Rectangle pet, Rectangle work)
     {
+        string compactStatus = CompactStatus(newStatus);
         bool changed = newTheme != themeName || newAmount != amount || newDetail != detail ||
-            newStatus != status || newPercent != percent || newMiniMode != miniMode || isTracking != tracking;
+            compactStatus != status || newPercent != percent || newMiniMode != miniMode || isTracking != tracking ||
+            motionEnabled != motion || newHeatStage != heatStage;
         themeName = newTheme == "cream" ? "cream" : (newTheme == "glass" ? "glass" : "deep");
         amount = newAmount;
         detail = newDetail;
-        status = CompactStatus(newStatus);
+        status = compactStatus;
         percent = Math.Max(0, Math.Min(100, newPercent));
         miniMode = newMiniMode;
         tracking = isTracking;
+        motion = motionEnabled;
+        heatStage = newHeatStage;
         Rectangle target = BoundsFor(pet, work, CardWidth, CardHeight, Gap);
         if (Location != target.Location) Location = target.Location;
-        if (changed || !painted) Redraw();
+        if (changed || !painted || (Animates(heatStage, motion) && show)) Redraw();
         if (show)
         {
             if (!Visible) Visible = true;
@@ -1053,15 +1077,55 @@ public sealed class MiniInfoForm : Form
             using (SolidBrush brush = new SolidBrush(ink))
                 graphics.DrawString(amount, amountFont, brush, 10, 22);
             int barWidth = card.Width - 24;
-            using (GraphicsPath trackPath = RoundedRectangle(new Rectangle(12, 56, barWidth, 6), 3))
+            Rectangle bar = new Rectangle(12, 56, barWidth, 7);
+            using (GraphicsPath trackPath = RoundedRectangle(bar, 3))
             using (SolidBrush track = new SolidBrush(barBackground))
                 graphics.FillPath(track, trackPath);
             int fillWidth = (int)Math.Round(barWidth * percent / 100.0);
             if (fillWidth >= 4)
             {
-                using (GraphicsPath fillPath = RoundedRectangle(new Rectangle(12, 56, fillWidth, 6), 3))
-                using (SolidBrush brush = new SolidBrush(accent))
-                    graphics.FillPath(brush, fillPath);
+                Rectangle fillRect = new Rectangle(bar.Left, bar.Top, fillWidth, bar.Height);
+                using (GraphicsPath fillPath = RoundedRectangle(fillRect, 3))
+                {
+                    if (heatStage == HeatBurn)
+                    {
+                        double seconds = motion ? AnimationSeconds() : 0;
+                        DrawHeatLight(graphics, fillRect, seconds, themeName);
+                        using (LinearGradientBrush brush = BurnBrush(fillRect, themeName))
+                            graphics.FillPath(brush, fillPath);
+                        GraphicsState clip = graphics.Save();
+                        graphics.SetClip(fillPath);
+                        DrawHeatFlow(graphics, fillRect, seconds, themeName);
+                        DrawLeadingEdge(graphics, fillRect, seconds, true, themeName);
+                        graphics.Restore(clip);
+                        DrawHeatLicks(graphics, fillRect, seconds, themeName);
+                    }
+                    else if (heatStage == HeatFrozen)
+                    {
+                        double seconds = motion ? AnimationSeconds() : 0;
+                        DrawColdLight(graphics, fillRect, seconds, themeName);
+                        using (LinearGradientBrush brush = FrostBrush(fillRect, themeName))
+                            graphics.FillPath(brush, fillPath);
+                        GraphicsState clip = graphics.Save();
+                        graphics.SetClip(fillPath);
+                        DrawColdSheen(graphics, fillRect, seconds, themeName);
+                        DrawIceFacets(graphics, fillRect);
+                        DrawLeadingEdge(graphics, fillRect, seconds, false, themeName);
+                        graphics.Restore(clip);
+                    }
+                    else if (heatStage == HeatHot)
+                    {
+                        using (LinearGradientBrush brush = new LinearGradientBrush(fillRect,
+                            Hex(cream ? "#7A5A3C" : "#6D4A2F"), Hex(cream ? "#E6C99B" : "#E8C08A"),
+                            LinearGradientMode.Horizontal))
+                            graphics.FillPath(brush, fillPath);
+                    }
+                    else
+                    {
+                        using (LinearGradientBrush brush = StageBrush(fillRect, themeName, heatStage == HeatWarm))
+                            graphics.FillPath(brush, fillPath);
+                    }
+                }
             }
             using (SolidBrush brush = new SolidBrush(muted))
                 graphics.DrawString(status + " · " + detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%", detailFont, brush, 12, 65);
@@ -1091,6 +1155,183 @@ public sealed class MiniInfoForm : Form
             }
         }
         painted = true;
+    }
+
+    private static LinearGradientBrush BurnBrush(Rectangle fill, string theme)
+    {
+        string[] colors = theme == "cream"
+            ? new[] { "#3A1C10", "#8A3A1C", "#C8793C", "#E8B66A" }
+            : (theme == "glass"
+                ? new[] { "#2A1008", "#8F2F12", "#D97824", "#FFC45C" }
+                : new[] { "#2A0B06", "#7A1F0E", "#C25A1C", "#FFB84D" });
+        LinearGradientBrush brush = new LinearGradientBrush(fill,
+            Hex(colors[0]), Hex(colors[3]), LinearGradientMode.Horizontal);
+        ColorBlend blend = new ColorBlend(4);
+        blend.Colors = new[] { Hex(colors[0]), Hex(colors[1]), Hex(colors[2]), Hex(colors[3]) };
+        blend.Positions = new[] { 0f, 0.34f, 0.68f, 1f };
+        brush.InterpolationColors = blend;
+        return brush;
+    }
+
+    private static LinearGradientBrush FrostBrush(Rectangle fill, string theme)
+    {
+        string[] colors = theme == "cream"
+            ? new[] { "#4E6771", "#839FA6", "#C7DAD9" }
+            : (theme == "glass"
+                ? new[] { "#254C56", "#608E96", "#A1C9C9" }
+                : new[] { "#274250", "#58808D", "#A1C7CE" });
+        LinearGradientBrush brush = new LinearGradientBrush(fill,
+            Hex(colors[0]), Hex(colors[2]), LinearGradientMode.Horizontal);
+        ColorBlend blend = new ColorBlend(3);
+        blend.Colors = new[] { Hex(colors[0]), Hex(colors[1]), Hex(colors[2]) };
+        blend.Positions = new[] { 0f, 0.58f, 1f };
+        brush.InterpolationColors = blend;
+        return brush;
+    }
+
+    private static LinearGradientBrush StageBrush(Rectangle fill, string theme, bool warm)
+    {
+        string start = theme == "cream" ? (warm ? "#4C7089" : "#3F6178") :
+            theme == "glass" ? (warm ? "#2A5A62" : "#1F4A52") : (warm ? "#2C6288" : "#244A66");
+        string end = theme == "cream" ? (warm ? "#9DBECD" : "#7EA6BA") :
+            theme == "glass" ? (warm ? "#7FA8AD" : "#5C8B90") : (warm ? "#8FC4DD" : "#5F93B5");
+        return new LinearGradientBrush(fill, Hex(start), Hex(end), LinearGradientMode.Horizontal);
+    }
+
+    private static double AnimationSeconds()
+    {
+        return (Environment.TickCount & Int32.MaxValue) / 1000.0;
+    }
+
+    private static void DrawRadialGlow(Graphics graphics, Rectangle bounds, int alpha, Color color)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0) return;
+        using (GraphicsPath path = new GraphicsPath())
+        {
+            path.AddEllipse(bounds);
+            using (PathGradientBrush glow = new PathGradientBrush(path))
+            {
+                glow.CenterColor = Color.FromArgb(alpha, color);
+                glow.SurroundColors = new[] { Color.FromArgb(0, color.R, color.G, color.B) };
+                graphics.FillPath(glow, path);
+            }
+        }
+    }
+
+    private static void DrawHeatLight(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 2.8));
+        Color color = theme == "cream" ? Color.FromArgb(140, 80, 30) :
+            (theme == "glass" ? Color.FromArgb(170, 95, 32) : Color.FromArgb(150, 75, 25));
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 20, fill.Top - 10, 40, 26),
+            (int)(24 + 30 * pulse), color);
+    }
+
+    private static void DrawColdLight(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 5.2));
+        Color color = theme == "cream" ? Color.FromArgb(120, 135, 140) :
+            (theme == "glass" ? Color.FromArgb(90, 125, 132) : Color.FromArgb(95, 130, 140));
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 6, fill.Top - 5, fill.Width + 12, 16),
+            (int)(8 + 10 * pulse), color);
+    }
+
+    private static void DrawHeatFlow(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float sweep = (float)((seconds % 1.8) / 1.8);
+        int bandWidth = Math.Max(36, fill.Width / 3);
+        int x = fill.Left - bandWidth + (int)(sweep * (fill.Width + bandWidth * 2));
+        Rectangle band = new Rectangle(x, fill.Top, bandWidth, fill.Height);
+        Color glow = theme == "cream" ? Color.FromArgb(255, 236, 200) :
+            (theme == "glass" ? Color.FromArgb(255, 240, 205) : Color.FromArgb(255, 232, 190));
+        using (LinearGradientBrush brush = new LinearGradientBrush(band, Color.FromArgb(0, glow), glow,
+            LinearGradientMode.Horizontal))
+        {
+            ColorBlend blend = new ColorBlend(3);
+            blend.Colors = new[] { Color.FromArgb(0, glow), Color.FromArgb(150, glow), Color.FromArgb(0, glow) };
+            blend.Positions = new[] { 0f, 0.5f, 1f };
+            brush.InterpolationColors = blend;
+            graphics.FillRectangle(brush, band);
+        }
+    }
+
+    private static void DrawColdSheen(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float sweep = (float)((seconds % 8.0) / 8.0);
+        int bandWidth = Math.Max(36, fill.Width / 3);
+        int x = fill.Left - bandWidth + (int)(sweep * (fill.Width + bandWidth * 2));
+        Rectangle band = new Rectangle(x, fill.Top, bandWidth, fill.Height);
+        Color glow = theme == "cream" ? Color.FromArgb(225, 238, 242) : Color.FromArgb(220, 240, 246);
+        using (LinearGradientBrush brush = new LinearGradientBrush(band, Color.FromArgb(0, glow), glow,
+            LinearGradientMode.Horizontal))
+        {
+            ColorBlend blend = new ColorBlend(3);
+            blend.Colors = new[] { Color.FromArgb(0, glow), Color.FromArgb(26, glow), Color.FromArgb(0, glow) };
+            blend.Positions = new[] { 0f, 0.5f, 1f };
+            brush.InterpolationColors = blend;
+            graphics.FillRectangle(brush, band);
+        }
+    }
+
+    private static void DrawIceFacets(Graphics graphics, Rectangle fill)
+    {
+        int[] positions = { 14, 39, 74, 105, 142, 176 };
+        using (Pen light = new Pen(Color.FromArgb(105, 225, 248, 251), 1f))
+        using (Pen shade = new Pen(Color.FromArgb(42, 25, 65, 77), 1f))
+        {
+            foreach (int position in positions)
+            {
+                int x = fill.Left + position;
+                if (x >= fill.Right) break;
+                graphics.DrawLine(light, x, fill.Top, x - 3, fill.Bottom - 1);
+                graphics.DrawLine(shade, x + 2, fill.Top + 1, x - 1, fill.Bottom - 1);
+            }
+        }
+    }
+
+    private static void DrawHeatLicks(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float[] offsets = { 36f, 22f, 9f };
+        float[] heights = { 5.5f, 8f, 6f };
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            double phase = seconds * (Math.PI * 2 / 1.8) + i * 1.6;
+            float height = heights[i] * (0.82f + 0.18f * (float)Math.Sin(phase));
+            float x = fill.Right - offsets[i];
+            float lean = 2f * (float)Math.Sin(phase * 0.7);
+            using (GraphicsPath flame = new GraphicsPath())
+            {
+                flame.AddBezier(x - 5, fill.Top + 2, x - 4, fill.Top - height * .3f,
+                    x + lean - 1, fill.Top - height * .5f, x + lean, fill.Top - height);
+                flame.AddBezier(x + lean, fill.Top - height, x + lean + 2, fill.Top - height * .45f,
+                    x + 4, fill.Top - height * .25f, x + 5, fill.Top + 2);
+                flame.CloseFigure();
+                Rectangle bounds = new Rectangle((int)x - 7, fill.Top - 10, 14, 13);
+                Color warm = theme == "cream" ? Color.FromArgb(205, 112, 55) : Color.FromArgb(240, 135, 55);
+                using (LinearGradientBrush brush = new LinearGradientBrush(bounds,
+                    Color.FromArgb(0, 255, 219, 155), Color.FromArgb(190, warm), LinearGradientMode.Vertical))
+                    graphics.FillPath(brush, flame);
+            }
+        }
+    }
+
+    private static void DrawLeadingEdge(Graphics graphics, Rectangle fill, double seconds, bool hot, string theme)
+    {
+        if (hot)
+        {
+            float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 2.4));
+            int alpha = (int)(150 + 80 * pulse);
+            Color color = theme == "cream"
+                ? Color.FromArgb(alpha, 255, 238, 205)
+                : Color.FromArgb(alpha, 255, 246, 220);
+            using (SolidBrush brush = new SolidBrush(color))
+                graphics.FillRectangle(brush, fill.Right - 2, fill.Top, 2, fill.Height);
+        }
+        else
+        {
+            using (SolidBrush brush = new SolidBrush(Color.FromArgb(52, 226, 240, 244)))
+                graphics.FillRectangle(brush, fill.Left, fill.Top, fill.Width, 1);
+        }
     }
 
     private static Color Hex(string value)
