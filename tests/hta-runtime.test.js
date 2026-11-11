@@ -647,14 +647,22 @@ test('energy indicator warms with progress and pauses when tracking is idle', ()
   app.bank.settings.motion = false;
   app.render(Date.now());
   assert.match(app.document.body.className, /motion-off/);
-  assert.ok(source.includes('heatSweep') && source.includes('heatLick') && source.includes('frostShimmer'),
-    'heat should flow while cold stays frozen inside the bar');
-  assert.match(source, /<div class="track"><div class="fill" id="progressFill"><\/div><\/div>\s*<svg class="heat-crown"/,
-    'flames must be outside the clipped track so they remain visible');
+  assert.ok(source.includes('heatSweep') && source.includes('heatWave') && source.includes('heat-haze') &&
+    source.includes('frostShimmer') && source.includes('burn-layer') && source.includes('frost-layer'),
+    'heat should flow and rise as waves while cold stays frozen inside the bar');
+  assert.ok(source.includes('burn-lightning') && source.includes('burnEdgeTop') && source.includes('burnEdgeBottom') &&
+    source.includes('updateBurnEdges') && source.includes('burn-wisp') && source.includes('burn-ember'),
+    'the burning bar should draw irregular lightning and soft flame wisps along both edges');
+  assert.ok(source.includes('frost-arcs') && source.includes('frostArcPulse') && source.includes('coolSweep') &&
+    source.includes('warmSweep') && source.includes('hotSweep') && source.includes('stage-tip') && source.includes('tipPulse'),
+    'lower stages should have gentle moving sheens and frozen should have frost arcs');
   assert.match(source, /\.motion-off \.energy \.fill:after[^\{]*\{ animation: none; \}/,
     'turning motion off must override the active heat and frost animations');
-  assert.ok(!source.includes('flame-icon') && !source.includes('emberRise') && !source.includes('frostSway'),
-    'the bar should not use the former literal flame, ember and snowflake symbols');
+  assert.ok(!source.includes('heat-crown') && !source.includes('heatLick') && !source.includes('flame-icon') &&
+    !source.includes('emberRise') && !source.includes('frostSway') && !source.includes('burn-flames'),
+    'the former cartoon flame, ember and snowflake symbols must not return');
+  assert.ok(!source.includes('energyFlow') && !source.includes('repeating-linear-gradient(115deg'),
+    'the bar must not fall back to regular diagonal hatching');
 });
 
 test('masking applies to the card, tooltip, history and receipt', () => {

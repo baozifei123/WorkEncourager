@@ -138,35 +138,87 @@ public static class PetNativeTests
 
     private static void TestProgressEffects()
     {
-        MethodInfo flames = typeof(MiniInfoForm).GetMethod("DrawHeatLicks", BindingFlags.Static | BindingFlags.NonPublic);
-        MethodInfo facets = typeof(MiniInfoForm).GetMethod("DrawIceFacets", BindingFlags.Static | BindingFlags.NonPublic);
-        if (flames == null || facets == null) throw new Exception("Missing mini card heat or ice rendering");
-        Rectangle fill = new Rectangle(12, 56, 198, 7);
+        MethodInfo waves = typeof(MiniInfoForm).GetMethod("DrawHeatWaves", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo facets = typeof(MiniInfoForm).GetMethod("DrawFrostMottling", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo cracks = typeof(MiniInfoForm).GetMethod("DrawIceCracks", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo crown = typeof(MiniInfoForm).GetMethod("DrawLightning", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo embers = typeof(MiniInfoForm).GetMethod("DrawBurnEmbers", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo sheen = typeof(MiniInfoForm).GetMethod("DrawStageSheen", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo frostArcs = typeof(MiniInfoForm).GetMethod("DrawFrostArcs", BindingFlags.Static | BindingFlags.NonPublic);
+        if (waves == null || facets == null || cracks == null || crown == null || embers == null ||
+            sheen == null || frostArcs == null)
+            throw new Exception("Missing mini card heat or frost rendering");
+        Rectangle fill = new Rectangle(12, 55, 198, 9);
         using (Bitmap first = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         using (Bitmap second = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         using (Bitmap ice = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap crackImage = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap flames = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap flamesLater = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap stageA = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap stageB = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap frostArcImage = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         {
-            using (Graphics graphics = Graphics.FromImage(first)) flames.Invoke(null, new object[] { graphics, fill, 0.0, "deep" });
-            using (Graphics graphics = Graphics.FromImage(second)) flames.Invoke(null, new object[] { graphics, fill, 0.45, "deep" });
+            using (Graphics graphics = Graphics.FromImage(first)) waves.Invoke(null, new object[] { graphics, fill, 0.0, "deep", 1f });
+            using (Graphics graphics = Graphics.FromImage(second)) waves.Invoke(null, new object[] { graphics, fill, 0.45, "deep", 1f });
             using (Graphics graphics = Graphics.FromImage(ice))
             {
                 graphics.SetClip(fill);
-                facets.Invoke(null, new object[] { graphics, fill });
+                facets.Invoke(null, new object[] { graphics, fill, 1f });
             }
-            int flamePixels = 0, differentPixels = 0, icePixels = 0;
+            using (Graphics graphics = Graphics.FromImage(crackImage))
+            {
+                graphics.SetClip(fill);
+                cracks.Invoke(null, new object[] { graphics, fill, 1f });
+            }
+            using (Graphics graphics = Graphics.FromImage(flames))
+            {
+                crown.Invoke(null, new object[] { graphics, fill, 0.0, "deep", 1f });
+                embers.Invoke(null, new object[] { graphics, fill, 0.0, "deep", 1f });
+            }
+            using (Graphics graphics = Graphics.FromImage(flamesLater))
+            {
+                crown.Invoke(null, new object[] { graphics, fill, 0.5, "deep", 1f });
+                embers.Invoke(null, new object[] { graphics, fill, 0.5, "deep", 1f });
+            }
+            using (Graphics graphics = Graphics.FromImage(stageA))
+            {
+                graphics.SetClip(fill);
+                sheen.Invoke(null, new object[] { graphics, fill, 2.6, "deep", MiniInfoForm.HeatWarm });
+            }
+            using (Graphics graphics = Graphics.FromImage(stageB))
+            {
+                graphics.SetClip(fill);
+                sheen.Invoke(null, new object[] { graphics, fill, 3.4, "deep", MiniInfoForm.HeatWarm });
+            }
+            using (Graphics graphics = Graphics.FromImage(frostArcImage))
+                frostArcs.Invoke(null, new object[] { graphics, fill, 0.0, 1f });
+            int wavePixels = 0, differentPixels = 0, icePixels = 0, crackPixels = 0, flamePixels = 0, flameChange = 0;
+            int stagePixels = 0, stageChange = 0, frostArcPixels = 0;
             for (int y = 0; y < first.Height; y++)
                 for (int x = 0; x < first.Width; x++)
                 {
-                    if (first.GetPixel(x, y).A > 0) flamePixels++;
+                    if (first.GetPixel(x, y).A > 0) wavePixels++;
                     if (first.GetPixel(x, y).ToArgb() != second.GetPixel(x, y).ToArgb()) differentPixels++;
                     if (ice.GetPixel(x, y).A > 0)
                     {
-                        if (!fill.Contains(x, y)) throw new Exception("Ice facets must stay inside the filled bar");
+                        if (!fill.Contains(x, y)) throw new Exception("Frost mottling must stay inside the filled bar");
                         icePixels++;
                     }
+                    if (crackImage.GetPixel(x, y).A > 0)
+                    {
+                        if (!fill.Contains(x, y)) throw new Exception("Ice cracks must stay inside the filled bar");
+                        crackPixels++;
+                    }
+                    if (flames.GetPixel(x, y).A > 0) flamePixels++;
+                    if (flames.GetPixel(x, y).ToArgb() != flamesLater.GetPixel(x, y).ToArgb()) flameChange++;
+                    if (stageA.GetPixel(x, y).A > 0) stagePixels++;
+                    if (stageA.GetPixel(x, y).ToArgb() != stageB.GetPixel(x, y).ToArgb()) stageChange++;
+                    if (frostArcImage.GetPixel(x, y).A > 0) frostArcPixels++;
                 }
-            if (flamePixels == 0 || differentPixels == 0 || icePixels == 0)
-                throw new Exception("Heat flames should animate and ice facets should be visible");
+            if (wavePixels == 0 || differentPixels == 0 || icePixels == 0 || crackPixels == 0 ||
+                flamePixels == 0 || flameChange == 0 || stagePixels == 0 || stageChange == 0 || frostArcPixels == 0)
+                throw new Exception("Stage sheens, lightning, frost arcs and frost details should all be visible");
         }
     }
 

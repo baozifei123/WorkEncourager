@@ -70,44 +70,123 @@
   .caption { min-height: 20px; color: #9fbcd8; font-size: 12px; }
   .progress-head { margin-top: 13px; color: #c6dcf2; font-size: 12px; }
   .progress-head .right { float: right; color: #8fd0ff; font-family: Consolas, monospace; font-size: 13px; }
-  .energy { position: relative; height: 22px; margin-top: 7px; }
-  .track { position: relative; top: 7px; height: 10px; background: #0a1626; border: 1px solid #2b4a6e; border-radius: 8px; overflow: hidden; transition: border-color .6s, box-shadow .6s; }
-  .fill { position: relative; height: 100%; width: 0; border-radius: 8px; transition: width .3s, background .6s, box-shadow .6s; }
-  .fill:after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.16) 0, rgba(255,255,255,.16) 3px, transparent 3px, transparent 18px); animation: energyFlow 2.6s linear infinite; }
+  .energy { position: relative; height: 26px; margin-top: 7px; }
+  .track { position: relative; top: 8px; height: 13px; background: #0a1626; border: 1px solid #2b4a6e; border-radius: 8px; overflow: hidden; transition: border-color .35s, box-shadow .35s; }
+  .fill { position: relative; height: 100%; width: 0; border-radius: 8px; transition: width .3s, background .35s, box-shadow .35s; }
+  .fill:after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(180deg, rgba(255,255,255,.14) 0, rgba(255,255,255,.02) 38%, rgba(0,0,0,.12) 100%); transition: opacity .35s; z-index: 3; }
+  .burn-layer, .frost-layer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: inherit; opacity: 0; transition: opacity .35s ease; pointer-events: none; z-index: 1; }
+  .burn-layer {
+    background:
+      linear-gradient(180deg, rgba(96,34,2,.92) 0, rgba(255,176,34,.76) 12%, rgba(255,250,186,.98) 42%, rgba(255,253,205,.98) 58%, rgba(255,196,48,.78) 88%, rgba(96,34,2,.9) 100%),
+      linear-gradient(90deg, #a83a04, #ffb21e 40%, #ffe04a 76%, #fff7c0);
+  }
+  .frost-layer {
+    background:
+      linear-gradient(180deg, rgba(12,30,38,.55) 0, rgba(255,255,255,0) 35%, rgba(10,28,36,.42) 100%),
+      linear-gradient(90deg, #1b3038, #35535e 58%, #6f929b);
+    box-shadow: inset 0 1px 0 rgba(232,251,253,.72), inset 0 -1px 0 rgba(232,251,253,.42);
+  }
+  .energy.overtime .burn-layer { opacity: 1; }
+  .energy.paused .frost-layer { opacity: 1; }
+  .energy.paused .burn-layer { opacity: 0; }
   .energy.cool .fill { background: linear-gradient(90deg, #244a66, #5f93b5); }
   .energy.warm .fill { background: linear-gradient(90deg, #2c6288, #8fc4dd); }
   .energy.hot .fill { background: linear-gradient(90deg, #6d4a2f, #c08a52 60%, #e8c08a); }
-  .energy.overtime .fill { background: linear-gradient(90deg, #2a0b06, #7a1f0e 34%, #c25a1c 68%, #ffb84d); box-shadow: inset 0 1px 0 rgba(255,236,190,.25); }
-  .energy.overtime .fill:before { content: ""; position: absolute; top: -1px; right: -1px; bottom: -1px; width: 2px; border-radius: 2px; background: #fff1cf; box-shadow: 0 0 8px rgba(255,190,100,.85); animation: leadBreathe 2.4s ease-in-out infinite alternate; }
-  .energy.overtime .fill:after {
+  .energy.cool .fill:after { background: linear-gradient(90deg, rgba(180,225,255,0), rgba(180,225,255,.34) 50%, rgba(180,225,255,0)); background-size: 52% 100%; background-repeat: no-repeat; animation: coolSweep 8s linear infinite; }
+  .energy.warm .fill:after { background: linear-gradient(90deg, rgba(255,220,160,0), rgba(255,220,160,.45) 50%, rgba(255,220,160,0)); background-size: 52% 100%; background-repeat: no-repeat; animation: warmSweep 5.2s linear infinite; }
+  .energy.hot .fill:after { background: linear-gradient(90deg, rgba(255,225,150,0), rgba(255,235,180,.58) 50%, rgba(255,225,150,0)); background-size: 52% 100%; background-repeat: no-repeat; animation: hotSweep 3.4s linear infinite; }
+  .energy.warm .fill:before, .energy.hot .fill:before { content: ""; position: absolute; top: 1px; right: -1px; bottom: 1px; width: 2px; border-radius: 2px; background: rgba(255,244,220,.75); box-shadow: 0 0 7px rgba(255,210,150,.5); z-index: 2; }
+  .energy.hot .fill:before { background: rgba(255,248,225,.95); box-shadow: 0 0 10px rgba(255,200,110,.65); }
+  .stage-tip { position: absolute; z-index: 2; right: -12px; top: 50%; width: 28px; height: 28px; margin-top: -14px; border-radius: 50%; background: radial-gradient(circle, rgba(255,244,220,.95), rgba(255,210,150,0) 70%); opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+  .energy.cool .stage-tip { opacity: .25; background: radial-gradient(circle, rgba(190,230,255,.85), rgba(150,210,255,0) 70%); animation: tipPulse 7.5s ease-in-out infinite alternate; }
+  .energy.warm .stage-tip { opacity: .62; animation: tipPulse 4.8s ease-in-out infinite alternate; }
+  .energy.hot .stage-tip { opacity: .95; animation: tipPulse 3.2s ease-in-out infinite alternate; }
+  .energy.paused .stage-tip { opacity: 0; }
+  .energy.overtime .fill {
     background:
-      linear-gradient(90deg, rgba(255,240,200,0) 0, rgba(255,240,200,.45) 50%, rgba(255,240,200,0) 100%),
-      repeating-linear-gradient(115deg, rgba(255,255,255,.10) 0, rgba(255,255,255,.10) 3px, transparent 3px, transparent 18px);
-    background-size: 52% 100%, auto;
-    background-repeat: no-repeat, repeat;
+      linear-gradient(180deg, rgba(10,3,2,.92) 0, rgba(18,5,3,.42) 18%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 64%, rgba(60,14,5,.38) 100%),
+      linear-gradient(90deg, #1c0604, #5c1508 30%, #b84614 62%, #ff9a2e 86%, #ffd37a);
+    box-shadow: inset 0 1px 0 rgba(255,120,60,.2);
+  }
+  .energy.overtime .fill:before { content: ""; position: absolute; top: -1px; right: -1px; bottom: -1px; width: 2px; border-radius: 2px; background: #fffbe6; box-shadow: 0 0 12px rgba(255,200,90,.95), 0 0 24px rgba(255,120,30,.5); animation: leadBreathe 2.4s ease-in-out infinite alternate; z-index: 2; }
+  .energy.overtime .fill:after {
+    background: linear-gradient(90deg, rgba(255,240,200,0) 0, rgba(255,240,200,.5) 50%, rgba(255,240,200,0) 100%);
+    background-size: 55% 100%;
+    background-repeat: no-repeat;
     animation: heatSweep 1.5s linear infinite;
     opacity: 1;
   }
-  .energy.overtime .track { border-color: #9a4524; box-shadow: 0 0 11px rgba(180,80,30,.28); animation: heatBreathe 2.8s ease-in-out infinite alternate; }
-  /* 火焰放在 track 外，避免被进度条的 overflow:hidden 裁掉。 */
-  .heat-crown { display: none; position: absolute; z-index: 1; right: 5px; top: -7px; width: 72px; height: 17px; pointer-events: none; transform-origin: 50% 100%; }
-  .energy.overtime .heat-crown { display: block; animation: heatLick 1.35s ease-in-out infinite alternate; }
-  .energy.paused .fill { background: linear-gradient(90deg, #274250, #58808d 58%, #a1c7ce); box-shadow: inset 0 1px 0 rgba(228,249,252,.65), inset 0 -2px 0 rgba(14,47,60,.45); opacity: .92; }
+  .energy.overtime .track { border-color: #d08a1f; box-shadow: 0 0 14px rgba(255,190,40,.5), 0 0 30px rgba(255,150,20,.22); animation: heatBreathe 2.8s ease-in-out infinite alternate; }
+  /* 热浪从前缘升起，使用没有轮廓的暖色带，避免像火苗贴纸。 */
+  .heat-haze { position: absolute; z-index: 1; right: 8px; top: -14px; width: 176px; height: 32px; opacity: 0; transform: translateY(5px) scaleY(.7); transform-origin: 50% 100%; transition: opacity .35s ease, transform .35s ease; pointer-events: none; background: radial-gradient(ellipse at 62% 100%, rgba(255,170,80,.22), rgba(255,120,40,0) 70%); }
+  .energy.overtime .heat-haze { opacity: 1; transform: none; }
+  .heat-haze:before, .heat-haze:after { content: ""; position: absolute; left: 0; right: 0; border-radius: 50%; background: radial-gradient(ellipse at 50% 100%, rgba(255,184,96,.5), rgba(255,126,44,.16) 46%, rgba(255,100,30,0) 74%); animation: heatWave 3.2s ease-in-out infinite; }
+  .heat-haze:before { bottom: 1px; height: 17px; }
+  .heat-haze:after { bottom: 9px; height: 12px; opacity: .8; animation-duration: 4.1s; animation-delay: 1.4s; }
+  /* 参考白热核心：上下边缘用不规则电弧，避免火舌贴纸感。 */
+  .burn-lightning { position: absolute; z-index: 2; left: 0; right: 0; top: -4px; height: 34px; opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+  .energy.overtime .burn-lightning { opacity: 1; }
+  .burn-lightning svg { display: block; width: 100%; height: 100%; }
+  .burn-wisp { position: absolute; bottom: 20px; width: 16px; height: 12px; border-radius: 55% 45% 48% 52%; background: radial-gradient(ellipse at 50% 100%, rgba(255,250,200,.9), rgba(255,180,40,.45) 45%, rgba(255,120,20,0) 75%); transform-origin: 50% 100%; opacity: 0; animation: wispDance 2.8s ease-in-out infinite; }
+  .energy.overtime .burn-wisp { opacity: .85; }
+  .burn-wisp.w1 { left: 6%; width: 12px; height: 10px; animation-delay: .1s; }
+  .burn-wisp.w2 { left: 22%; width: 20px; height: 16px; animation-delay: 1.2s; }
+  .burn-wisp.w3 { left: 43%; width: 14px; height: 13px; animation-delay: .6s; }
+  .burn-wisp.w4 { left: 66%; width: 22px; height: 17px; animation-delay: 1.7s; }
+  .burn-wisp.w5 { left: 87%; width: 13px; height: 11px; animation-delay: .3s; }
+  .frost-arcs { position: absolute; z-index: 2; left: 0; top: -4px; width: 100%; height: 34px; opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+  .energy.paused .frost-arcs { opacity: .68; animation: frostArcPulse 6.5s ease-in-out infinite; }
+  .frost-arcs svg { display: block; width: 100%; height: 100%; }
+  .burn-ember { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #ffe58a; box-shadow: 0 0 7px rgba(255,190,60,.95); opacity: 0; animation: burnEmber 2.4s ease-out infinite; }
+  .burn-ember.e1 { right: 34px; bottom: 14px; animation-delay: .2s; }
+  .burn-ember.e2 { right: 76px; bottom: 12px; width: 3px; height: 3px; animation-delay: .9s; }
+  .burn-ember.e3 { right: 122px; bottom: 15px; animation-delay: 1.6s; }
+  .burn-ember.e4 { right: 158px; bottom: 11px; width: 3px; height: 3px; animation-delay: 1.1s; }
+  .burn-ember.e5 { right: 198px; bottom: 13px; animation-delay: .5s; }
+  .burn-ember.e6 { right: 242px; bottom: 15px; width: 3px; height: 3px; animation-delay: 1.9s; }
+  .burn-ember.e7 { right: 286px; bottom: 12px; animation-delay: 1.3s; }
+  .burn-ember.e8 { right: 330px; bottom: 14px; width: 3px; height: 3px; animation-delay: 2.1s; }
+  .energy.paused .fill {
+    background:
+      linear-gradient(180deg, rgba(12,30,38,.55) 0, rgba(255,255,255,0) 35%, rgba(10,28,36,.42) 100%),
+      linear-gradient(90deg, #1b3038, #35535e 58%, #6f929b);
+    box-shadow: inset 0 1px 0 rgba(232,251,253,.72), inset 0 -1px 0 rgba(232,251,253,.42), inset 0 0 6px rgba(18,45,55,.5);
+    opacity: .95;
+  }
   .energy.paused .fill:before { display: none; }
   .energy.paused .fill:after {
-    background: repeating-linear-gradient(118deg, transparent 0, transparent 29px, rgba(224,248,250,.34) 30px, rgba(224,248,250,.12) 32px, transparent 34px, transparent 55px),
-      repeating-linear-gradient(70deg, transparent 0, transparent 40px, rgba(196,236,241,.25) 41px, transparent 43px, transparent 74px);
-    background-size: auto; background-repeat: repeat; animation: frostShimmer 7s ease-in-out infinite; opacity: .8;
+    background-image:
+      linear-gradient(118deg, rgba(236,253,255,0) 44%, rgba(236,253,255,.5) 46%, rgba(236,253,255,0) 49%),
+      linear-gradient(72deg, rgba(236,253,255,0) 45%, rgba(236,253,255,.38) 47%, rgba(236,253,255,0) 51%),
+      linear-gradient(150deg, rgba(236,253,255,0) 44%, rgba(236,253,255,.42) 47%, rgba(236,253,255,0) 50%),
+      linear-gradient(96deg, rgba(236,253,255,0) 46%, rgba(236,253,255,.3) 48%, rgba(236,253,255,0) 52%),
+      radial-gradient(ellipse at 22% 30%, rgba(230,251,253,.24), rgba(230,251,253,0) 55%),
+      radial-gradient(ellipse at 58% 72%, rgba(206,242,246,.16), rgba(206,242,246,0) 52%),
+      radial-gradient(ellipse at 84% 24%, rgba(240,255,255,.2), rgba(240,255,255,0) 48%);
+    background-position: 15% 0, 42% 0, 68% 0, 86% 0, 0 0, 0 0, 0 0;
+    background-size: 34px 100%, 26px 100%, 30px 100%, 22px 100%, 100% 100%, 100% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    animation: frostShimmer 7s ease-in-out infinite;
+    opacity: .9;
   }
   .energy.paused .track { border-color: #668a94; box-shadow: 0 0 7px rgba(120,180,195,.18); animation: frostBreathe 5.2s ease-in-out infinite alternate; }
-  .energy.paused .heat-crown { display: none; }
-  .motion-off .energy .fill, .motion-off .energy .fill:before, .motion-off .energy .fill:after, .motion-off .energy .track, .motion-off .energy .heat-crown { animation: none; }
-  .motion-off .energy .fill { transition: none; }
-  @keyframes energyFlow { from { background-position: 0 0; } to { background-position: 36px 0; } }
+  .energy.paused .heat-haze { opacity: 0; transform: translateY(3px) scaleY(.75); }
+  .energy.paused .burn-lightning { opacity: 0; }
+  .motion-off .energy .fill, .motion-off .energy .fill:before, .motion-off .energy .fill:after, .motion-off .energy .track, .motion-off .energy .burn-layer, .motion-off .energy .frost-layer, .motion-off .energy .heat-haze, .motion-off .energy .heat-haze:before, .motion-off .energy .heat-haze:after, .motion-off .energy .burn-lightning, .motion-off .energy .burn-wisp, .motion-off .energy .burn-ember, .motion-off .energy .frost-arcs, .motion-off .energy .stage-tip { animation: none; }
+  .motion-off .energy .fill, .motion-off .energy .fill:after, .motion-off .energy .burn-layer, .motion-off .energy .frost-layer, .motion-off .energy .heat-haze, .motion-off .energy .burn-lightning, .motion-off .energy .frost-arcs { transition: none; }
+  .motion-off .energy.overtime .burn-wisp { opacity: .55; }
+  .motion-off .energy .burn-ember { opacity: 0; }
   @keyframes leadBreathe { from { opacity: .65; } to { opacity: 1; } }
   @keyframes heatSweep { from { background-position: -120px 0, 0 0; } to { background-position: 620px 0, 0 0; } }
-  @keyframes heatLick { from { transform: scaleX(.97) scaleY(.78) skewX(-4deg); opacity: .72; } to { transform: scaleX(1.04) scaleY(1.08) skewX(4deg); opacity: 1; } }
-  @keyframes frostShimmer { 0%, 100% { opacity: .72; } 50% { opacity: .9; } }
+  @keyframes heatWave { 0% { transform: translateY(2px) scaleX(.94) skewX(-2deg); opacity: .3; } 55% { opacity: .72; } 100% { transform: translateY(-7px) scaleX(1.06) skewX(3deg); opacity: 0; } }
+  @keyframes coolSweep { from { background-position: -120px 0; } to { background-position: 620px 0; } }
+  @keyframes warmSweep { from { background-position: -120px 0; } to { background-position: 620px 0; } }
+  @keyframes hotSweep { from { background-position: -120px 0; } to { background-position: 620px 0; } }
+  @keyframes frostArcPulse { 0%, 100% { opacity: .55; } 50% { opacity: .9; } }
+  @keyframes tipPulse { from { transform: scale(.85); } to { transform: scale(1.12); } }
+  @keyframes wispDance { 0%, 100% { transform: scale(.9,.92) skewX(-3deg); opacity: .35; } 50% { transform: scale(1.08,1.12) skewX(4deg); opacity: .8; } }
+  @keyframes burnEmber { 0% { opacity: 0; transform: translateY(3px) scale(.6); } 20% { opacity: .9; } 100% { opacity: 0; transform: translateY(-17px) scale(1.1); } }
+  @keyframes frostShimmer { 0%, 100% { opacity: .78; } 50% { opacity: .95; } }
   @keyframes heatBreathe { from { box-shadow: 0 0 7px rgba(160,70,30,.16); } to { box-shadow: 0 0 16px rgba(200,95,35,.34); } }
   @keyframes frostBreathe { from { box-shadow: 0 0 5px rgba(120,160,170,.08); } to { box-shadow: 0 0 10px rgba(140,180,190,.18); } }
   .progress-foot { margin-top: 8px; color: #8aa6c2; font-size: 11px; }
@@ -239,10 +318,32 @@
   body.theme-cream .energy.cool .fill { background: linear-gradient(90deg, #3f6178, #7ea6ba); }
   body.theme-cream .energy.warm .fill { background: linear-gradient(90deg, #4c7089, #9dbecd); }
   body.theme-cream .energy.hot .fill { background: linear-gradient(90deg, #7a5a3c, #c39a68 60%, #e6c99b); }
-  body.theme-cream .energy.overtime .fill { background: linear-gradient(90deg, #3a1c10, #8a3a1c 36%, #c8793c 70%, #e8b66a); box-shadow: inset 0 1px 0 rgba(255,244,214,.3); }
-  body.theme-cream .energy.paused .fill { background: linear-gradient(90deg, #4a5a60, #7a8f96 58%, #aebcc0); box-shadow: inset 0 1px 0 rgba(240,248,250,.22), inset 0 -1px 0 rgba(0,0,0,.16); }
+  body.theme-cream .energy.overtime .fill {
+    background:
+      linear-gradient(180deg, rgba(28,12,6,.86) 0, rgba(44,20,9,.34) 20%, rgba(255,255,255,0) 45%, rgba(92,42,16,.32) 100%),
+      linear-gradient(90deg, #2b1209, #6e2a12 32%, #b7662e 68%, #e3a960);
+    box-shadow: inset 0 1px 0 rgba(255,236,200,.22);
+  }
+  body.theme-cream .energy.paused .fill {
+    background:
+      linear-gradient(180deg, rgba(30,48,54,.5) 0, rgba(255,255,255,0) 38%, rgba(24,42,48,.36) 100%),
+      linear-gradient(90deg, #3a5058, #64828a 58%, #a9c3c6);
+    box-shadow: inset 0 1px 0 rgba(245,254,255,.62), inset 0 -1px 0 rgba(245,254,255,.36);
+  }
   body.theme-cream .energy.overtime .track { border-color: #9a6a4a; }
   body.theme-cream .energy.paused .track { border-color: #9aa8ac; box-shadow: 0 0 7px rgba(140,160,165,.1); }
+  body.theme-cream .burn-layer {
+    background:
+      linear-gradient(180deg, rgba(90,42,8,.9) 0, rgba(255,190,70,.72) 12%, rgba(255,248,190,.96) 42%, rgba(255,250,205,.96) 58%, rgba(240,170,65,.72) 88%, rgba(90,42,8,.9) 100%),
+      linear-gradient(90deg, #8a3a0c, #e9a12c 42%, #f7d467 78%, #fff4c0);
+  }
+  body.theme-cream .frost-layer {
+    background:
+      linear-gradient(180deg, rgba(30,48,54,.5) 0, rgba(255,255,255,0) 38%, rgba(24,42,48,.36) 100%),
+      linear-gradient(90deg, #3a5058, #64828a 58%, #a9c3c6);
+    box-shadow: inset 0 1px 0 rgba(245,254,255,.62), inset 0 -1px 0 rgba(245,254,255,.36);
+  }
+  body.theme-cream .heat-haze:before, body.theme-cream .heat-haze:after { background: radial-gradient(ellipse at 50% 100%, rgba(210,145,85,.4), rgba(180,110,55,.14) 45%, rgba(150,90,40,0) 72%); }
   body.theme-cream .progress-foot { color: #8b8476; }
   body.theme-cream .rule { background: #e2d7c0; }
   body.theme-cream .stat + .stat { border-left-color: #e2d7c0; }
@@ -307,9 +408,30 @@
   body.theme-glass .status.off { background: #31494f; border-color: #739398; }
   body.theme-glass .status.overtime { background: #684c39; border-color: #bf956e; }
   body.theme-glass .track { background: #152d34; border-color: #658c90; }
-  body.theme-glass .energy.overtime .fill { background: linear-gradient(90deg, #2a1008, #8f2f12 34%, #d97824 68%, #ffc45c); }
-  body.theme-glass .energy.paused .fill { background: linear-gradient(90deg, #1d3a42, #3c6068 58%, #6f9599); box-shadow: inset 0 1px 0 rgba(220,242,244,.16); }
+  body.theme-glass .energy.overtime .fill {
+    background:
+      linear-gradient(180deg, rgba(10,3,2,.9) 0, rgba(20,6,3,.4) 18%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 64%, rgba(70,16,5,.36) 100%),
+      linear-gradient(90deg, #1b0604, #5a1708 30%, #b84614 62%, #ff9a2e 86%, #ffd37a);
+  }
+  body.theme-glass .energy.paused .fill {
+    background:
+      linear-gradient(180deg, rgba(10,28,34,.55) 0, rgba(255,255,255,0) 36%, rgba(8,24,30,.42) 100%),
+      linear-gradient(90deg, #19343c, #32565f 58%, #6b8f94);
+    box-shadow: inset 0 1px 0 rgba(232,251,253,.66), inset 0 -1px 0 rgba(232,251,253,.38);
+  }
   body.theme-glass .energy.paused .track { border-color: #5d8388; box-shadow: 0 0 7px rgba(140,190,195,.12); }
+  body.theme-glass .burn-layer {
+    background:
+      linear-gradient(180deg, rgba(80,30,2,.92) 0, rgba(255,180,36,.72) 12%, rgba(255,252,196,.98) 42%, rgba(255,255,214,.98) 58%, rgba(255,205,55,.76) 88%, rgba(80,30,2,.9) 100%),
+      linear-gradient(90deg, #9c3303, #ffb21e 40%, #ffe04a 76%, #fff8c8);
+  }
+  body.theme-glass .frost-layer {
+    background:
+      linear-gradient(180deg, rgba(10,28,34,.55) 0, rgba(255,255,255,0) 36%, rgba(8,24,30,.42) 100%),
+      linear-gradient(90deg, #19343c, #32565f 58%, #6b8f94);
+    box-shadow: inset 0 1px 0 rgba(232,251,253,.66), inset 0 -1px 0 rgba(232,251,253,.38);
+  }
+  body.theme-glass .heat-haze:before, body.theme-glass .heat-haze:after { background: radial-gradient(ellipse at 50% 100%, rgba(255,195,110,.5), rgba(255,140,55,.18) 45%, rgba(230,120,40,0) 72%); }
   body.theme-glass .rule { background: #628d94; }
   body.theme-glass .stat + .stat { border-left-color: #628d94; }
   body.theme-glass .date, body.theme-glass .caption, body.theme-glass .progress-foot,
@@ -357,12 +479,32 @@
 
     <div class="progress-head"><span>今日活跃工时</span><span class="right" id="progressText">0.00 / 8.00 小时 · 0%</span></div>
     <div class="energy cool paused" id="energyMeter">
-      <div class="track"><div class="fill" id="progressFill"></div></div>
-      <svg class="heat-crown" viewBox="0 0 72 18" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="heatCrownGradient" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ef7128" stop-opacity=".9"/><stop offset=".55" stop-color="#ffba69" stop-opacity=".7"/><stop offset="1" stop-color="#ffe1a1" stop-opacity=".05"/></linearGradient></defs>
-        <path fill="url(#heatCrownGradient)" d="M0 18 C9 16 11 12 15 8 C14 12 18 14 22 12 C27 10 27 5 29 2 C31 8 29 11 35 12 C40 12 41 7 43 5 C45 9 44 12 50 13 C56 13 57 10 60 8 C60 12 64 14 72 16 L72 18 Z"/>
-        <path fill="#ffe4ae" fill-opacity=".38" d="M15 18 C22 16 23 14 26 11 C26 14 28 15 31 14 C35 13 36 10 37 8 C39 13 40 16 47 18 Z"/>
-      </svg>
+      <div class="track"><div class="fill" id="progressFill"><span class="burn-layer"></span><span class="frost-layer"></span><span class="stage-tip"></span></div></div>
+      <span class="heat-haze" aria-hidden="true"></span>
+      <span class="burn-lightning" aria-hidden="true">
+        <svg viewBox="0 0 470 34" preserveAspectRatio="none" focusable="false">
+          <defs>
+            <filter id="boltGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="1.8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <g filter="url(#boltGlow)">
+            <path id="burnEdgeTop" d="M0 13 L470 13" fill="none" stroke="#fff3b0" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+            <path id="burnEdgeBottom" d="M0 26 L470 26" fill="none" stroke="#fff3b0" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+        <i class="burn-wisp w1"></i><i class="burn-wisp w2"></i><i class="burn-wisp w3"></i><i class="burn-wisp w4"></i><i class="burn-wisp w5"></i>
+        <i class="burn-ember e1"></i><i class="burn-ember e2"></i><i class="burn-ember e3"></i><i class="burn-ember e4"></i><i class="burn-ember e5"></i><i class="burn-ember e6"></i><i class="burn-ember e7"></i><i class="burn-ember e8"></i>
+      </span>
+      <span class="frost-arcs" id="frostArcs" aria-hidden="true">
+        <svg viewBox="0 0 470 34" preserveAspectRatio="none" focusable="false">
+          <defs>
+            <filter id="frostGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="1.4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <g filter="url(#frostGlow)">
+            <path d="M0 12 L10 14 L21 10 L33 15 L47 11 L60 16 L73 12 L86 15 L101 10 L115 14 L129 12 L143 16 L158 11 L172 15 L187 12 L201 16 L215 11 L229 14 L244 12 L258 16 L273 12 L287 15 L302 11 L316 14 L331 12 L345 16 L360 12 L374 15 L389 11 L403 14 L418 12 L432 16 L447 12 L460 14 L470 12 M73 12 L77 7 M201 16 L205 21 M345 16 L340 21" fill="none" stroke="#d8f6ff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0 26 L12 24 L25 27 L39 23 L53 26 L67 22 L81 25 L95 27 L109 23 L123 26 L137 24 L151 28 L165 24 L179 27 L193 25 L207 28 L221 24 L235 26 L249 23 L263 27 L277 25 L291 28 L305 24 L319 26 L333 23 L347 27 L361 25 L375 28 L389 24 L403 26 L417 23 L431 27 L445 25 L459 27 L470 25 M151 28 L147 33 M291 28 L296 33 M431 27 L426 32" fill="none" stroke="#d8f6ff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </span>
     </div>
     <div class="progress-foot"><span id="activeText">已记录 00:00:00</span><span class="right" id="endText">计划下班 --:--</span></div>
 
@@ -682,6 +824,7 @@ var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
 var petStarting = false, petRunning = false, petStarted = 0, petLastHeartbeat = 0, petLastState = "";
 var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", petControlPath = "", petNoticePath = "", petEventsPath = "", petPosPath = "";
 var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
+var lastBurnStage = "";
 var petTopMost = true, petPositionX = null, petPositionY = null, petBounds = null, panelAnchor = null;
 var celebrateUntil = 0, milestoneDay = "", milestoneStage = 0;
 var receiptDayAmount = 0, receiptMonthAmount = 0;
@@ -1664,6 +1807,41 @@ function checkMilestone(now, pct) {
   showToast(stage === 3 ? "计划工时已满；超出的时间记在加班。" :
     (stage === 2 ? "接近计划工时了，再坚持一下。" : "今天已经走过一半，稳。"));
 }
+function burnEdgePath(width, baseY, direction, ampScale) {
+  var d = "M0 " + baseY, x = 0;
+  while (x < width) {
+    var step = 6 + Math.random() * 22;
+    var next = Math.min(width, x + step);
+    var big = Math.random() < 0.2 ? 5 + Math.random() * 6 : 0;
+    var amp = (1 + Math.random() * 3.5 + big) * ampScale;
+    var endY = baseY + direction * (Math.random() * 4 - 1) * ampScale;
+    if (Math.random() < 0.22) {
+      var control = x + step * (0.3 + Math.random() * 0.4);
+      d += " Q" + control.toFixed(1) + " " + (baseY + direction * amp).toFixed(1) + "," +
+        next.toFixed(1) + " " + endY.toFixed(1);
+    } else {
+      d += " L" + next.toFixed(1) + " " + endY.toFixed(1);
+    }
+    if (Math.random() < 0.18) {
+      var branchX = next + Math.random() * 8 - 4;
+      var branchY = baseY + direction * (5 + Math.random() * 6) * ampScale;
+      d += " M" + next.toFixed(1) + " " + baseY + " L" + branchX.toFixed(1) + " " + branchY.toFixed(1) +
+        " L" + (branchX + Math.random() * 6 - 3).toFixed(1) + " " + (branchY + direction * 3).toFixed(1);
+    }
+    x = next;
+  }
+  return d;
+}
+function updateBurnEdges(stage) {
+  var motionOn = !bank.settings || bank.settings.motion !== false;
+  if (stage !== "overtime") { lastBurnStage = stage; return; }
+  if (!motionOn && lastBurnStage === "overtime") return;
+  var top = $id("burnEdgeTop"), bottom = $id("burnEdgeBottom");
+  if (!top || !bottom) return;
+  top.setAttribute("d", burnEdgePath(470, 13, -1, 1));
+  bottom.setAttribute("d", burnEdgePath(470, 26, 1, 0.7));
+  lastBurnStage = stage;
+}
 function render(now) {
   var day = currentDay(now), month = bankMonth(bank.days, bankDate(now).substring(0, 7));
   var restDay = bankIsRestDay(day), pct = bankProgressPercent(day);
@@ -1696,6 +1874,9 @@ function render(now) {
   $id("progressFill").style.width = Math.min(100, Math.max(0, barPct)) + "%";
   var stage = (restDay && day.activeSeconds > 0) || pct >= 100 ? "overtime" : (pct >= 90 ? "hot" : (pct >= 60 ? "warm" : "cool"));
   $id("energyMeter").className = "energy " + stage + ((!tracking || !monitorReady || monitorIdle) ? " paused" : "");
+  updateBurnEdges(stage);
+  var frostArcs = $id("frostArcs");
+  if (frostArcs) frostArcs.style.width = Math.max(0, Math.min(100, barPct)) + "%";
   applyTheme();
   text("petSay", petSayText(day));
   if (!restDay && !day.unconfigured) checkMilestone(now, pct);
