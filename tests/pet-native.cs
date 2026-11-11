@@ -63,7 +63,16 @@ public static class PetNativeTests
             throw new Exception("The mini mode shortcut should toggle always and hover without making a hidden card unreachable");
         if (MiniInfoForm.CompactStatus("接近计划工时") != "近目标" || MiniInfoForm.CompactStatus("加班中") != "加班中")
             throw new Exception("Compact mini status labels should fit beside the quick controls");
-        if (MiniInfoForm.HeatStage("active", 40, true) != MiniInfoForm.HeatCool ||
+        if (MiniInfoForm.HeatStage("active", 0, true) != MiniInfoForm.HeatCool ||
+            MiniInfoForm.HeatStage("active", 59, true) != MiniInfoForm.HeatCool ||
+            MiniInfoForm.HeatStage("active", 60, true) != MiniInfoForm.HeatWarm ||
+            MiniInfoForm.HeatStage("active", 89, true) != MiniInfoForm.HeatWarm ||
+            MiniInfoForm.HeatStage("active", 90, true) != MiniInfoForm.HeatHot ||
+            MiniInfoForm.HeatStage("active", 99, true) != MiniInfoForm.HeatHot ||
+            MiniInfoForm.HeatStage("paused", 0, false) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("idle", 50, true) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("waiting", 100, true) != MiniInfoForm.HeatFrozen ||
+            MiniInfoForm.HeatStage("active", 40, true) != MiniInfoForm.HeatCool ||
             MiniInfoForm.HeatStage("active", 65, true) != MiniInfoForm.HeatWarm ||
             MiniInfoForm.HeatStage("urgent", 92, true) != MiniInfoForm.HeatHot ||
             MiniInfoForm.HeatStage("overtime", 100, true) != MiniInfoForm.HeatBurn ||
@@ -140,6 +149,8 @@ public static class PetNativeTests
             WorkBankPet.NoticeMessage("attention") != "请打开工时卡片查看提示。")
             throw new Exception("Goal notices should pass through while legacy codes keep their messages");
         TestProgressEffects();
+        TestCardAtmospheres();
+        TestDetailTextFit();
         TestTray(directory, Path.GetDirectoryName(args[1]));
         Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card controls, session events and click routing passed.");
         Console.WriteLine("Tray visibility, restore, external window changes and exit routing passed.");
@@ -255,6 +266,78 @@ public static class PetNativeTests
                 flamePixels == 0 || flameChange == 0 || stagePixels == 0 || stageChange == 0 || frostArcPixels == 0 ||
                 coolPixels == 0 || coolChange == 0 || hotPixels == 0 || hotChange == 0)
                 throw new Exception("Stage sheens, lightning, frost arcs, cool motes and hot embers should all be visible");
+        }
+    }
+
+    private static void TestCardAtmospheres()
+    {
+        MethodInfo atmosphere = typeof(MiniInfoForm).GetMethod("DrawCardAtmosphere", BindingFlags.Static | BindingFlags.NonPublic);
+        if (atmosphere == null) throw new Exception("Missing mini card atmosphere rendering");
+        Rectangle card = new Rectangle(0, 0, 222, 84);
+        Rectangle bar = new Rectangle(12, 53, 198, 9);
+        string[] themes = { "deep", "cream", "glass" };
+        int[] stages = { MiniInfoForm.HeatCool, MiniInfoForm.HeatWarm, MiniInfoForm.HeatHot,
+            MiniInfoForm.HeatBurn, MiniInfoForm.HeatFrozen };
+        foreach (string theme in themes)
+            foreach (int stage in stages)
+            {
+                using (Bitmap first = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                using (Bitmap later = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                using (Bitmap still = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                using (Bitmap stillLater = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                using (Bitmap half = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                using (Bitmap transparent = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+                {
+                    using (Graphics g = Graphics.FromImage(first)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, true, 0.0, 1f });
+                    using (Graphics g = Graphics.FromImage(later)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, true, 1.75, 1f });
+                    using (Graphics g = Graphics.FromImage(still)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, false, 0.0, 1f });
+                    using (Graphics g = Graphics.FromImage(stillLater)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, false, 8.0, 1f });
+                    using (Graphics g = Graphics.FromImage(half)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, false, 0.0, 0.5f });
+                    using (Graphics g = Graphics.FromImage(transparent)) atmosphere.Invoke(null, new object[] { g, card, stage, theme, true, 0.0, 0f });
+                    int outsideBar = 0, changed = 0;
+                    long fullAlpha = 0, halfAlpha = 0;
+                    for (int y = 0; y < first.Height; y++)
+                        for (int x = 0; x < first.Width; x++)
+                        {
+                            Color a = first.GetPixel(x, y), b = later.GetPixel(x, y);
+                            Color fixedPixel = still.GetPixel(x, y), fixedLater = stillLater.GetPixel(x, y);
+                            if (a.A > 0 && !bar.Contains(x, y)) outsideBar++;
+                            if (a.ToArgb() != b.ToArgb()) changed++;
+                            if (fixedPixel.ToArgb() != fixedLater.ToArgb())
+                                throw new Exception("Disabled motion must keep the card atmosphere static");
+                            if (transparent.GetPixel(x, y).A != 0)
+                                throw new Exception("A fully faded atmosphere must be transparent");
+                            if (!card.Contains(x, y) && a.A != 0)
+                                throw new Exception("Card atmosphere must stay inside the card");
+                            fullAlpha += fixedPixel.A;
+                            halfAlpha += half.GetPixel(x, y).A;
+                        }
+                    if (outsideBar < 500 || changed == 0 || halfAlpha <= 0 || halfAlpha >= fullAlpha)
+                        throw new Exception("Each stage must animate across the card and support gradual transitions");
+                }
+            }
+    }
+
+    private static void TestDetailTextFit()
+    {
+        MethodInfo fittedSize = typeof(MiniInfoForm).GetMethod("FittedDetailSize", BindingFlags.Static | BindingFlags.NonPublic);
+        if (fittedSize == null) throw new Exception("Missing mini card detail sizing");
+        string[] lines = { "上班中 · 2.40 / 8.00 小时 · 30%", "加班中 · 8.96 / 8.00 小时 · 100%",
+            "未开工 · 0.00 / 8.00 小时 · 0%", "加班中 · 活跃 10.00 小时 · 100%" };
+        using (Bitmap bitmap = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Graphics graphics = Graphics.FromImage(bitmap))
+        using (Font font = new Font("Microsoft YaHei", 7.5f, FontStyle.Regular, GraphicsUnit.Point))
+        {
+            float shortSize = (float)fittedSize.Invoke(null, new object[] { graphics, "0%", font, 198f });
+            if (shortSize != font.Size) throw new Exception("Short status text should keep its normal size");
+            foreach (string line in lines)
+            {
+                float size = (float)fittedSize.Invoke(null, new object[] { graphics, line, font, 198f });
+                if (size < 5.5f || size > font.Size) throw new Exception("Invalid fitted status font size");
+                using (Font fitted = new Font(font.FontFamily, size, font.Style, font.Unit))
+                    if (graphics.MeasureString(line, fitted).Width > 199f)
+                        throw new Exception("Status and percentage must fit inside the mini card");
+            }
         }
     }
 

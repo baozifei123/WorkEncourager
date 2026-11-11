@@ -1088,6 +1088,13 @@ public sealed class MiniInfoForm : Form
         }
     }
 
+    private static float FittedDetailSize(Graphics graphics, string value, Font font, float maxWidth)
+    {
+        float width = graphics.MeasureString(value, font).Width;
+        if (width <= maxWidth || width <= 0) return font.Size;
+        return Math.Max(5.5f, font.Size * (maxWidth - 1f) / width);
+    }
+
     private void Redraw()
     {
         IntPtr window = Handle;
@@ -1109,12 +1116,22 @@ public sealed class MiniInfoForm : Form
             border = Hex(cream ? "#7FA6AD" : "#A8DCE8");
             accent = Hex(cream ? "#4F7F8A" : "#B9EDF5");
         }
+        else if (heatStage == HeatWarm || heatStage == HeatHot)
+        {
+            border = Hex(cream ? (heatStage == HeatHot ? "#C57B38" : "#B88C66") :
+                (heatStage == HeatHot ? "#E08B3B" : "#A8744C"));
+            accent = Hex(cream ? "#99602B" : "#E8AE73");
+        }
         else if (heatStage == HeatCool)
         {
             border = Hex(cream ? "#6F93AC" : "#4C7FA8");
             accent = Hex(cream ? "#3C6E96" : "#8FD0FF");
         }
 
+        double transition = motion && heatChanged != DateTime.MinValue
+            ? Math.Max(0.0, Math.Min(1.0, (DateTime.UtcNow - heatChanged).TotalMilliseconds / 360.0))
+            : 1.0;
+        double ambientSeconds = motion ? AnimationSeconds() : 0;
         using (Bitmap bitmap = new Bitmap(CardWidth, CardHeight, PixelFormat.Format32bppPArgb))
         using (Graphics graphics = Graphics.FromImage(bitmap))
         {
@@ -1128,20 +1145,9 @@ public sealed class MiniInfoForm : Form
             using (GraphicsPath path = RoundedRectangle(card, 12))
             {
                 using (SolidBrush brush = new SolidBrush(fill)) graphics.FillPath(brush, path);
-                if (heatStage == HeatBurn)
-                {
-                    using (SolidBrush tint = new SolidBrush(Color.FromArgb(36, 255, 120, 30))) graphics.FillPath(tint, path);
-                    using (Pen glow = new Pen(Color.FromArgb(95, 255, 150, 40), 3f)) graphics.DrawPath(glow, path);
-                }
-                else if (heatStage == HeatFrozen)
-                {
-                    using (SolidBrush tint = new SolidBrush(Color.FromArgb(30, 150, 220, 240))) graphics.FillPath(tint, path);
-                    using (Pen glow = new Pen(Color.FromArgb(80, 160, 220, 235), 3f)) graphics.DrawPath(glow, path);
-                }
-                else if (heatStage == HeatCool)
-                {
-                    using (Pen glow = new Pen(Color.FromArgb(45, 120, 200, 255), 2f)) graphics.DrawPath(glow, path);
-                }
+                if (previousHeatStage != heatStage && transition < 1.0)
+                    DrawCardAtmosphere(graphics, card, previousHeatStage, themeName, motion, ambientSeconds, (float)(1.0 - transition));
+                DrawCardAtmosphere(graphics, card, heatStage, themeName, motion, ambientSeconds, (float)transition);
                 using (Pen pen = new Pen(border, heatStage == HeatBurn || heatStage == HeatFrozen ? 1.6f : 1f)) graphics.DrawPath(pen, path);
             }
             using (SolidBrush brush = new SolidBrush(label))
@@ -1152,9 +1158,6 @@ public sealed class MiniInfoForm : Form
             DrawActionButton(graphics, TrackingButtonBounds, tracking ? "暂停" : "开始", accent);
             using (SolidBrush brush = new SolidBrush(ink))
                 graphics.DrawString(amount, amountFont, brush, 10, 22);
-            double transition = motion && heatChanged != DateTime.MinValue
-                ? Math.Min(1.0, (DateTime.UtcNow - heatChanged).TotalMilliseconds / 360.0)
-                : 1.0;
             int barWidth = card.Width - 24;
             Rectangle bar = new Rectangle(12, 53, barWidth, 9);
             using (GraphicsPath trackPath = RoundedRectangle(bar, 4))
@@ -1264,8 +1267,14 @@ public sealed class MiniInfoForm : Form
                     DrawBurnEmbers(graphics, fx, seconds, themeName, waveOpacity);
                 }
             }
+            string detailLine = status + " · " + detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%";
+            float detailSize = FittedDetailSize(graphics, detailLine, detailFont, card.Width - 24);
             using (SolidBrush brush = new SolidBrush(muted))
-                graphics.DrawString(status + " · " + detail + (String.IsNullOrEmpty(detail) ? "" : " · ") + percent + "%", detailFont, brush, 12, 65);
+            {
+                if (detailSize >= detailFont.Size) graphics.DrawString(detailLine, detailFont, brush, 12, 65);
+                else using (Font fitted = new Font(detailFont.FontFamily, detailSize, detailFont.Style, detailFont.Unit))
+                    graphics.DrawString(detailLine, fitted, brush, 12, 65);
+            }
 
             IntPtr screen = GetDC(IntPtr.Zero);
             IntPtr memory = CreateCompatibleDC(screen);
@@ -1396,6 +1405,112 @@ public sealed class MiniInfoForm : Form
                 glow.SurroundColors = new[] { Color.FromArgb(0, color.R, color.G, color.B) };
                 graphics.FillPath(glow, path);
             }
+        }
+    }
+
+    private static void DrawCardAtmosphere(Graphics graphics, Rectangle card, int stage, string theme,
+        bool motionEnabled, double seconds, float opacity)
+    {
+        if (opacity <= 0.01f) return;
+        seconds = motionEnabled ? seconds : 0;
+        double period = stage == HeatBurn ? 2.8 : (stage == HeatHot ? 3.8 : 7.0);
+        float pulse = motionEnabled ? 0.5f + 0.5f * (float)Math.Sin(seconds * Math.PI * 2 / period) : 0.5f;
+        bool cream = theme == "cream";
+        Color color = stage == HeatFrozen ? Color.FromArgb(cream ? 122 : 155, 213, 230) :
+            stage == HeatBurn ? Color.FromArgb(255, 145, 35) :
+            stage == HeatHot ? Color.FromArgb(255, 155, 55) :
+            stage == HeatWarm ? Color.FromArgb(235, 165, 100) : Color.FromArgb(105, 195, 245);
+        int tint = stage == HeatFrozen ? 30 : (stage == HeatBurn ? 34 :
+            (stage == HeatHot ? 20 : (stage == HeatWarm ? 13 : 8)));
+        int glow = stage == HeatFrozen ? 74 : (stage == HeatBurn ? 98 :
+            (stage == HeatHot ? 72 : (stage == HeatWarm ? 48 : 40)));
+        GraphicsState saved = graphics.Save();
+        using (GraphicsPath path = RoundedRectangle(card, 12))
+        {
+            graphics.SetClip(path);
+            using (SolidBrush brush = new SolidBrush(Color.FromArgb((int)(tint * opacity), color)))
+                graphics.FillPath(brush, path);
+            DrawRadialGlow(graphics, new Rectangle(card.Left - 32, card.Top - 31, 115, 80),
+                (int)(glow * (0.55f + 0.25f * pulse) * opacity), color);
+            DrawRadialGlow(graphics, new Rectangle(card.Right - 95, card.Bottom - 68, 130, 86),
+                (int)(glow * (0.65f + 0.35f * pulse) * opacity), color);
+            using (Pen edge = new Pen(Color.FromArgb((int)(glow * opacity), color), stage == HeatBurn ? 3f : 2.5f))
+                graphics.DrawPath(edge, path);
+            if (stage == HeatFrozen) DrawCardFrost(graphics, card, opacity);
+            if (stage == HeatHot || stage == HeatBurn)
+                DrawCardArcs(graphics, card, stage, seconds, opacity);
+            if (motionEnabled && stage != HeatFrozen && stage != HeatWarm)
+                DrawCardMotes(graphics, card, stage, seconds, opacity);
+        }
+        graphics.Restore(saved);
+    }
+
+    private static void DrawCardFrost(Graphics graphics, Rectangle card, float opacity)
+    {
+        using (Pen line = new Pen(Color.FromArgb((int)(155 * opacity), 220, 249, 255), 1f))
+        using (Pen glow = new Pen(Color.FromArgb((int)(42 * opacity), 170, 225, 245), 3f))
+        {
+            PointF[] top = {
+                new PointF(card.Left + 3, card.Top + 19), new PointF(card.Left + 8, card.Top + 15),
+                new PointF(card.Left + 7, card.Top + 10), new PointF(card.Left + 15, card.Top + 7),
+                new PointF(card.Left + 19, card.Top + 2)
+            };
+            PointF[] bottom = {
+                new PointF(card.Right - 2, card.Bottom - 20), new PointF(card.Right - 5, card.Bottom - 16),
+                new PointF(card.Right - 3, card.Bottom - 11), new PointF(card.Right - 8, card.Bottom - 7),
+                new PointF(card.Right - 8, card.Bottom - 2)
+            };
+            graphics.DrawLines(glow, top);
+            graphics.DrawLines(line, top);
+            graphics.DrawLine(line, top[2], new PointF(card.Left + 14, card.Top + 12));
+            graphics.DrawLines(glow, bottom);
+            graphics.DrawLines(line, bottom);
+            graphics.DrawLine(line, bottom[2], new PointF(card.Right - 9, card.Bottom - 14));
+        }
+    }
+
+    private static void DrawCardArcs(Graphics graphics, Rectangle card, int stage, double seconds, float opacity)
+    {
+        float movement = (float)Math.Sin(seconds * 2.4);
+        float flicker = 0.65f + 0.35f * (float)Math.Abs(Math.Sin(seconds * 2.1 + 0.4));
+        int alpha = (int)((stage == HeatBurn ? 185 : 95) * opacity * flicker);
+        using (Pen core = new Pen(Color.FromArgb(alpha, 255, 235, 170), 1f))
+        using (Pen glow = new Pen(Color.FromArgb(alpha / 3, 255, 167, 65), 3f))
+        {
+            PointF[] top = {
+                new PointF(card.Left + 20, card.Top + 3), new PointF(card.Left + 38, card.Top + 3 + movement),
+                new PointF(card.Left + 46, card.Top + 5 - movement), new PointF(card.Left + 63, card.Top + 2),
+                new PointF(card.Left + 74, card.Top + 4 + movement), new PointF(card.Left + 91, card.Top + 3)
+            };
+            PointF[] bottom = {
+                new PointF(card.Right - 104, card.Bottom - 3), new PointF(card.Right - 87, card.Bottom - 4 - movement),
+                new PointF(card.Right - 79, card.Bottom - 2 + movement), new PointF(card.Right - 61, card.Bottom - 5),
+                new PointF(card.Right - 47, card.Bottom - 3 + movement), new PointF(card.Right - 27, card.Bottom - 3)
+            };
+            graphics.DrawLines(glow, top);
+            graphics.DrawLines(core, top);
+            graphics.DrawLine(core, top[2], new PointF(top[2].X + 3, top[2].Y + 3));
+            graphics.DrawLines(glow, bottom);
+            graphics.DrawLines(core, bottom);
+            graphics.DrawLine(core, bottom[3], new PointF(bottom[3].X - 4, bottom[3].Y - 3));
+        }
+    }
+
+    private static void DrawCardMotes(Graphics graphics, Rectangle card, int stage, double seconds, float opacity)
+    {
+        bool cool = stage == HeatCool;
+        Color color = cool ? Color.FromArgb(195, 239, 255) : Color.FromArgb(255, 222, 145);
+        float[] positions = { 0.08f, 0.28f, 0.56f, 0.83f };
+        for (int i = 0; i < positions.Length; i++)
+        {
+            double phase = seconds * (cool ? 0.55 : 1.1) + i * 2.15;
+            float x = card.Left + 10 + (card.Width - 20) * positions[i] + 3f * (float)Math.Sin(phase);
+            float y = i % 2 == 0 ? card.Top + 5 : card.Bottom - 5;
+            int alpha = (int)((cool ? 95 : (stage == HeatBurn ? 165 : 115)) *
+                (0.55 + 0.45 * Math.Sin(phase)) * opacity);
+            DrawRadialGlow(graphics, new Rectangle((int)x - 4, (int)y - 4, 9, 9), alpha / 2, color);
+            using (SolidBrush dot = new SolidBrush(Color.FromArgb(alpha, color)))
+                graphics.FillEllipse(dot, x, y, 2f, 2f);
         }
     }
 
