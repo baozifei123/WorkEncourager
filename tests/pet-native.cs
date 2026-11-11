@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Forms;
 
 public static class PetNativeTests
@@ -129,6 +130,15 @@ public static class PetNativeTests
         if (WorkBankPet.SessionChangeCommand(7) != "session|locked" || WorkBankPet.SessionChangeCommand(8) != "session|unlocked" ||
             WorkBankPet.SessionChangeCommand(5) != null)
             throw new Exception("Only current-session lock and unlock events should be forwarded");
+        string noticeFile = Path.Combine(directory, "unicode.notice");
+        File.WriteAllText(noticeFile, "goal|一天房租，赚到了 ✓", Encoding.Unicode);
+        if (WorkBankPet.ReadNotice(noticeFile) != "goal|一天房租，赚到了 ✓")
+            throw new Exception("Unicode goal notices should decode correctly");
+        if (WorkBankPet.NoticeMessage("goal|一天房租，赚到了 ✓") != "一天房租，赚到了 ✓" ||
+            WorkBankPet.NoticeMessage("hour") != "又走过一个整点，活跃工时已记账。" ||
+            WorkBankPet.NoticeMessage("rest") != "已累计记录一段时间，喝水休息一下吧；右键菜单可稍后提醒。" ||
+            WorkBankPet.NoticeMessage("attention") != "请打开工时卡片查看提示。")
+            throw new Exception("Goal notices should pass through while legacy codes keep their messages");
         TestProgressEffects();
         TestTray(directory, Path.GetDirectoryName(args[1]));
         Console.WriteLine("Custom frame selection, aspect ratio, transparency, fallback, mini card controls, session events and click routing passed.");
@@ -145,8 +155,10 @@ public static class PetNativeTests
         MethodInfo embers = typeof(MiniInfoForm).GetMethod("DrawBurnEmbers", BindingFlags.Static | BindingFlags.NonPublic);
         MethodInfo sheen = typeof(MiniInfoForm).GetMethod("DrawStageSheen", BindingFlags.Static | BindingFlags.NonPublic);
         MethodInfo frostArcs = typeof(MiniInfoForm).GetMethod("DrawFrostArcs", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo coolMotes = typeof(MiniInfoForm).GetMethod("DrawCoolMotes", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo hotEmbers = typeof(MiniInfoForm).GetMethod("DrawHotEmbers", BindingFlags.Static | BindingFlags.NonPublic);
         if (waves == null || facets == null || cracks == null || crown == null || embers == null ||
-            sheen == null || frostArcs == null)
+            sheen == null || frostArcs == null || coolMotes == null || hotEmbers == null)
             throw new Exception("Missing mini card heat or frost rendering");
         Rectangle fill = new Rectangle(12, 55, 198, 9);
         using (Bitmap first = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
@@ -158,6 +170,10 @@ public static class PetNativeTests
         using (Bitmap stageA = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         using (Bitmap stageB = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         using (Bitmap frostArcImage = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap coolMoteImage = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap coolMoteLater = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap hotEmberImage = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
+        using (Bitmap hotEmberLater = new Bitmap(224, 88, PixelFormat.Format32bppArgb))
         {
             using (Graphics graphics = Graphics.FromImage(first)) waves.Invoke(null, new object[] { graphics, fill, 0.0, "deep", 1f });
             using (Graphics graphics = Graphics.FromImage(second)) waves.Invoke(null, new object[] { graphics, fill, 0.45, "deep", 1f });
@@ -193,8 +209,23 @@ public static class PetNativeTests
             }
             using (Graphics graphics = Graphics.FromImage(frostArcImage))
                 frostArcs.Invoke(null, new object[] { graphics, fill, 0.0, 1f });
+            using (Graphics graphics = Graphics.FromImage(coolMoteImage))
+            {
+                graphics.SetClip(fill);
+                coolMotes.Invoke(null, new object[] { graphics, fill, 0.0, "deep" });
+            }
+            using (Graphics graphics = Graphics.FromImage(coolMoteLater))
+            {
+                graphics.SetClip(fill);
+                coolMotes.Invoke(null, new object[] { graphics, fill, 2.4, "deep" });
+            }
+            using (Graphics graphics = Graphics.FromImage(hotEmberImage))
+                hotEmbers.Invoke(null, new object[] { graphics, fill, 0.0, "deep", 1f });
+            using (Graphics graphics = Graphics.FromImage(hotEmberLater))
+                hotEmbers.Invoke(null, new object[] { graphics, fill, 0.9, "deep", 1f });
             int wavePixels = 0, differentPixels = 0, icePixels = 0, crackPixels = 0, flamePixels = 0, flameChange = 0;
             int stagePixels = 0, stageChange = 0, frostArcPixels = 0;
+            int coolPixels = 0, coolChange = 0, hotPixels = 0, hotChange = 0;
             for (int y = 0; y < first.Height; y++)
                 for (int x = 0; x < first.Width; x++)
                 {
@@ -215,10 +246,15 @@ public static class PetNativeTests
                     if (stageA.GetPixel(x, y).A > 0) stagePixels++;
                     if (stageA.GetPixel(x, y).ToArgb() != stageB.GetPixel(x, y).ToArgb()) stageChange++;
                     if (frostArcImage.GetPixel(x, y).A > 0) frostArcPixels++;
+                    if (coolMoteImage.GetPixel(x, y).A > 0) coolPixels++;
+                    if (coolMoteImage.GetPixel(x, y).ToArgb() != coolMoteLater.GetPixel(x, y).ToArgb()) coolChange++;
+                    if (hotEmberImage.GetPixel(x, y).A > 0) hotPixels++;
+                    if (hotEmberImage.GetPixel(x, y).ToArgb() != hotEmberLater.GetPixel(x, y).ToArgb()) hotChange++;
                 }
             if (wavePixels == 0 || differentPixels == 0 || icePixels == 0 || crackPixels == 0 ||
-                flamePixels == 0 || flameChange == 0 || stagePixels == 0 || stageChange == 0 || frostArcPixels == 0)
-                throw new Exception("Stage sheens, lightning, frost arcs and frost details should all be visible");
+                flamePixels == 0 || flameChange == 0 || stagePixels == 0 || stageChange == 0 || frostArcPixels == 0 ||
+                coolPixels == 0 || coolChange == 0 || hotPixels == 0 || hotChange == 0)
+                throw new Exception("Stage sheens, lightning, frost arcs, cool motes and hot embers should all be visible");
         }
     }
 
@@ -315,4 +351,5 @@ public static class PetNativeTests
             }
         }
     }
+
 }

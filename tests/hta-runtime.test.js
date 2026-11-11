@@ -656,6 +656,9 @@ test('energy indicator warms with progress and pauses when tracking is idle', ()
   assert.ok(source.includes('frost-arcs') && source.includes('frostArcPulse') && source.includes('coolSweep') &&
     source.includes('warmSweep') && source.includes('hotSweep') && source.includes('stage-tip') && source.includes('tipPulse'),
     'lower stages should have gentle moving sheens and frozen should have frost arcs');
+  assert.ok(source.includes('cool-layer') && source.includes('coolMote') && source.includes('stage-glow') &&
+    source.includes('stage-embers') && source.includes('stageEmber'),
+    'the cool stage should have drifting motes and the hot stage should have rising embers');
   assert.match(source, /\.motion-off \.energy \.fill:after[^\{]*\{ animation: none; \}/,
     'turning motion off must override the active heat and frost animations');
   assert.ok(!source.includes('heat-crown') && !source.includes('heatLick') && !source.includes('flame-icon') &&
@@ -1583,6 +1586,54 @@ test('milestones announce once at half, near-full and full', () => {
   app.bank.days[today].activeSeconds = 8.1 * 3600;
   app.render(Date.now());
   assert.match(app.$id('toast').innerText, /计划工时已满/);
+});
+
+test('pet announces each goal once as earnings cross it', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.petRunning = true;
+  app.petNoticePath = 'C:\\Temp\\goal.notice';
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = sampleDay(460);
+  app.render(Date.now());
+  assert.equal(env.files[app.petNoticePath], undefined, 'opening the app must not replay passed goals');
+  app.bank.days[today].activeSeconds = 480;
+  app.render(Date.now());
+  assert.equal(env.files[app.petNoticePath], 'goal|一支好写的签字笔，赚到了 ✓');
+  delete env.files[app.petNoticePath];
+  app.bank.days[today].activeSeconds = 500;
+  app.render(Date.now());
+  assert.equal(env.files[app.petNoticePath], undefined, 'the same goal must not announce twice in one day');
+});
+
+test('goal announcements skip ahead to the highest newly reached target', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.petRunning = true;
+  app.petNoticePath = 'C:\\Temp\\goal.notice';
+  const today = app.bankDate(Date.now());
+  app.bank.days[today] = sampleDay(460);
+  app.render(Date.now());
+  app.bank.days[today].activeSeconds = 640;
+  app.render(Date.now());
+  assert.equal(env.files[app.petNoticePath], 'goal|今天的地铁，赚到了 ✓');
+});
+
+test('the card hide button leaves only the pet on screen', () => {
+  assert.match(source, /id="btnHide"/);
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.petRunning = true;
+  app.petControlPath = 'C:\\Temp\\pet.control';
+  app.petPanelVisible = true;
+  env.elements.btnHide.onclick();
+  assert.equal(env.files[app.petControlPath], 'hide');
+  assert.equal(app.petPanelVisible, false);
+  app.petRunning = false;
+  env.elements.btnHide.onclick();
+  assert.match(app.$id('toast').innerText, /小鲸桌宠未在运行/);
 });
 
 test('signing off celebrates on the pet before settling to paused', () => {

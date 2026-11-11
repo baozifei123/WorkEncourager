@@ -26,6 +26,10 @@ public sealed class WorkBankPet : Form
     private const int WS_MINIMIZEBOX = 0x00020000;
     private const int ULW_ALPHA = 2;
     private const byte AC_SRC_ALPHA = 1;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint { public int X; public int Y; public NativePoint(int x, int y) { X = x; Y = y; } }
@@ -50,6 +54,8 @@ public sealed class WorkBankPet : Form
     private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentProcessId();
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("kernel32.dll")]
@@ -151,6 +157,8 @@ public sealed class WorkBankPet : Form
     private Point dragWindow;
     private DateTime lastHeartbeat = DateTime.MinValue;
     private DateTime pendingShow = DateTime.MinValue;
+    private DateTime lastTopMostCheck = DateTime.MinValue;
+    private DateTime topMostPausedUntil = DateTime.MinValue;
     private string lastBounds = "";
     private int tickCount;
 
@@ -440,10 +448,10 @@ public sealed class WorkBankPet : Form
             }
             if (File.Exists(noticePath))
             {
-                string notice = File.ReadAllText(noticePath, Encoding.ASCII).Trim();
+                string notice = ReadNotice(noticePath);
                 File.Delete(noticePath);
-                string message = notice == "hour" ? "又走过一个整点，活跃工时已记账。" :
-                    (notice == "rest" ? "已累计记录一段时间，喝水休息一下吧；右键菜单可稍后提醒。" : "请打开工时卡片查看提示。");
+                string message = NoticeMessage(notice);
+                topMostPausedUntil = DateTime.UtcNow.AddMilliseconds(5500);
                 tooltip.Show(message, this, new Point(Width / 2, 12), 5000);
             }
             WritePosition(false);
@@ -467,9 +475,29 @@ public sealed class WorkBankPet : Form
                 shownFrame = wanted;
             }
             UpdateMini();
+            EnsureOnTop();
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    internal void EnsureOnTop()
+    {
+        if (!TopMost || !Visible) return;
+        DateTime now = DateTime.UtcNow;
+        if (now < topMostPausedUntil) return;
+        if ((now - lastTopMostCheck).TotalMilliseconds < 1000) return;
+        lastTopMostCheck = now;
+        IntPtr foreground = GetForegroundWindow();
+        if (foreground != IntPtr.Zero)
+        {
+            uint process;
+            GetWindowThreadProcessId(foreground, out process);
+            if (process == GetCurrentProcessId()) return;
+        }
+        SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        if (mini.Visible && mini.TopMost)
+            SetWindowPos(mini.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     public static string SelectFrame(string state, bool panelOpen, int percent)
@@ -487,6 +515,18 @@ public sealed class WorkBankPet : Form
     {
         return motion && elapsedMilliseconds >= 0 && elapsedMilliseconds < 4000 &&
             (int)(elapsedMilliseconds / 400) % 2 == 1;
+    }
+
+    public static string ReadNotice(string path)
+    {
+        return File.ReadAllText(path, Encoding.Unicode).Trim();
+    }
+
+    public static string NoticeMessage(string notice)
+    {
+        return notice.StartsWith("goal|", StringComparison.Ordinal) ? notice.Substring(5) :
+            (notice == "hour" ? "又走过一个整点，活跃工时已记账。" :
+            (notice == "rest" ? "已累计记录一段时间，喝水休息一下吧；右键菜单可稍后提醒。" : "请打开工时卡片查看提示。"));
     }
 
     private void UpdateMini()
@@ -1059,6 +1099,21 @@ public sealed class MiniInfoForm : Form
         Color muted = Hex(glass ? "#D3EAE9" : (cream ? "#7D786B" : "#9FBCD8"));
         Color barBackground = Hex(glass ? "#152D34" : (cream ? "#E9E1CF" : "#0A1626"));
         Color accent = Hex(glass ? "#B9EDED" : (cream ? "#2C6FA8" : "#7FC4FF"));
+        if (heatStage == HeatBurn)
+        {
+            border = Hex(cream ? "#D98A2E" : "#FFA53A");
+            accent = Hex(cream ? "#C97A1E" : "#FFC061");
+        }
+        else if (heatStage == HeatFrozen)
+        {
+            border = Hex(cream ? "#7FA6AD" : "#A8DCE8");
+            accent = Hex(cream ? "#4F7F8A" : "#B9EDF5");
+        }
+        else if (heatStage == HeatCool)
+        {
+            border = Hex(cream ? "#6F93AC" : "#4C7FA8");
+            accent = Hex(cream ? "#3C6E96" : "#8FD0FF");
+        }
 
         using (Bitmap bitmap = new Bitmap(CardWidth, CardHeight, PixelFormat.Format32bppPArgb))
         using (Graphics graphics = Graphics.FromImage(bitmap))
@@ -1073,7 +1128,21 @@ public sealed class MiniInfoForm : Form
             using (GraphicsPath path = RoundedRectangle(card, 12))
             {
                 using (SolidBrush brush = new SolidBrush(fill)) graphics.FillPath(brush, path);
-                using (Pen pen = new Pen(border, 1f)) graphics.DrawPath(pen, path);
+                if (heatStage == HeatBurn)
+                {
+                    using (SolidBrush tint = new SolidBrush(Color.FromArgb(36, 255, 120, 30))) graphics.FillPath(tint, path);
+                    using (Pen glow = new Pen(Color.FromArgb(95, 255, 150, 40), 3f)) graphics.DrawPath(glow, path);
+                }
+                else if (heatStage == HeatFrozen)
+                {
+                    using (SolidBrush tint = new SolidBrush(Color.FromArgb(30, 150, 220, 240))) graphics.FillPath(tint, path);
+                    using (Pen glow = new Pen(Color.FromArgb(80, 160, 220, 235), 3f)) graphics.DrawPath(glow, path);
+                }
+                else if (heatStage == HeatCool)
+                {
+                    using (Pen glow = new Pen(Color.FromArgb(45, 120, 200, 255), 2f)) graphics.DrawPath(glow, path);
+                }
+                using (Pen pen = new Pen(border, heatStage == HeatBurn || heatStage == HeatFrozen ? 1.6f : 1f)) graphics.DrawPath(pen, path);
             }
             using (SolidBrush brush = new SolidBrush(label))
             {
@@ -1100,6 +1169,7 @@ public sealed class MiniInfoForm : Form
                 {
                     if (heatStage == HeatBurn)
                     {
+                        DrawBurnHalo(graphics, fillRect, seconds, themeName);
                         DrawHeatLight(graphics, fillRect, seconds, themeName);
                         using (LinearGradientBrush brush = BurnBrush(fillRect, themeName))
                             graphics.FillPath(brush, fillPath);
@@ -1113,6 +1183,7 @@ public sealed class MiniInfoForm : Form
                     }
                     else if (heatStage == HeatFrozen)
                     {
+                        DrawFrostHalo(graphics, fillRect, seconds, themeName);
                         DrawColdLight(graphics, fillRect, seconds, themeName);
                         using (LinearGradientBrush brush = FrostBrush(fillRect, themeName))
                             graphics.FillPath(brush, fillPath);
@@ -1127,15 +1198,17 @@ public sealed class MiniInfoForm : Form
                     }
                     else if (heatStage == HeatHot)
                     {
-                        using (LinearGradientBrush brush = new LinearGradientBrush(fillRect,
-                            Hex(cream ? "#7A5A3C" : "#6D4A2F"), Hex(cream ? "#E6C99B" : "#E8C08A"),
-                            LinearGradientMode.Horizontal))
+                        using (LinearGradientBrush brush = HotBrush(fillRect, themeName))
                             graphics.FillPath(brush, fillPath);
                         GraphicsState clip = graphics.Save();
                         graphics.SetClip(fillPath);
                         DrawStageSheen(graphics, fillRect, seconds, themeName, heatStage);
+                        DrawLeadingEdge(graphics, fillRect, seconds, true, themeName);
                         graphics.Restore(clip);
+                        DrawHotHalo(graphics, fillRect, seconds, themeName);
                         DrawStageTip(graphics, fillRect, themeName, heatStage);
+                        DrawHeatWaves(graphics, fillRect, seconds, themeName, 0.48f);
+                        DrawHotEmbers(graphics, fillRect, seconds, themeName, 0.8f);
                     }
                     else
                     {
@@ -1143,9 +1216,25 @@ public sealed class MiniInfoForm : Form
                             graphics.FillPath(brush, fillPath);
                         GraphicsState clip = graphics.Save();
                         graphics.SetClip(fillPath);
+                        if (heatStage == HeatCool)
+                        {
+                            DrawCoolGlow(graphics, fillRect, seconds, themeName);
+                            DrawCoolMotes(graphics, fillRect, seconds, themeName);
+                        }
                         DrawStageSheen(graphics, fillRect, seconds, themeName, heatStage);
+                        if (heatStage == HeatCool) DrawLeadingEdge(graphics, fillRect, seconds, false, themeName);
                         graphics.Restore(clip);
-                        if (heatStage == HeatWarm) DrawStageTip(graphics, fillRect, themeName, heatStage);
+                        if (heatStage == HeatCool)
+                        {
+                            DrawCoolHalo(graphics, fillRect, seconds, themeName);
+                            DrawStageTip(graphics, fillRect, themeName, heatStage);
+                        }
+                        else
+                        {
+                            DrawWarmHalo(graphics, fillRect, seconds, themeName);
+                            DrawStageTip(graphics, fillRect, themeName, heatStage);
+                            DrawHeatWaves(graphics, fillRect, seconds, themeName, 0.22f);
+                        }
                     }
                     if (transition < 1 && previousHeatStage != heatStage)
                     {
@@ -1243,10 +1332,10 @@ public sealed class MiniInfoForm : Form
     private static LinearGradientBrush FrostBrush(Rectangle fill, string theme)
     {
         string[] colors = theme == "cream"
-            ? new[] { "#3A5058", "#64828A", "#A9C3C6" }
+            ? new[] { "#3A5058", "#64828A", "#B7CED1" }
             : (theme == "glass"
-                ? new[] { "#19343C", "#32565F", "#6B8F94" }
-                : new[] { "#1B3038", "#35535E", "#6F929B" });
+                ? new[] { "#19343C", "#32565F", "#7A9EA3" }
+                : new[] { "#1B3038", "#35535E", "#83A8B0" });
         LinearGradientBrush brush = new LinearGradientBrush(fill,
             Hex(colors[0]), Hex(colors[2]), LinearGradientMode.Horizontal);
         ColorBlend blend = new ColorBlend(3);
@@ -1258,11 +1347,36 @@ public sealed class MiniInfoForm : Form
 
     private static LinearGradientBrush StageBrush(Rectangle fill, string theme, bool warm)
     {
-        string start = theme == "cream" ? (warm ? "#4C7089" : "#3F6178") :
-            theme == "glass" ? (warm ? "#2A5A62" : "#1F4A52") : (warm ? "#2C6288" : "#244A66");
-        string end = theme == "cream" ? (warm ? "#9DBECD" : "#7EA6BA") :
-            theme == "glass" ? (warm ? "#7FA8AD" : "#5C8B90") : (warm ? "#8FC4DD" : "#5F93B5");
-        return new LinearGradientBrush(fill, Hex(start), Hex(end), LinearGradientMode.Horizontal);
+        if (warm)
+        {
+            string start = theme == "cream" ? "#59636F" : "#414C5E";
+            string middle = theme == "cream" ? "#A97648" : "#A46E43";
+            string end = theme == "cream" ? "#D3A36E" : "#D8A56E";
+            LinearGradientBrush warmBrush = new LinearGradientBrush(fill, Hex(start), Hex(end), LinearGradientMode.Horizontal);
+            ColorBlend blend = new ColorBlend(3);
+            blend.Colors = new[] { Hex(start), Hex(middle), Hex(end) };
+            blend.Positions = new[] { 0f, 0.52f, 1f };
+            warmBrush.InterpolationColors = blend;
+            return warmBrush;
+        }
+        string coolStart = theme == "cream" ? "#3F6178" :
+            theme == "glass" ? "#1F4A52" : "#244A66";
+        string coolEnd = theme == "cream" ? "#7EA6BA" :
+            theme == "glass" ? "#5C8B90" : "#5F93B5";
+        return new LinearGradientBrush(fill, Hex(coolStart), Hex(coolEnd), LinearGradientMode.Horizontal);
+    }
+
+    private static LinearGradientBrush HotBrush(Rectangle fill, string theme)
+    {
+        string start = theme == "cream" ? "#6B4A2F" : "#5A3A25";
+        string middle = theme == "cream" ? "#C07A3A" : "#B96B2F";
+        string end = theme == "cream" ? "#E2B06A" : "#E8A95C";
+        LinearGradientBrush brush = new LinearGradientBrush(fill, Hex(start), Hex(end), LinearGradientMode.Horizontal);
+        ColorBlend blend = new ColorBlend(3);
+        blend.Colors = new[] { Hex(start), Hex(middle), Hex(end) };
+        blend.Positions = new[] { 0f, 0.52f, 1f };
+        brush.InterpolationColors = blend;
+        return brush;
     }
 
     private static double AnimationSeconds()
@@ -1290,8 +1404,8 @@ public sealed class MiniInfoForm : Form
         float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 2.8));
         Color color = theme == "cream" ? Color.FromArgb(140, 80, 30) :
             (theme == "glass" ? Color.FromArgb(170, 95, 32) : Color.FromArgb(150, 75, 25));
-        DrawRadialGlow(graphics, new Rectangle(fill.Right - 20, fill.Top - 10, 40, 26),
-            (int)(34 + 40 * pulse), color);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 24, fill.Top - 12, 48, 30),
+            (int)(50 + 60 * pulse), color);
     }
 
     private static void DrawColdLight(Graphics graphics, Rectangle fill, double seconds, string theme)
@@ -1299,8 +1413,8 @@ public sealed class MiniInfoForm : Form
         float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 5.2));
         Color color = theme == "cream" ? Color.FromArgb(120, 135, 140) :
             (theme == "glass" ? Color.FromArgb(90, 125, 132) : Color.FromArgb(95, 130, 140));
-        DrawRadialGlow(graphics, new Rectangle(fill.Left - 6, fill.Top - 5, fill.Width + 12, 16),
-            (int)(8 + 10 * pulse), color);
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 8, fill.Top - 7, fill.Width + 16, 20),
+            (int)(18 + 18 * pulse), color);
     }
 
     private static void DrawHeatFlow(Graphics graphics, Rectangle fill, double seconds, string theme)
@@ -1333,7 +1447,7 @@ public sealed class MiniInfoForm : Form
             LinearGradientMode.Horizontal))
         {
             ColorBlend blend = new ColorBlend(3);
-            blend.Colors = new[] { Color.FromArgb(0, glow), Color.FromArgb(26, glow), Color.FromArgb(0, glow) };
+            blend.Colors = new[] { Color.FromArgb(0, glow), Color.FromArgb(38, glow), Color.FromArgb(0, glow) };
             blend.Positions = new[] { 0f, 0.5f, 1f };
             brush.InterpolationColors = blend;
             graphics.FillRectangle(brush, band);
@@ -1344,13 +1458,13 @@ public sealed class MiniInfoForm : Form
     {
         if (opacity <= 0.01f) return;
         int[] centers = { 32, 96, 166 };
-        int[] widths = { 46, 62, 40 };
+        int[] widths = { 54, 72, 48 };
         for (int i = 0; i < centers.Length; i++)
         {
             int x = fill.Left + centers[i];
             if (x - widths[i] / 2 >= fill.Right) break;
             Rectangle patch = new Rectangle(x - widths[i] / 2, fill.Top - 2, widths[i], fill.Height + 4);
-            int alpha = (int)((34 + i * 6) * opacity);
+            int alpha = (int)((52 + i * 8) * opacity);
             DrawRadialGlow(graphics, patch, alpha, Color.FromArgb(228, 250, 253));
         }
     }
@@ -1360,8 +1474,8 @@ public sealed class MiniInfoForm : Form
         if (opacity <= 0.01f || fill.Width < 40) return;
         int[] positions = { 42, 106, 168 };
         int[] leans = { 4, -3, 3 };
-        using (Pen light = new Pen(Color.FromArgb((int)(95 * opacity), 236, 253, 255), 1f))
-        using (Pen shade = new Pen(Color.FromArgb((int)(38 * opacity), 20, 55, 66), 1f))
+        using (Pen light = new Pen(Color.FromArgb((int)(135 * opacity), 236, 253, 255), 1.3f))
+        using (Pen shade = new Pen(Color.FromArgb((int)(55 * opacity), 20, 55, 66), 1.3f))
         {
             for (int i = 0; i < positions.Length; i++)
             {
@@ -1373,20 +1487,22 @@ public sealed class MiniInfoForm : Form
                 graphics.DrawLine(shade, x + 1, top, tip + 1, bottom);
                 if (i == 1)
                     graphics.DrawLine(light, x, (top + bottom) / 2, x + 6, (top + bottom) / 2 - 2);
+                if (i == 2)
+                    graphics.DrawLine(light, x, (top + bottom) / 2, x - 6, (top + bottom) / 2 + 2);
             }
         }
     }
 
     private static void DrawMoltenCore(Graphics graphics, Rectangle fill, string theme)
     {
-        int coreHeight = Math.Max(2, fill.Height / 3);
+        int coreHeight = Math.Max(3, fill.Height / 2);
         Rectangle core = new Rectangle(fill.Left, fill.Top + (fill.Height - coreHeight) / 2, fill.Width, coreHeight);
         Color glow = theme == "cream" ? Color.FromArgb(255, 244, 180) : Color.FromArgb(255, 252, 190);
         using (LinearGradientBrush brush = new LinearGradientBrush(core,
             Color.FromArgb(30, glow), glow, LinearGradientMode.Vertical))
         {
             ColorBlend blend = new ColorBlend(3);
-            blend.Colors = new[] { Color.FromArgb(30, glow), Color.FromArgb(210, glow), Color.FromArgb(30, glow) };
+            blend.Colors = new[] { Color.FromArgb(30, glow), Color.FromArgb(235, glow), Color.FromArgb(30, glow) };
             blend.Positions = new[] { 0f, 0.5f, 1f };
             brush.InterpolationColors = blend;
             graphics.FillRectangle(brush, core);
@@ -1396,12 +1512,108 @@ public sealed class MiniInfoForm : Form
     private static void DrawStageTip(Graphics graphics, Rectangle fill, string theme, int stage)
     {
         Color color = stage == HeatHot
-            ? (theme == "cream" ? Color.FromArgb(240, 200, 140) : Color.FromArgb(255, 220, 150))
-            : Color.FromArgb(225, 238, 250);
-        int alpha = stage == HeatHot ? 95 : 58;
+            ? (theme == "cream" ? Color.FromArgb(255, 220, 150) : Color.FromArgb(255, 225, 160))
+            : (stage == HeatWarm ? Color.FromArgb(255, 220, 170) : Color.FromArgb(190, 230, 255));
+        int alpha = stage == HeatHot ? 120 : (stage == HeatWarm ? 78 : 55);
         DrawRadialGlow(graphics, new Rectangle(fill.Right - 12, fill.Top - 3, 20, fill.Height + 6), alpha, color);
-        using (SolidBrush brush = new SolidBrush(Color.FromArgb(stage == HeatHot ? 150 : 90, color)))
+        using (SolidBrush brush = new SolidBrush(Color.FromArgb(stage == HeatHot ? 185 : (stage == HeatWarm ? 135 : 115), color)))
             graphics.FillRectangle(brush, fill.Right - 2, fill.Top + 1, 2, fill.Height - 2);
+    }
+
+    private static void DrawCoolGlow(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 7.0));
+        Color glow = theme == "cream" ? Color.FromArgb(115, 155, 170) : Color.FromArgb(115, 205, 255);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 16, fill.Top - 2, 26, fill.Height + 4),
+            (int)(24 + 26 * pulse), glow);
+        using (SolidBrush brush = new SolidBrush(Color.FromArgb((int)(42 + 30 * pulse), 195, 238, 255)))
+        {
+            graphics.FillRectangle(brush, fill.Left, fill.Top, fill.Width, 1);
+            graphics.FillRectangle(brush, fill.Left, fill.Bottom - 1, fill.Width, 1);
+        }
+    }
+
+    private static void DrawCoolMotes(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        if (fill.Width < 8) return;
+        float[] xs = { 0.12f, 0.28f, 0.44f, 0.61f, 0.78f, 0.9f };
+        float[] phases = { 0f, 2.1f, 4.3f, 1.2f, 3.4f, 5.1f };
+        for (int i = 0; i < xs.Length; i++)
+        {
+            float x = fill.Left + fill.Width * xs[i];
+            if (x >= fill.Right - 1) break;
+            double phase = seconds * (Math.PI * 2 / (7.5 + i * 0.6)) + phases[i];
+            float px = x + 3.2f * (float)Math.Sin(phase);
+            float py = fill.Top + 2 + (i % 3) * 2.4f + 0.8f * (float)Math.Sin(phase * 1.6);
+            int alpha = Math.Min(230, (int)(95 + 95 * (0.5 + 0.5 * Math.Sin(phase))));
+            float size = i % 2 == 0 ? 2.5f : 1.8f;
+            using (SolidBrush dot = new SolidBrush(Color.FromArgb(alpha, 205, 242, 255)))
+                graphics.FillEllipse(dot, px, py, size, size);
+            DrawRadialGlow(graphics, new Rectangle((int)(px - 4), (int)(py - 4), 10, 10), alpha / 3,
+                Color.FromArgb(120, 210, 255));
+        }
+    }
+
+    private static void DrawCoolHalo(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 7.0));
+        Color glow = theme == "cream" ? Color.FromArgb(95, 145, 160) : Color.FromArgb(95, 195, 250);
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 8, fill.Top - 7, fill.Width + 16, fill.Height + 14),
+            (int)(16 + 18 * pulse), glow);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 14, fill.Top - 6, 28, fill.Height + 12),
+            (int)(28 + 28 * pulse), glow);
+    }
+
+    private static void DrawWarmHalo(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 5.2));
+        Color glow = theme == "cream" ? Color.FromArgb(230, 170, 95) : Color.FromArgb(255, 170, 75);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 16, fill.Top - 6, 34, fill.Height + 12),
+            (int)(30 + 24 * pulse), glow);
+    }
+
+    private static void DrawHotHalo(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 2.8));
+        Color glow = theme == "cream" ? Color.FromArgb(255, 195, 120) : Color.FromArgb(255, 175, 70);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 18, fill.Top - 7, 38, fill.Height + 14),
+            (int)(45 + 35 * pulse), glow);
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 6, fill.Top - 4, fill.Width + 12, fill.Height + 8),
+            (int)(12 + 10 * pulse), glow);
+    }
+
+    private static void DrawHotEmbers(Graphics graphics, Rectangle fill, double seconds, string theme, float opacity)
+    {
+        if (opacity <= 0.01f) return;
+        for (int i = 0; i < 3; i++)
+        {
+            double phase = (seconds * 0.45 + i * 0.31) % 1.0;
+            float x = fill.Right - 6 - i * 9 + 2f * (float)Math.Sin(seconds * 1.1 + i * 2);
+            float y = fill.Top - 1 - (float)(phase * 12);
+            int alpha = Math.Max(0, (int)((160 * (1 - phase)) * opacity));
+            float size = 1.5f + (float)(phase * 1.8);
+            using (SolidBrush ember = new SolidBrush(Color.FromArgb(alpha, 255, 215, 110)))
+                graphics.FillEllipse(ember, x, y, size, size);
+        }
+    }
+
+    private static void DrawBurnHalo(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 2.8));
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 8, fill.Top - 8, fill.Width + 16, fill.Height + 16),
+            (int)(40 + 30 * pulse), Color.FromArgb(255, 150, 45));
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 22, fill.Top - 10, 44, fill.Height + 20),
+            (int)(55 + 45 * pulse), Color.FromArgb(255, 190, 70));
+    }
+
+    private static void DrawFrostHalo(Graphics graphics, Rectangle fill, double seconds, string theme)
+    {
+        float pulse = 0.5f + 0.5f * (float)Math.Sin(seconds * (Math.PI * 2 / 5.2));
+        Color glow = theme == "cream" ? Color.FromArgb(120, 150, 155) : Color.FromArgb(100, 190, 220);
+        DrawRadialGlow(graphics, new Rectangle(fill.Left - 8, fill.Top - 8, fill.Width + 16, fill.Height + 16),
+            (int)(26 + 18 * pulse), glow);
+        DrawRadialGlow(graphics, new Rectangle(fill.Right - 18, fill.Top - 6, 34, fill.Height + 12),
+            (int)(20 + 16 * pulse), glow);
     }
 
     private static void DrawStageSheen(Graphics graphics, Rectangle fill, double seconds, string theme, int stage)
@@ -1413,8 +1625,8 @@ public sealed class MiniInfoForm : Form
         Rectangle band = new Rectangle(x, fill.Top, bandWidth, fill.Height);
         Color glow = stage == HeatHot
             ? (theme == "cream" ? Color.FromArgb(255, 225, 170) : Color.FromArgb(255, 220, 150))
-            : (stage == HeatWarm ? Color.FromArgb(220, 235, 250) : Color.FromArgb(180, 225, 255));
-        int alpha = stage == HeatHot ? 52 : (stage == HeatWarm ? 36 : 24);
+            : (stage == HeatWarm ? Color.FromArgb(255, 218, 165) : (theme == "cream" ? Color.FromArgb(200, 235, 245) : Color.FromArgb(180, 225, 255)));
+        int alpha = stage == HeatHot ? 70 : (stage == HeatWarm ? 46 : 40);
         using (LinearGradientBrush brush = new LinearGradientBrush(band, Color.FromArgb(0, glow), glow,
             LinearGradientMode.Horizontal))
         {
@@ -1430,13 +1642,13 @@ public sealed class MiniInfoForm : Form
     {
         if (opacity <= 0.01f) return;
         float shimmer = 0.55f + 0.35f * (float)Math.Abs(Math.Sin(seconds * 0.7));
-        int alpha = (int)(95 * opacity * shimmer);
-        using (Pen corePen = new Pen(Color.FromArgb(alpha, 220, 250, 255), 1f))
-        using (Pen glowPen = new Pen(Color.FromArgb((int)(24 * opacity * shimmer), 170, 230, 245), 3f))
+        int alpha = (int)(135 * opacity * shimmer);
+        using (Pen corePen = new Pen(Color.FromArgb(alpha, 220, 250, 255), 1.2f))
+        using (Pen glowPen = new Pen(Color.FromArgb((int)(38 * opacity * shimmer), 170, 230, 245), 4f))
         {
             corePen.StartCap = corePen.EndCap = LineCap.Round;
             glowPen.StartCap = glowPen.EndCap = LineCap.Round;
-            const int count = 22;
+            const int count = 26;
             PointF[] top = new PointF[count];
             PointF[] bottom = new PointF[count];
             float x = fill.Left;
@@ -1453,14 +1665,14 @@ public sealed class MiniInfoForm : Form
             graphics.DrawLines(corePen, top);
             graphics.DrawLines(glowPen, bottom);
             graphics.DrawLines(corePen, bottom);
-            int[] branches = { 4, 14 };
+            int[] branches = { 4, 14, 21 };
             foreach (int index in branches)
             {
                 PointF point = top[index];
                 graphics.DrawLine(glowPen, point, new PointF(point.X + 5, point.Y - 4));
                 graphics.DrawLine(corePen, point, new PointF(point.X + 5, point.Y - 4));
             }
-            PointF branch = bottom[17];
+            PointF branch = bottom[20];
             graphics.DrawLine(corePen, branch, new PointF(branch.X - 5, branch.Y - 3));
         }
     }
@@ -1470,13 +1682,13 @@ public sealed class MiniInfoForm : Form
         if (opacity <= 0.01f) return;
         DrawFireWisps(graphics, fill, seconds, theme, opacity);
         float flash = 0.35f + 0.65f * (float)Math.Abs(Math.Sin(seconds * 4.7));
-        int alpha = (int)(240 * opacity * flash);
+        int alpha = (int)(255 * opacity * flash);
         Color core = theme == "cream"
             ? Color.FromArgb(alpha, 255, 250, 190)
             : Color.FromArgb(alpha, 255, 253, 200);
-        Color glow = Color.FromArgb((int)(58 * opacity * flash), 255, 205, 70);
-        using (Pen corePen = new Pen(core, 1.1f))
-        using (Pen glowPen = new Pen(glow, 3.6f))
+        Color glow = Color.FromArgb((int)(82 * opacity * flash), 255, 205, 70);
+        using (Pen corePen = new Pen(core, 1.25f))
+        using (Pen glowPen = new Pen(glow, 4.2f))
         {
             corePen.StartCap = corePen.EndCap = LineCap.Round;
             glowPen.StartCap = glowPen.EndCap = LineCap.Round;
@@ -1497,7 +1709,7 @@ public sealed class MiniInfoForm : Form
             graphics.DrawLines(corePen, top);
             graphics.DrawLines(glowPen, bottom);
             graphics.DrawLines(corePen, bottom);
-            int[] branches = { 4, 11, 19 };
+            int[] branches = { 4, 11, 19, 23 };
             foreach (int index in branches)
             {
                 PointF point = top[index];
@@ -1507,7 +1719,7 @@ public sealed class MiniInfoForm : Form
                 graphics.DrawLine(corePen, point, new PointF(bx, by));
                 graphics.DrawLine(corePen, new PointF(bx, by), new PointF(bx + 4, by - 2));
             }
-            PointF branch = bottom[16];
+            PointF branch = bottom[18];
             graphics.DrawLine(glowPen, branch, new PointF(branch.X - 6, branch.Y - 4));
             graphics.DrawLine(corePen, branch, new PointF(branch.X - 6, branch.Y - 4));
         }
@@ -1526,20 +1738,20 @@ public sealed class MiniInfoForm : Form
             Rectangle plume = new Rectangle((int)(cx - widths[i] / 2), (int)(fill.Top - height),
                 (int)widths[i], (int)height + 4);
             Color warm = theme == "cream" ? Color.FromArgb(230, 180, 80) : Color.FromArgb(255, 205, 60);
-            DrawRadialGlow(graphics, plume, (int)(55 * opacity), warm);
+            DrawRadialGlow(graphics, plume, (int)(70 * opacity), warm);
         }
     }
 
     private static void DrawBurnEmbers(Graphics graphics, Rectangle fill, double seconds, string theme, float opacity)
     {
         if (opacity <= 0.01f) return;
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
             double phase = (seconds * 0.5 + i * 0.17) % 1.0;
-            float x = fill.Right - 22 - i * 30 + 3f * (float)Math.Sin(seconds * 0.9 + i * 2);
+            float x = fill.Right - 22 - i * 24 + 3f * (float)Math.Sin(seconds * 0.9 + i * 2);
             float y = fill.Top - 2 - (float)(phase * 18);
-            int alpha = Math.Max(0, (int)((180 * (1 - phase)) * opacity));
-            float size = 1.5f + (float)(phase * 2.2);
+            int alpha = Math.Max(0, (int)((220 * (1 - phase)) * opacity));
+            float size = 2.0f + (float)(phase * 2.4);
             using (SolidBrush ember = new SolidBrush(Color.FromArgb(alpha, 255, 210, 90)))
                 graphics.FillEllipse(ember, x, y, size, size);
         }
@@ -1548,20 +1760,20 @@ public sealed class MiniInfoForm : Form
     private static void DrawHeatWaves(Graphics graphics, Rectangle fill, double seconds, string theme, float opacity)
     {
         if (opacity <= 0.01f) return;
-        int start = fill.Left + (int)(fill.Width * 0.68);
+        int start = fill.Left + (int)(fill.Width * 0.64);
         int span = Math.Max(30, fill.Right - start);
-        DrawRadialGlow(graphics, new Rectangle(start - 6, fill.Top - 10, span + 12, 22), (int)(26 * opacity),
+        DrawRadialGlow(graphics, new Rectangle(start - 6, fill.Top - 10, span + 12, 22), (int)(32 * opacity),
             theme == "cream" ? Color.FromArgb(200, 140, 80) : Color.FromArgb(230, 150, 70));
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 5; i++)
         {
             double phase = seconds * (Math.PI * 2 / 3.4) + i * 1.45;
-            float rise = 3f + 5f * (0.5f + 0.5f * (float)Math.Sin(phase));
-            int width = span / 2 + 14;
-            int x = start + i * (span / 5) - 7;
-            Rectangle band = new Rectangle(x, (int)(fill.Top - rise - 4), width, (int)(12 + rise));
+            float rise = 4f + 6f * (0.5f + 0.5f * (float)Math.Sin(phase));
+            int width = span / 2 + 16;
+            int x = start + i * (span / 6) - 7;
+            Rectangle band = new Rectangle(x, (int)(fill.Top - rise - 4), width, (int)(14 + rise));
             Color warm = theme == "cream" ? Color.FromArgb(215, 150, 85) :
                 (theme == "glass" ? Color.FromArgb(255, 185, 95) : Color.FromArgb(245, 160, 75));
-            int alpha = (int)((60 + 55 * (0.5 + 0.5 * Math.Sin(phase + 0.9))) * opacity);
+            int alpha = (int)((75 + 65 * (0.5 + 0.5 * Math.Sin(phase + 0.9))) * opacity);
             DrawRadialGlow(graphics, band, alpha, warm);
         }
     }
