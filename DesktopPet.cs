@@ -26,6 +26,14 @@ public sealed class WorkBankPet : Form
     private const int WS_MINIMIZEBOX = 0x00020000;
     private const int ULW_ALPHA = 2;
     private const byte AC_SRC_ALPHA = 1;
+    private const uint WM_NULL = 0x0000;
+    private const uint SMTO_BLOCK = 0x0001;
+    private const uint SMTO_ABORTIFHUNG = 0x0002;
+    /* 桌宠定时器每 200ms 一次。心跳文件超过 60 秒没更新才考虑退出；
+       若自身定时器刚停摆过（系统卡顿），先给主窗口 10 秒恢复时间。 */
+    private const double AliveTimeoutSeconds = 60;
+    private const double StallGapSeconds = 5;
+    private const double StallGraceSeconds = 10;
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOACTIVATE = 0x0010;
@@ -48,6 +56,9 @@ public sealed class WorkBankPet : Form
     private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, IntPtr lParam,
+        uint flags, uint timeout, out IntPtr result);
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")]
@@ -156,6 +167,8 @@ public sealed class WorkBankPet : Form
     private Point dragCursor;
     private Point dragWindow;
     private DateTime lastHeartbeat = DateTime.MinValue;
+    private DateTime lastTickAt = DateTime.MinValue;
+    private DateTime aliveGraceUntil = DateTime.MinValue;
     private DateTime pendingShow = DateTime.MinValue;
     private DateTime lastTopMostCheck = DateTime.MinValue;
     private DateTime topMostPausedUntil = DateTime.MinValue;
@@ -415,10 +428,17 @@ public sealed class WorkBankPet : Form
 
     private void OnTick(object sender, EventArgs e)
     {
+        DateTime now = DateTime.UtcNow;
+        TimeSpan sinceLastTick = lastTickAt == DateTime.MinValue ? TimeSpan.Zero : now - lastTickAt;
+        lastTickAt = now;
+        TimeSpan grace = AliveGrace(sinceLastTick);
+        if (grace > TimeSpan.Zero) aliveGraceUntil = now + grace;
         if (!IsWindow(parentWindow) || !File.Exists(alivePath)) { Close(); return; }
         try
         {
-            if ((DateTime.UtcNow - File.GetLastWriteTimeUtc(alivePath)).TotalSeconds > 30) { Close(); return; }
+            /* 心跳过期时先确认主窗口是否还响应；模态对话框期间窗口仍在处理消息，不应误杀桌宠。 */
+            if (HeartbeatExpired(now, File.GetLastWriteTimeUtc(alivePath), aliveGraceUntil) && !ParentResponsive())
+            { Close(); return; }
             if ((DateTime.UtcNow - lastHeartbeat).TotalMilliseconds >= 1000) WriteHeartbeat();
             ReadState();
             SynchronizeParentVisibility();
@@ -498,6 +518,26 @@ public sealed class WorkBankPet : Form
         SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         if (mini.Visible && mini.TopMost)
             SetWindowPos(mini.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    /* 桌宠定时器每 200ms 一次。心跳文件超过 60 秒没更新才考虑退出；
+       若自身定时器刚停摆过（系统卡顿），先给主窗口 10 秒恢复时间。 */
+    public static TimeSpan AliveGrace(TimeSpan sinceLastTick)
+    {
+        return sinceLastTick.TotalSeconds > StallGapSeconds ? TimeSpan.FromSeconds(StallGraceSeconds) : TimeSpan.Zero;
+    }
+
+    public static bool HeartbeatExpired(DateTime nowUtc, DateTime aliveWriteUtc, DateTime graceUntilUtc)
+    {
+        if (nowUtc < graceUntilUtc) return false;
+        return (nowUtc - aliveWriteUtc).TotalSeconds > AliveTimeoutSeconds;
+    }
+
+    private bool ParentResponsive()
+    {
+        IntPtr result;
+        return SendMessageTimeout(parentWindow, WM_NULL, IntPtr.Zero, IntPtr.Zero,
+            SMTO_BLOCK | SMTO_ABORTIFHUNG, 2000, out result) != IntPtr.Zero;
     }
 
     public static string SelectFrame(string state, bool panelOpen, int percent)

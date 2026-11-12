@@ -849,6 +849,9 @@ function bankPanelBounds(pet, panelWidth, panelHeight, gap) {
 /* 本地数据与输入状态；不会记录具体按键、鼠标位置或操作内容。 */
 var DATA_FILE = "workbank.json", BACKUP_FILE = "workbank.json.bak", TEMP_FILE = "workbank.json.tmp";
 var IDLE_LIMIT = 120000, MAX_TICK_GAP = 2500, SAMPLE_MAX_AGE = 3500;
+/* 桌宠看门狗。正常 tick 间隔 250ms；若主窗口自己的定时器长时间停摆（系统卡顿、模态框等），
+   恢复后的第一轮只补心跳、不判死，并给桌宠几秒恢复时间，避免双方互相误判。 */
+var PET_BEAT_TIMEOUT = 30000, PET_STALL_GAP = 3000, PET_STALL_GRACE = 5000;
 var FIGHT_OVERTIME_SECONDS = 2 * 3600;
 var bank = { version: 1, settings: null, days: {} };
 var masked = true, tracking = false, signedOff = false, fatalStorage = false;
@@ -863,6 +866,7 @@ var exportDialogPath = "", exportDialogKind = "", exportDialogStarted = 0, expor
 var pinned = false, pinPending = false, pinDesired = false, pinRemember = false;
 var pinStarted = 0, pinResultPath = "", pinPreviousTitle = "", pinTimer = null;
 var petStarting = false, petRunning = false, petStarted = 0, petLastHeartbeat = 0, petLastState = "";
+var lastAppTick = 0, petStallGraceUntil = 0;
 var petAlivePath = "", petStatePath = "", petBeatPath = "", petReadyPath = "", petControlPath = "", petNoticePath = "", petEventsPath = "", petPosPath = "";
 var petPreviousTitle = "", petTargetTitle = "", petPanelVisible = true, petParentHandle = "";
 var lastBurnStage = "";
@@ -1534,6 +1538,7 @@ function startPet() {
     petStarted = new Date().getTime();
     petLastHeartbeat = petStarted;
     petLastState = "";
+    petStallGraceUntil = 0;
     renderPin();
     writePetState();
     var petX = petPositionX !== null ? petPositionX : -2147483648;
@@ -1599,9 +1604,14 @@ function readPetEvents() {
     }
   } catch (e) {}
 }
-function petTick() {
+function petTick(stallDetected) {
   if (!petStarting && !petRunning) return;
   var now = new Date().getTime();
+  if (stallDetected) {
+    petStallGraceUntil = now + PET_STALL_GRACE;
+    petLastHeartbeat = 0; /* 立即补写 .alive，让桌宠尽快看到新心跳 */
+    if (petStarting) petStarted = now; /* 卡顿时间不计入启动超时 */
+  }
   if (now - petLastHeartbeat >= 5000) {
     if (!writePath(petAlivePath, "alive", false)) { failPet("桌宠连接中断，工时卡片仍可正常使用。"); return; }
     petLastHeartbeat = now;
@@ -1629,7 +1639,8 @@ function petTick() {
     }
   } else {
     var beat = Number(readPath(petBeatPath, false));
-    if (now - petStarted > 8000 && (!(beat > 0) || now - beat > 12000 || beat - now > 3000)) {
+    if (!stallDetected && now >= petStallGraceUntil && now - petStarted > 8000 &&
+        (!(beat > 0) || now - beat > PET_BEAT_TIMEOUT || beat - now > 3000)) {
       failPet("小鲸桌宠已退出或连接中断，工时卡片仍可使用。");
       return;
     }
@@ -2020,6 +2031,8 @@ function pauseForMissingPaidMonth(now) {
 }
 function tick(skipPet) {
   var now = new Date().getTime();
+  var appTickGap = lastAppTick ? now - lastAppTick : 0;
+  lastAppTick = now;
   pauseForMissingPaidMonth(now);
   if (tracking && bank.settings) {
     if (alivePath && now - lastHeartbeat >= 5000) {
@@ -2059,7 +2072,7 @@ function tick(skipPet) {
     }
   }
   render(now);
-  if (skipPet !== true) petTick();
+  if (skipPet !== true) petTick(appTickGap > PET_STALL_GAP);
 }
 function startTracking() {
   if (fatalStorage) { alert(storageProblem); return; }

@@ -529,13 +529,44 @@ test('a lost pet heartbeat does not stop active work tracking', () => {
   app.startPet();
   env.files[app.petReadyPath] = 'ready|12345';
   app.petTick();
-  app.petStarted = Date.now() - 20000;
-  env.files[app.petBeatPath] = String(Date.now() - 20000);
+  app.petStarted = Date.now() - 40000;
+  env.files[app.petBeatPath] = String(Date.now() - 40000);
   app.petTick();
   assert.equal(app.petRunning, false);
   assert.equal(app.tracking, true);
   assert.match(env.elements.petStatusText.innerText, /连接中断/);
   assert.ok(env.commands.some(command => /WorkBankRecovery/.test(command) && /!IsWindowVisible\(h\)\|\|IsIconic\(h\)/.test(command)), 'restore a hidden or minimized panel after the pet dies');
+});
+
+test('a stalled panel tick gives the pet a grace window instead of killing it', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  app.tracking = true;
+  app.startPet();
+  env.files[app.petReadyPath] = 'ready|12345';
+  app.petTick();
+  app.petStarted = Date.now() - 40000;
+  env.files[app.petBeatPath] = String(Date.now() - 40000);
+  app.petTick(true);
+  assert.equal(app.petRunning, true);
+  assert.equal(app.tracking, true);
+  assert.ok(app.petStallGraceUntil > Date.now(), 'a stall should open a short grace window');
+  assert.equal(env.files[app.petAlivePath], 'alive', 'the panel should refresh the heartbeat immediately');
+  app.petTick();
+  assert.equal(app.petRunning, true, 'ticks inside the grace window must not declare the pet dead');
+});
+
+test('the panel detects its own long tick gap and marks the pet check as stalled', () => {
+  const env = runtime(), app = env.context;
+  app.bank.settings = { ...settings };
+  let seen = null;
+  app.petTick = value => { seen = value; };
+  app.lastAppTick = Date.now() - 20000;
+  app.tick(false);
+  assert.equal(seen, true);
+  seen = null;
+  app.tick(false);
+  assert.equal(seen, false);
 });
 
 test('pet position and topmost preference are validated and persisted', () => {

@@ -148,6 +148,17 @@ public static class PetNativeTests
             WorkBankPet.NoticeMessage("rest") != "已累计记录一段时间，喝水休息一下吧；右键菜单可稍后提醒。" ||
             WorkBankPet.NoticeMessage("attention") != "请打开工时卡片查看提示。")
             throw new Exception("Goal notices should pass through while legacy codes keep their messages");
+        DateTime watchdogNow = DateTime.UtcNow;
+        if (WorkBankPet.AliveGrace(TimeSpan.FromSeconds(20)) != TimeSpan.FromSeconds(10))
+            throw new Exception("A stalled pet timer must open a grace window");
+        if (WorkBankPet.AliveGrace(TimeSpan.FromMilliseconds(200)) != TimeSpan.Zero)
+            throw new Exception("Normal pet ticks must not defer heartbeat checks");
+        if (!WorkBankPet.HeartbeatExpired(watchdogNow, watchdogNow.AddSeconds(-61), watchdogNow.AddSeconds(-1)))
+            throw new Exception("A genuinely stale heartbeat should expire after the grace window");
+        if (WorkBankPet.HeartbeatExpired(watchdogNow, watchdogNow.AddSeconds(-61), watchdogNow.AddSeconds(5)))
+            throw new Exception("A stall grace window must suppress heartbeat expiry");
+        if (WorkBankPet.HeartbeatExpired(watchdogNow, watchdogNow.AddSeconds(-30), watchdogNow.AddSeconds(-1)))
+            throw new Exception("A short heartbeat delay should not expire the pet");
         TestProgressEffects();
         TestCardAtmospheres();
         TestDetailTextFit();
